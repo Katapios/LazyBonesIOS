@@ -58,4 +58,12 @@ class PostStore: ObservableObject, PostStoreProtocol {
         posts = []
         save()
     }
+    
+    /// Обновление существующего отчёта по id
+    func update(post: Post) {
+        if let idx = posts.firstIndex(where: { $0.id == post.id }) {
+            posts[idx] = post
+            save()
+        }
+    }
 } 

@@ -51,12 +51,26 @@ struct ChecklistSectionView: View {
 struct PostFormView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var store: PostStore
-    @State private var goodItems: [ChecklistItem] = [ChecklistItem(id: UUID(), text: "")]
-    @State private var badItems: [ChecklistItem] = [ChecklistItem(id: UUID(), text: "")]
+    @State private var goodItems: [ChecklistItem]
+    @State private var badItems: [ChecklistItem]
     @FocusState private var goodFocus: UUID?
     @FocusState private var badFocus: UUID?
     var title: String = "Создать отчёт"
-    var onPublish: (() -> Void)? = nil
+    var post: Post? = nil
+    var onSave: (() -> Void)? = nil
+    
+    init(title: String = "Создать отчёт", post: Post? = nil, onSave: (() -> Void)? = nil) {
+        self.title = title
+        self.post = post
+        self.onSave = onSave
+        if let post = post {
+            _goodItems = State(initialValue: post.goodItems.map { ChecklistItem(id: UUID(), text: $0) })
+            _badItems = State(initialValue: post.badItems.map { ChecklistItem(id: UUID(), text: $0) })
+        } else {
+            _goodItems = State(initialValue: [ChecklistItem(id: UUID(), text: "")])
+            _badItems = State(initialValue: [ChecklistItem(id: UUID(), text: "")])
+        }
+    }
     
     var body: some View {
         NavigationView {
@@ -87,13 +101,13 @@ struct PostFormView: View {
                 ToolbarItem(placement: .bottomBar) {
                     HStack {
                         Button("Сохранить") {
-                            savePost(published: false)
+                            saveAndNotify()
                         }
                         .buttonStyle(.borderedProminent)
                         .disabled(!canSave)
                         Spacer()
                         Button("Опубликовать") {
-                            savePost(published: true)
+                            dismiss() // Пока ничего не делает, только закрывает форму
                         }
                         .buttonStyle(.borderedProminent)
                         .disabled(!canSave)
@@ -146,14 +160,16 @@ struct PostFormView: View {
         badItems.contains(where: { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty })
     }
     
-    func savePost(published: Bool) {
+    func saveAndNotify() {
         let filteredGood = goodItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
         let filteredBad = badItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        let post = Post(id: UUID(), date: Date(), goodItems: filteredGood, badItems: filteredBad, published: published)
-        store.add(post: post)
-        if published {
-            onPublish?()
+        let newPost = Post(id: post?.id ?? UUID(), date: Date(), goodItems: filteredGood, badItems: filteredBad, published: false)
+        if let _ = post {
+            store.update(post: newPost)
+        } else {
+            store.add(post: newPost)
         }
+        onSave?()
         dismiss()
     }
 }

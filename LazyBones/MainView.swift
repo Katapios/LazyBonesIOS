@@ -1,12 +1,16 @@
 import SwiftUI
 
-/// Главная вкладка: таймер, статус и кнопка создания отчёта
+/// Главная вкладка: таймер, статус и кнопка создания/редактирования отчёта
 struct MainView: View {
     @State private var showPostForm = false
     @State private var timeLeft: String = ""
     @State private var timer: Timer? = nil
     @State private var isPublishedToday: Bool = false
     @EnvironmentObject var store: PostStore
+    
+    var postForToday: Post? {
+        store.posts.first(where: { Calendar.current.isDateInToday($0.date) })
+    }
     
     var body: some View {
         VStack(spacing: 24) {
@@ -18,7 +22,7 @@ struct MainView: View {
                 .font(.title2)
                 .foregroundColor(todayStatusColor)
             Button(action: { showPostForm = true }) {
-                Text("Создать отчёт")
+                Text(postForToday != nil ? "Редактировать отчёт" : "Создать отчёт")
                     .font(.headline)
                     .padding()
                     .frame(maxWidth: .infinity)
@@ -30,11 +34,15 @@ struct MainView: View {
             Spacer()
         }
         .sheet(isPresented: $showPostForm) {
-            PostFormView(title: "Создать отчёт", onPublish: {
-                isPublishedToday = true
-                stopTimer()
-                updateTimeLeft()
-            })
+            PostFormView(
+                title: postForToday != nil ? "Редактировать отчёт" : "Создать отчёт",
+                post: postForToday,
+                onSave: {
+                    isPublishedToday = store.posts.contains { Calendar.current.isDateInToday($0.date) && $0.published }
+                    stopTimer()
+                    updateTimeLeft()
+                }
+            )
             .environmentObject(store)
         }
         .padding()
