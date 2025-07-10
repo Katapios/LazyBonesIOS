@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// Главная вкладка: таймер, статус и кнопка создания отчёта
 struct MainView: View {
     @State private var showPostForm = false
     @State private var timeLeft: String = ""
@@ -37,6 +38,7 @@ struct MainView: View {
         }
     }
     
+    /// Статус отчёта за сегодня
     var todayStatus: String {
         if let _ = store.posts.first(where: { Calendar.current.isDateInToday($0.date) && $0.published }) {
             return "Отчёт сделан"
@@ -48,6 +50,7 @@ struct MainView: View {
         todayStatus == "Отчёт сделан" ? .green : .red
     }
     
+    /// Запуск и обновление таймера обратного отсчёта
     func startTimer() {
         updateTimeLeft()
         timer?.invalidate()
@@ -74,5 +77,9 @@ struct MainView: View {
 }
 
 #Preview {
-    MainView()
+    let store = PostStore()
+    store.posts = [
+        Post(id: UUID(), date: Date(), goodItems: ["Пункт 1"], badItems: ["Пункт 2"], published: true)
+    ]
+    return MainView().environmentObject(store)
 } 

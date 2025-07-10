@@ -1,5 +1,6 @@
 import Foundation
 
+/// Модель отчёта пользователя
 struct Post: Codable, Identifiable {
     let id: UUID
     let date: Date
@@ -8,6 +9,7 @@ struct Post: Codable, Identifiable {
     let published: Bool
 }
 
+/// Протокол хранилища отчётов
 protocol PostStoreProtocol: ObservableObject {
     var posts: [Post] { get set }
     func load()
@@ -16,6 +18,7 @@ protocol PostStoreProtocol: ObservableObject {
     func clear()
 }
 
+/// Хранилище отчётов с поддержкой App Group
 class PostStore: ObservableObject, PostStoreProtocol {
     static let appGroup = "group.com.katapios.LazyBones"
     @Published var posts: [Post] = []
@@ -28,6 +31,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
         load()
     }
     
+    /// Загрузка отчётов из UserDefaults
     func load() {
         guard let data = userDefaults?.data(forKey: key),
               let decoded = try? JSONDecoder().decode([Post].self, from: data) else {
@@ -37,16 +41,19 @@ class PostStore: ObservableObject, PostStoreProtocol {
         posts = decoded.sorted { $0.date > $1.date }
     }
     
+    /// Сохранение отчётов в UserDefaults
     func save() {
         guard let data = try? JSONEncoder().encode(posts) else { return }
         userDefaults?.set(data, forKey: key)
     }
     
+    /// Добавление нового отчёта
     func add(post: Post) {
         posts.append(post)
         save()
     }
     
+    /// Очистка всех отчётов
     func clear() {
         posts = []
         save()

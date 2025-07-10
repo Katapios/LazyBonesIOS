@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// Вкладка 'Отчёты': список всех постов с датами и чеклистами
 struct ReportsView: View {
     @EnvironmentObject var store: PostStore
     var body: some View {
@@ -31,5 +32,10 @@ struct ReportsView: View {
 }
 
 #Preview {
-    ReportsView().environmentObject(PostStore())
+    let store = PostStore()
+    store.posts = [
+        Post(id: UUID(), date: Date(), goodItems: ["Пункт 1", "Пункт 2"], badItems: ["Пункт 3"], published: true),
+        Post(id: UUID(), date: Date().addingTimeInterval(-86400), goodItems: ["Пункт 4"], badItems: [], published: false)
+    ]
+    return ReportsView().environmentObject(store)
 } 

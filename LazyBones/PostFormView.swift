@@ -5,67 +5,82 @@ struct ChecklistItem: Identifiable, Equatable {
     var text: String
 }
 
+struct ChecklistSectionView: View {
+    let title: String
+    @Binding var items: [ChecklistItem]
+    let focusPrefix: String
+    @FocusState var focusField: UUID?
+    let onAdd: () -> Void
+    let onRemove: (ChecklistItem) -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).font(.headline)
+            ForEach(items) { item in
+                HStack {
+                    TextField("Пункт...", text: binding(for: item))
+                        .focused($focusField, equals: item.id)
+                        .textFieldStyle(.roundedBorder)
+                    Button(action: { onRemove(item) }) {
+                        Image(systemName: "minus.circle.fill")
+                            .foregroundColor(items.count > 1 ? .red : .gray)
+                    }
+                    .disabled(items.count == 1)
+                }
+            }
+            Button(action: onAdd) {
+                HStack {
+                    Image(systemName: "plus.circle.fill")
+                    Text("Добавить пункт")
+                }
+            }
+        }
+    }
+    
+    private func binding(for item: ChecklistItem) -> Binding<String> {
+        guard let idx = items.firstIndex(of: item) else {
+            return .constant("")
+        }
+        return Binding(
+            get: { items[idx].text },
+            set: { items[idx].text = $0 }
+        )
+    }
+}
+
 struct PostFormView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var store: PostStore
     @State private var goodItems: [ChecklistItem] = [ChecklistItem(id: UUID(), text: "")]
     @State private var badItems: [ChecklistItem] = [ChecklistItem(id: UUID(), text: "")]
-    @FocusState private var focusField: Field?
+    @FocusState private var goodFocus: UUID?
+    @FocusState private var badFocus: UUID?
     var title: String = "Создать отчёт"
-    
-    enum Field: Hashable {
-        case good(UUID)
-        case bad(UUID)
-    }
     
     var body: some View {
         NavigationView {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Я молодец:").font(.headline)
-                    ForEach(goodItems) { item in
-                        HStack {
-                            TextField("Пункт...", text: binding(for: item, in: $goodItems))
-                                .focused($focusField, equals: .good(item.id))
-                                .textFieldStyle(.roundedBorder)
-                            Button(action: { removeGoodItem(item) }) {
-                                Image(systemName: "minus.circle.fill")
-                                    .foregroundColor(goodItems.count > 1 ? .red : .gray)
-                            }
-                            .disabled(goodItems.count == 1)
-                        }
-                    }
-                    Button(action: addGoodItem) {
-                        HStack {
-                            Image(systemName: "plus.circle.fill")
-                            Text("Добавить пункт")
-                        }
-                    }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    ChecklistSectionView(
+                        title: "Я молодец:",
+                        items: $goodItems,
+                        focusPrefix: "good",
+                        focusField: _goodFocus,
+                        onAdd: addGoodItem,
+                        onRemove: removeGoodItem
+                    )
+                    ChecklistSectionView(
+                        title: "Я не молодец:",
+                        items: $badItems,
+                        focusPrefix: "bad",
+                        focusField: _badFocus,
+                        onAdd: addBadItem,
+                        onRemove: removeBadItem
+                    )
+                    Spacer()
                 }
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Я не молодец:").font(.headline)
-                    ForEach(badItems) { item in
-                        HStack {
-                            TextField("Пункт...", text: binding(for: item, in: $badItems))
-                                .focused($focusField, equals: .bad(item.id))
-                                .textFieldStyle(.roundedBorder)
-                            Button(action: { removeBadItem(item) }) {
-                                Image(systemName: "minus.circle.fill")
-                                    .foregroundColor(badItems.count > 1 ? .red : .gray)
-                            }
-                            .disabled(badItems.count == 1)
-                        }
-                    }
-                    Button(action: addBadItem) {
-                        HStack {
-                            Image(systemName: "plus.circle.fill")
-                            Text("Добавить пункт")
-                        }
-                    }
-                }
-                Spacer()
+                .padding()
             }
-            .padding()
             .navigationTitle(title)
             .toolbar {
                 ToolbarItem(placement: .bottomBar) {
@@ -96,16 +111,15 @@ struct PostFormView: View {
         let new = ChecklistItem(id: UUID(), text: "")
         goodItems.append(new)
         print("[DEBUG] goodItems после добавления:", goodItems.map { $0.text })
-        focusField = .good(new.id)
+        goodFocus = new.id
     }
     func removeGoodItem(_ item: ChecklistItem) {
         guard goodItems.count > 1 else { return }
         if let idx = goodItems.firstIndex(of: item) {
             goodItems.remove(at: idx)
-            // Сдвигаем фокус, если нужно
-            if let current = focusField, case .good(let id) = current, id == item.id {
+            if let current = goodFocus, current == item.id {
                 let newIdx = min(idx, goodItems.count - 1)
-                focusField = .good(goodItems[newIdx].id)
+                goodFocus = goodItems[newIdx].id
             }
         }
     }
@@ -113,27 +127,17 @@ struct PostFormView: View {
         let new = ChecklistItem(id: UUID(), text: "")
         badItems.append(new)
         print("[DEBUG] badItems после добавления:", badItems.map { $0.text })
-        focusField = .bad(new.id)
+        badFocus = new.id
     }
     func removeBadItem(_ item: ChecklistItem) {
         guard badItems.count > 1 else { return }
         if let idx = badItems.firstIndex(of: item) {
             badItems.remove(at: idx)
-            if let current = focusField, case .bad(let id) = current, id == item.id {
+            if let current = badFocus, current == item.id {
                 let newIdx = min(idx, badItems.count - 1)
-                focusField = .bad(badItems[newIdx].id)
+                badFocus = badItems[newIdx].id
             }
         }
-    }
-    
-    func binding(for item: ChecklistItem, in array: Binding<[ChecklistItem]>) -> Binding<String> {
-        guard let idx = array.wrappedValue.firstIndex(of: item) else {
-            return .constant("")
-        }
-        return Binding(
-            get: { array.wrappedValue[idx].text },
-            set: { array.wrappedValue[idx].text = $0 }
-        )
     }
     
     var canSave: Bool {
@@ -153,3 +157,4 @@ struct PostFormView: View {
 #Preview {
     PostFormView(title: "Создать отчёт").environmentObject(PostStore())
 } 
+

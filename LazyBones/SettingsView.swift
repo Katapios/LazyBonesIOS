@@ -1,6 +1,7 @@
 import SwiftUI
 import WidgetKit
 
+/// Вкладка 'Настройки': имя устройства для виджета и сброс отчётов
 struct SettingsView: View {
     @EnvironmentObject var store: PostStore
     @State private var showAlert = false
@@ -44,7 +45,6 @@ struct SettingsView: View {
                     WidgetCenter.shared.reloadAllTimelines()
                 }
                 Button("Отмена", role: .cancel) {}
-            } message: {
                 Text("Все отчёты будут удалены безвозвратно.")
             }
             .onAppear {
@@ -57,7 +57,6 @@ struct SettingsView: View {
         let userDefaults = UserDefaults(suiteName: "group.com.katapios.LazyBones")
         userDefaults?.set(deviceName, forKey: "deviceName")
         userDefaults?.synchronize()
-        print("[APP] Сохранили deviceName: \(deviceName)")
         WidgetCenter.shared.reloadAllTimelines()
         loadDeviceName()
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
@@ -67,7 +66,6 @@ struct SettingsView: View {
     func loadDeviceName() {
         let userDefaults = UserDefaults(suiteName: "group.com.katapios.LazyBones")
         let name = userDefaults?.string(forKey: "deviceName") ?? ""
-        print("[APP] Прочитали deviceName: \(name)")
         deviceName = name
     }
 }

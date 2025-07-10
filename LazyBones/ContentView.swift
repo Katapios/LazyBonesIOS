@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// Корневой TabView приложения
 struct ContentView: View {
     @StateObject var store = PostStore()
     var body: some View {
@@ -25,14 +26,6 @@ struct ContentView: View {
                 }
         }
         .environmentObject(store)
-    }
-}
-
-extension View {
-    func hideKeyboardOnTap() -> some View {
-        self.onTapGesture {
-            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        }
     }
 }
 
