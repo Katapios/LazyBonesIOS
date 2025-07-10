@@ -58,11 +58,13 @@ struct PostFormView: View {
     var title: String = "Создать отчёт"
     var post: Post? = nil
     var onSave: (() -> Void)? = nil
+    var onPublish: (() -> Void)? = nil
     
-    init(title: String = "Создать отчёт", post: Post? = nil, onSave: (() -> Void)? = nil) {
+    init(title: String = "Создать отчёт", post: Post? = nil, onSave: (() -> Void)? = nil, onPublish: (() -> Void)? = nil) {
         self.title = title
         self.post = post
         self.onSave = onSave
+        self.onPublish = onPublish
         if let post = post {
             _goodItems = State(initialValue: post.goodItems.map { ChecklistItem(id: UUID(), text: $0) })
             _badItems = State(initialValue: post.badItems.map { ChecklistItem(id: UUID(), text: $0) })
@@ -107,7 +109,7 @@ struct PostFormView: View {
                         .disabled(!canSave)
                         Spacer()
                         Button("Опубликовать") {
-                            dismiss() // Пока ничего не делает, только закрывает форму
+                            publishAndNotify()
                         }
                         .buttonStyle(.borderedProminent)
                         .disabled(!canSave)
@@ -170,6 +172,18 @@ struct PostFormView: View {
             store.add(post: newPost)
         }
         onSave?()
+        dismiss()
+    }
+    func publishAndNotify() {
+        let filteredGood = goodItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        let filteredBad = badItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        let newPost = Post(id: post?.id ?? UUID(), date: Date(), goodItems: filteredGood, badItems: filteredBad, published: true)
+        if let _ = post {
+            store.update(post: newPost)
+        } else {
+            store.add(post: newPost)
+        }
+        onPublish?()
         dismiss()
     }
 }

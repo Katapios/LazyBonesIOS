@@ -9,7 +9,7 @@ struct MainView: View {
     @EnvironmentObject var store: PostStore
     
     var postForToday: Post? {
-        store.posts.first(where: { Calendar.current.isDateInToday($0.date) })
+        store.posts.first(where: { Calendar.current.isDateInToday($0.date) && !$0.published })
     }
     
     var body: some View {
@@ -41,6 +41,13 @@ struct MainView: View {
                     isPublishedToday = store.posts.contains { Calendar.current.isDateInToday($0.date) && $0.published }
                     stopTimer()
                     updateTimeLeft()
+                },
+                onPublish: {
+                    isPublishedToday = true
+                    stopTimer()
+                    updateTimeLeft()
+                    // После публикации сбрасываем состояние, чтобы снова появилась кнопка 'Создать отчёт'
+                    store.load() // обновляем список постов
                 }
             )
             .environmentObject(store)
