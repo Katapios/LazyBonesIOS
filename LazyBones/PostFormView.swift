@@ -59,6 +59,8 @@ struct PostFormView: View {
     var post: Post? = nil
     var onSave: (() -> Void)? = nil
     var onPublish: (() -> Void)? = nil
+    @State private var isSending: Bool = false
+    @State private var sendStatus: String? = nil
     
     init(title: String = "Создать отчёт", post: Post? = nil, onSave: (() -> Void)? = nil, onPublish: (() -> Void)? = nil) {
         self.title = title
@@ -94,6 +96,14 @@ struct PostFormView: View {
                         onAdd: addBadItem,
                         onRemove: removeBadItem
                     )
+                    if isSending {
+                        ProgressView("Отправка в Telegram...")
+                    }
+                    if let status = sendStatus {
+                        Text(status)
+                            .font(.caption)
+                            .foregroundColor(status == "Успешно отправлено!" ? .green : .red)
+                    }
                     Spacer()
                 }
                 .padding()
@@ -106,13 +116,13 @@ struct PostFormView: View {
                             saveAndNotify()
                         }
                         .buttonStyle(.borderedProminent)
-                        .disabled(!canSave)
+                        .disabled(!canSave || isSending)
                         Spacer()
                         Button("Опубликовать") {
                             publishAndNotify()
                         }
                         .buttonStyle(.borderedProminent)
-                        .disabled(!canSave)
+                        .disabled(!canSave || isSending)
                     }
                 }
                 ToolbarItem(placement: .cancellationAction) {
@@ -183,8 +193,58 @@ struct PostFormView: View {
         } else {
             store.add(post: newPost)
         }
-        onPublish?()
-        dismiss()
+        if let token = store.telegramToken, let chatId = store.telegramChatId, !token.isEmpty, !chatId.isEmpty {
+            sendToTelegram(token: token, chatId: chatId, post: newPost)
+        } else {
+            onPublish?()
+            dismiss()
+        }
+    }
+    func sendToTelegram(token: String, chatId: String, post: Post) {
+        isSending = true
+        sendStatus = nil
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "ru_RU")
+        dateFormatter.dateStyle = .full
+        let dateStr = dateFormatter.string(from: post.date)
+        var message = "\u{1F4C5} <b>Отчёт за \(dateStr)</b>\n\n"
+        if !post.goodItems.isEmpty {
+            message += "<b>Я молодец:</b>\n"
+            for item in post.goodItems { message += "• \(item)\n" }
+            message += "\n"
+        }
+        if !post.badItems.isEmpty {
+            message += "<b>Я не молодец:</b>\n"
+            for item in post.badItems { message += "• \(item)\n" }
+        }
+        let urlString = "https://api.telegram.org/bot\(token)/sendMessage"
+        let params = [
+            "chat_id": chatId,
+            "text": message,
+            "parse_mode": "HTML"
+        ]
+        var urlComponents = URLComponents(string: urlString)!
+        urlComponents.queryItems = params.map { URLQueryItem(name: $0.key, value: $0.value) }
+        guard let url = urlComponents.url else {
+            sendStatus = "Ошибка URL"
+            isSending = false
+            return
+        }
+        let task = URLSession.shared.dataTask(with: url) { data, response, error in
+            DispatchQueue.main.async {
+                isSending = false
+                if let error = error {
+                    sendStatus = "Ошибка: \(error.localizedDescription)"
+                } else if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                    sendStatus = "Успешно отправлено!"
+                    onPublish?()
+                    dismiss()
+                } else {
+                    sendStatus = "Ошибка отправки: неверный токен или chat_id"
+                }
+            }
+        }
+        task.resume()
     }
 }
 

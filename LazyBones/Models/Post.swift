@@ -22,13 +22,18 @@ protocol PostStoreProtocol: ObservableObject {
 class PostStore: ObservableObject, PostStoreProtocol {
     static let appGroup = "group.com.katapios.LazyBones"
     @Published var posts: [Post] = []
+    @Published var telegramToken: String? = nil
+    @Published var telegramChatId: String? = nil
     
     private let userDefaults: UserDefaults?
     private let key = "posts"
+    private let tokenKey = "telegramToken"
+    private let chatIdKey = "telegramChatId"
     
     init() {
         userDefaults = UserDefaults(suiteName: Self.appGroup)
         load()
+        loadTelegramSettings()
     }
     
     /// Загрузка отчётов из UserDefaults
@@ -65,5 +70,17 @@ class PostStore: ObservableObject, PostStoreProtocol {
             posts[idx] = post
             save()
         }
+    }
+    
+    // MARK: - Telegram Integration
+    func saveTelegramSettings(token: String?, chatId: String?) {
+        telegramToken = token
+        telegramChatId = chatId
+        userDefaults?.set(token, forKey: tokenKey)
+        userDefaults?.set(chatId, forKey: chatIdKey)
+    }
+    func loadTelegramSettings() {
+        telegramToken = userDefaults?.string(forKey: tokenKey)
+        telegramChatId = userDefaults?.string(forKey: chatIdKey)
     }
 } 
