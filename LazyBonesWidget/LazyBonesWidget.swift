@@ -26,7 +26,9 @@ struct Provider: TimelineProvider {
 
     static func isReportDoneToday() -> Bool {
         let userDefaults = UserDefaults(suiteName: "group.com.katapios.LazyBones")
-        guard let data = userDefaults?.data(forKey: "posts"),
+        let data = userDefaults?.data(forKey: "posts")
+        print("[WIDGET] posts data:", data as Any)
+        guard let data = data,
               let posts = try? JSONDecoder().decode([Post].self, from: data) else {
             return false
         }
@@ -35,8 +37,8 @@ struct Provider: TimelineProvider {
     static func deviceName() -> String {
         let userDefaults = UserDefaults(suiteName: "group.com.katapios.LazyBones")
         let name = userDefaults?.string(forKey: "deviceName")
+        print("[WIDGET] deviceName из UserDefaults:", name as Any)
         if let saved = name, !saved.isEmpty {
-            print("[WIDGET] deviceName из UserDefaults: \(saved)")
             return saved
         }
         // Получаем реальное имя устройства (в WidgetKit нельзя использовать UIDevice, используем hostName)
@@ -44,7 +46,7 @@ struct Provider: TimelineProvider {
         if realName.hasSuffix(".local") {
             realName = String(realName.dropLast(6))
         }
-        print("[WIDGET] deviceName по умолчанию (hostName): \(realName)")
+        print("[WIDGET] deviceName по умолчанию (hostName):", realName)
         return realName
     }
     static func currentTimerString() -> String {
