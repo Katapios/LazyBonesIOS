@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject var store = PostStore()
     var body: some View {
         TabView {
             MainView()
@@ -22,6 +23,15 @@ struct ContentView: View {
                 .tabItem {
                     Label("Настройки", systemImage: "gear")
                 }
+        }
+        .environmentObject(store)
+    }
+}
+
+extension View {
+    func hideKeyboardOnTap() -> some View {
+        self.onTapGesture {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
     }
 }
