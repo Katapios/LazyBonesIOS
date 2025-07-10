@@ -5,6 +5,7 @@ struct MainView: View {
     @State private var showPostForm = false
     @State private var timeLeft: String = ""
     @State private var timer: Timer? = nil
+    @State private var isPublishedToday: Bool = false
     @EnvironmentObject var store: PostStore
     
     var body: some View {
@@ -29,18 +30,23 @@ struct MainView: View {
             Spacer()
         }
         .sheet(isPresented: $showPostForm) {
-            PostFormView(title: "Создать отчёт")
-                .environmentObject(store)
+            PostFormView(title: "Создать отчёт", onPublish: {
+                isPublishedToday = true
+                stopTimer()
+                updateTimeLeft()
+            })
+            .environmentObject(store)
         }
         .padding()
         .onAppear {
             store.load()
+            isPublishedToday = store.posts.contains { Calendar.current.isDateInToday($0.date) && $0.published }
         }
     }
     
     /// Статус отчёта за сегодня
     var todayStatus: String {
-        if let _ = store.posts.first(where: { Calendar.current.isDateInToday($0.date) && $0.published }) {
+        if isPublishedToday || store.posts.first(where: { Calendar.current.isDateInToday($0.date) && $0.published }) != nil {
             return "Отчёт сделан"
         } else {
             return "Отчёт не сделан"
@@ -58,13 +64,23 @@ struct MainView: View {
             updateTimeLeft()
         }
     }
+    func stopTimer() {
+        timer?.invalidate()
+        timer = nil
+    }
     
     func updateTimeLeft() {
         let calendar = Calendar.current
         let now = Date()
         let start = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: now)!
         let end = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: now)!
-        if now < start {
+        if isPublishedToday || store.posts.first(where: { Calendar.current.isDateInToday($0.date) && $0.published }) != nil {
+            // После публикации показываем время до 8:00 следующего дня
+            let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
+            let nextStart = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: tomorrow)!
+            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: nextStart)
+            timeLeft = "До старта: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+        } else if now < start {
             let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: start)
             timeLeft = "До старта: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
         } else if now >= start && now <= end {

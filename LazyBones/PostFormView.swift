@@ -56,6 +56,7 @@ struct PostFormView: View {
     @FocusState private var goodFocus: UUID?
     @FocusState private var badFocus: UUID?
     var title: String = "Создать отчёт"
+    var onPublish: (() -> Void)? = nil
     
     var body: some View {
         NavigationView {
@@ -150,6 +151,9 @@ struct PostFormView: View {
         let filteredBad = badItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
         let post = Post(id: UUID(), date: Date(), goodItems: filteredGood, badItems: filteredBad, published: published)
         store.add(post: post)
+        if published {
+            onPublish?()
+        }
         dismiss()
     }
 }
