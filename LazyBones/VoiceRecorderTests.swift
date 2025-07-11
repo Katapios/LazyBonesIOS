@@ -1,0 +1,80 @@
+import XCTest
+@testable import LazyBones
+
+/// Тесты для функциональности голосовых заметок
+class VoiceRecorderTests: XCTestCase {
+    
+    func testPostWithMultipleVoiceNotes() {
+        // Тест создания поста с несколькими голосовыми заметками
+        let post = Post(
+            id: UUID(),
+            date: Date(),
+            goodItems: ["Тест хороший"],
+            badItems: ["Тест плохой"],
+            published: true,
+            voiceNotes: ["/test/path/voice1.m4a", "/test/path/voice2.m4a"]
+        )
+        XCTAssertEqual(post.voiceNotes.count, 2)
+        XCTAssertEqual(post.voiceNotes[0], "/test/path/voice1.m4a")
+        XCTAssertEqual(post.voiceNotes[1], "/test/path/voice2.m4a")
+    }
+    
+    func testAddAndRemoveVoiceNote() {
+        var post = Post(
+            id: UUID(),
+            date: Date(),
+            goodItems: [],
+            badItems: [],
+            published: false,
+            voiceNotes: []
+        )
+        post.voiceNotes.append("/test/path/voice1.m4a")
+        XCTAssertEqual(post.voiceNotes.count, 1)
+        post.voiceNotes.append("/test/path/voice2.m4a")
+        XCTAssertEqual(post.voiceNotes.count, 2)
+        post.voiceNotes.remove(at: 0)
+        XCTAssertEqual(post.voiceNotes.count, 1)
+        XCTAssertEqual(post.voiceNotes[0], "/test/path/voice2.m4a")
+    }
+    
+    func testDeviceNameRetrieval() {
+        let store = PostStore()
+        let deviceName = store.getDeviceName()
+        XCTAssertEqual(deviceName, "Устройство")
+    }
+    
+    func testTelegramMessageFormatWithMultipleVoiceNotes() {
+        let post = Post(
+            id: UUID(),
+            date: Date(),
+            goodItems: ["Пункт 1", "Пункт 2"],
+            badItems: ["Пункт 3"],
+            published: true,
+            voiceNotes: ["/test/voice1.m4a", "/test/voice2.m4a"]
+        )
+        let store = PostStore()
+        let deviceName = store.getDeviceName()
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "ru_RU")
+        dateFormatter.dateStyle = .full
+        let dateStr = dateFormatter.string(from: post.date)
+        let expectedMessage = """
+        📅 <b>Отчёт за \(dateStr)</b>
+        📱 <b>Устройство: \(deviceName)</b>
+        
+        <b>Я молодец:</b>
+        • Пункт 1
+        • Пункт 2
+        
+        <b>Я не молодец:</b>
+        • Пункт 3
+        
+        🎤 <i>Голосовая заметка прикреплена</i>
+        """
+        XCTAssertTrue(expectedMessage.contains("📅"))
+        XCTAssertTrue(expectedMessage.contains("📱"))
+        XCTAssertTrue(expectedMessage.contains("🎤"))
+        XCTAssertTrue(expectedMessage.contains("Я молодец:"))
+        XCTAssertTrue(expectedMessage.contains("Я не молодец:"))
+    }
+} 

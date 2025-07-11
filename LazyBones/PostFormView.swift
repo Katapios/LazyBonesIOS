@@ -53,6 +53,7 @@ struct PostFormView: View {
     @EnvironmentObject var store: PostStore
     @State private var goodItems: [ChecklistItem]
     @State private var badItems: [ChecklistItem]
+    @State private var voiceNotes: [VoiceNote]
     @FocusState private var goodFocus: UUID?
     @FocusState private var badFocus: UUID?
     var title: String = "Создать отчёт"
@@ -70,9 +71,11 @@ struct PostFormView: View {
         if let post = post {
             _goodItems = State(initialValue: post.goodItems.map { ChecklistItem(id: UUID(), text: $0) })
             _badItems = State(initialValue: post.badItems.map { ChecklistItem(id: UUID(), text: $0) })
+            _voiceNotes = State(initialValue: post.voiceNotes)
         } else {
             _goodItems = State(initialValue: [ChecklistItem(id: UUID(), text: "")])
             _badItems = State(initialValue: [ChecklistItem(id: UUID(), text: "")])
+            _voiceNotes = State(initialValue: [])
         }
     }
     
@@ -96,6 +99,9 @@ struct PostFormView: View {
                         onAdd: addBadItem,
                         onRemove: removeBadItem
                     )
+                    
+                    VoiceRecorderListView(voiceNotes: $voiceNotes)
+                    
                     if isSending {
                         ProgressView("Отправка в Telegram...")
                     }
@@ -175,7 +181,7 @@ struct PostFormView: View {
     func saveAndNotify() {
         let filteredGood = goodItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
         let filteredBad = badItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        let newPost = Post(id: post?.id ?? UUID(), date: Date(), goodItems: filteredGood, badItems: filteredBad, published: false)
+        let newPost = Post(id: post?.id ?? UUID(), date: Date(), goodItems: filteredGood, badItems: filteredBad, published: false, voiceNotes: voiceNotes)
         if let _ = post {
             store.update(post: newPost)
         } else {
@@ -184,10 +190,11 @@ struct PostFormView: View {
         onSave?()
         dismiss()
     }
+    
     func publishAndNotify() {
         let filteredGood = goodItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
         let filteredBad = badItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        let newPost = Post(id: post?.id ?? UUID(), date: Date(), goodItems: filteredGood, badItems: filteredBad, published: true)
+        let newPost = Post(id: post?.id ?? UUID(), date: Date(), goodItems: filteredGood, badItems: filteredBad, published: true, voiceNotes: voiceNotes)
         if let _ = post {
             store.update(post: newPost)
         } else {
@@ -200,14 +207,50 @@ struct PostFormView: View {
             dismiss()
         }
     }
+    
     func sendToTelegram(token: String, chatId: String, post: Post) {
         isSending = true
         sendStatus = nil
+        // Сначала отправляем текстовое сообщение
+        sendTextMessage(token: token, chatId: chatId, post: post) { success in
+            if success && post.voiceNotes.count > 0 {
+                self.sendAllVoiceNotes(token: token, chatId: chatId, voiceNotes: post.voiceNotes.map { $0.path }) { allSuccess in
+                    DispatchQueue.main.async {
+                        self.isSending = false
+                        if allSuccess {
+                            self.sendStatus = "Успешно отправлено!"
+                            self.onPublish?()
+                            self.dismiss()
+                        } else {
+                            self.sendStatus = "Ошибка отправки голосовых заметок"
+                        }
+                    }
+                }
+            } else {
+                DispatchQueue.main.async {
+                    self.isSending = false
+                    if success {
+                        self.sendStatus = "Успешно отправлено!"
+                        self.onPublish?()
+                        self.dismiss()
+                    } else {
+                        self.sendStatus = "Ошибка отправки: неверный токен или chat_id"
+                    }
+                }
+            }
+        }
+    }
+    
+    private func sendTextMessage(token: String, chatId: String, post: Post, completion: @escaping (Bool) -> Void) {
         let dateFormatter = DateFormatter()
         dateFormatter.locale = Locale(identifier: "ru_RU")
         dateFormatter.dateStyle = .full
         let dateStr = dateFormatter.string(from: post.date)
-        var message = "\u{1F4C5} <b>Отчёт за \(dateStr)</b>\n\n"
+        let deviceName = store.getDeviceName()
+        
+        var message = "\u{1F4C5} <b>Отчёт за \(dateStr)</b>\n"
+        message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
+        
         if !post.goodItems.isEmpty {
             message += "<b>Я молодец:</b>\n"
             for item in post.goodItems { message += "• \(item)\n" }
@@ -217,6 +260,11 @@ struct PostFormView: View {
             message += "<b>Я не молодец:</b>\n"
             for item in post.badItems { message += "• \(item)\n" }
         }
+        
+        if post.voiceNotes.count > 0 {
+            message += "\n\u{1F3A4} <i>Голосовая заметка прикреплена</i>"
+        }
+        
         let urlString = "https://api.telegram.org/bot\(token)/sendMessage"
         let params = [
             "chat_id": chatId,
@@ -226,21 +274,81 @@ struct PostFormView: View {
         var urlComponents = URLComponents(string: urlString)!
         urlComponents.queryItems = params.map { URLQueryItem(name: $0.key, value: $0.value) }
         guard let url = urlComponents.url else {
-            sendStatus = "Ошибка URL"
-            isSending = false
+            completion(false)
             return
         }
+        
         let task = URLSession.shared.dataTask(with: url) { data, response, error in
             DispatchQueue.main.async {
-                isSending = false
                 if let error = error {
-                    sendStatus = "Ошибка: \(error.localizedDescription)"
+                    self.sendStatus = "Ошибка: \(error.localizedDescription)"
+                    completion(false)
                 } else if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
-                    sendStatus = "Успешно отправлено!"
-                    onPublish?()
-                    dismiss()
+                    completion(true)
                 } else {
-                    sendStatus = "Ошибка отправки: неверный токен или chat_id"
+                    self.sendStatus = "Ошибка отправки: неверный токен или chat_id"
+                    completion(false)
+                }
+            }
+        }
+        task.resume()
+    }
+    
+    private func sendAllVoiceNotes(token: String, chatId: String, voiceNotes: [String], completion: @escaping (Bool) -> Void) {
+        var index = 0
+        func sendNext(successSoFar: Bool) {
+            if index >= voiceNotes.count {
+                completion(successSoFar)
+                return
+            }
+            let path = voiceNotes[index]
+            let url = URL(fileURLWithPath: path)
+            sendSingleVoice(token: token, chatId: chatId, voiceURL: url) { success in
+                index += 1
+                sendNext(successSoFar: successSoFar && success)
+            }
+        }
+        sendNext(successSoFar: true)
+    }
+
+    private func sendSingleVoice(token: String, chatId: String, voiceURL: URL, completion: @escaping (Bool) -> Void) {
+        let urlString = "https://api.telegram.org/bot\(token)/sendVoice"
+        guard let tgURL = URL(string: urlString) else {
+            completion(false)
+            return
+        }
+        var request = URLRequest(url: tgURL)
+        request.httpMethod = "POST"
+        let boundary = UUID().uuidString
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        var body = Data()
+        // Добавляем chat_id
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"chat_id\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(chatId)\r\n".data(using: .utf8)!)
+        // Добавляем аудиофайл
+        do {
+            let audioData = try Data(contentsOf: voiceURL)
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"voice\"; filename=\"voice_note.m4a\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: audio/m4a\r\n\r\n".data(using: .utf8)!)
+            body.append(audioData)
+            body.append("\r\n".data(using: .utf8)!)
+            body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        } catch {
+            completion(false)
+            return
+        }
+        request.httpBody = body
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("Ошибка отправки аудио: \(error.localizedDescription)")
+                    completion(false)
+                } else if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                    completion(true)
+                } else {
+                    completion(false)
                 }
             }
         }

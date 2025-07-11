@@ -13,6 +13,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		7C4B25792E20F66900602163 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7C8266012E1F903200365472 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7C8266082E1F903200365472;
+			remoteInfo = LazyBones;
+		};
 		7C8266372E1F92BC00365472 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 7C8266012E1F903200365472 /* Project object */;
@@ -37,6 +44,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		7C4B25752E20F66900602163 /* LazyBonesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LazyBonesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7C8266092E1F903200365472 /* LazyBones.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LazyBones.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7C8266232E1F92B900365472 /* LazyBonesWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LazyBonesWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		7C8266252E1F92B900365472 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
@@ -45,6 +53,20 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		7C4B257F2E20F67E00602163 /* Exceptions for "LazyBones" folder in "LazyBones" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				VoiceRecorderTests.swift,
+			);
+			target = 7C8266082E1F903200365472 /* LazyBones */;
+		};
+		7C4B25802E20F67E00602163 /* Exceptions for "LazyBones" folder in "LazyBonesTests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				VoiceRecorderTests.swift,
+			);
+			target = 7C4B25742E20F66900602163 /* LazyBonesTests */;
+		};
 		7C82663A2E1F92BC00365472 /* Exceptions for "LazyBonesWidget" folder in "LazyBonesWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -55,8 +77,17 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		7C4B25762E20F66900602163 /* LazyBonesTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = LazyBonesTests;
+			sourceTree = "<group>";
+		};
 		7C82660B2E1F903200365472 /* LazyBones */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				7C4B257F2E20F67E00602163 /* Exceptions for "LazyBones" folder in "LazyBones" target */,
+				7C4B25802E20F67E00602163 /* Exceptions for "LazyBones" folder in "LazyBonesTests" target */,
+			);
 			path = LazyBones;
 			sourceTree = "<group>";
 		};
@@ -71,6 +102,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		7C4B25722E20F66900602163 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		7C8266062E1F903200365472 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -96,6 +134,7 @@
 				7C8266402E1F9DD500365472 /* LazyBonesWidgetExtension.entitlements */,
 				7C82660B2E1F903200365472 /* LazyBones */,
 				7C8266292E1F92BA00365472 /* LazyBonesWidget */,
+				7C4B25762E20F66900602163 /* LazyBonesTests */,
 				7C8266242E1F92B900365472 /* Frameworks */,
 				7C82660A2E1F903200365472 /* Products */,
 			);
@@ -106,6 +145,7 @@
 			children = (
 				7C8266092E1F903200365472 /* LazyBones.app */,
 				7C8266232E1F92B900365472 /* LazyBonesWidgetExtension.appex */,
+				7C4B25752E20F66900602163 /* LazyBonesTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -122,6 +162,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		7C4B25742E20F66900602163 /* LazyBonesTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7C4B257B2E20F66900602163 /* Build configuration list for PBXNativeTarget "LazyBonesTests" */;
+			buildPhases = (
+				7C4B25712E20F66900602163 /* Sources */,
+				7C4B25722E20F66900602163 /* Frameworks */,
+				7C4B25732E20F66900602163 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7C4B257A2E20F66900602163 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				7C4B25762E20F66900602163 /* LazyBonesTests */,
+			);
+			name = LazyBonesTests;
+			packageProductDependencies = (
+			);
+			productName = LazyBonesTests;
+			productReference = 7C4B25752E20F66900602163 /* LazyBonesTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		7C8266082E1F903200365472 /* LazyBones */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 7C8266142E1F903400365472 /* Build configuration list for PBXNativeTarget "LazyBones" */;
@@ -178,6 +241,10 @@
 				LastSwiftUpdateCheck = 1640;
 				LastUpgradeCheck = 1640;
 				TargetAttributes = {
+					7C4B25742E20F66900602163 = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = 7C8266082E1F903200365472;
+					};
 					7C8266082E1F903200365472 = {
 						CreatedOnToolsVersion = 16.4;
 					};
@@ -202,11 +269,19 @@
 			targets = (
 				7C8266082E1F903200365472 /* LazyBones */,
 				7C8266222E1F92B900365472 /* LazyBonesWidgetExtension */,
+				7C4B25742E20F66900602163 /* LazyBonesTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		7C4B25732E20F66900602163 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		7C8266072E1F903200365472 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -224,6 +299,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		7C4B25712E20F66900602163 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		7C8266052E1F903200365472 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -241,6 +323,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		7C4B257A2E20F66900602163 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7C8266082E1F903200365472 /* LazyBones */;
+			targetProxy = 7C4B25792E20F66900602163 /* PBXContainerItemProxy */;
+		};
 		7C8266382E1F92BC00365472 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 7C8266222E1F92B900365472 /* LazyBonesWidgetExtension */;
@@ -249,6 +336,42 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		7C4B257C2E20F66900602163 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = H3N3UYMDNL;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.katapios.LazyBonesTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LazyBones.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LazyBones";
+			};
+			name = Debug;
+		};
+		7C4B257D2E20F66900602163 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = H3N3UYMDNL;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.katapios.LazyBonesTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LazyBones.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LazyBones";
+			};
+			name = Release;
+		};
 		7C8266122E1F903400365472 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -382,6 +505,7 @@
 				DEVELOPMENT_TEAM = H3N3UYMDNL;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Приложению необходим доступ к микрофону для записи голосовых заметок к отчётам.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -413,6 +537,7 @@
 				DEVELOPMENT_TEAM = H3N3UYMDNL;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Приложению необходим доступ к микрофону для записи голосовых заметок к отчётам.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -495,6 +620,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		7C4B257B2E20F66900602163 /* Build configuration list for PBXNativeTarget "LazyBonesTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7C4B257C2E20F66900602163 /* Debug */,
+				7C4B257D2E20F66900602163 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		7C8266042E1F903200365472 /* Build configuration list for PBXProject "LazyBones" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

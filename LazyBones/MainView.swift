@@ -108,9 +108,12 @@ struct MainView: View {
 }
 
 #Preview {
-    let store = PostStore()
-    store.posts = [
-        Post(id: UUID(), date: Date(), goodItems: ["Пункт 1"], badItems: ["Пункт 2"], published: true)
-    ]
-    return MainView().environmentObject(store)
+    let store: PostStore = {
+        let s = PostStore()
+        s.posts = [
+            Post(id: UUID(), date: Date(), goodItems: ["Пункт 1"], badItems: ["Пункт 2"], published: true, voiceNotes: [])
+        ]
+        return s
+    }()
+    MainView().environmentObject(store)
 } 

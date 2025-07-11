@@ -20,9 +20,25 @@ struct ReportsView: View {
                                 Text("• " + item)
                             }
                         }
-                        Text(post.published ? "Опубликовано" : "Сохранено")
-                            .font(.caption)
-                            .foregroundColor(post.published ? .green : .gray)
+                        
+                        HStack {
+                            Text(post.published ? "Опубликовано" : "Сохранено")
+                                .font(.caption)
+                                .foregroundColor(post.published ? .green : .gray)
+                            
+                            Spacer()
+                            
+                            if post.voiceNotes.count > 0 {
+                                Group {
+                                    Image(systemName: "mic.fill")
+                                        .font(.caption)
+                                        .foregroundColor(.blue)
+                                    Text("Голосовая заметка")
+                                        .font(.caption)
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -32,10 +48,13 @@ struct ReportsView: View {
 }
 
 #Preview {
-    let store = PostStore()
-    store.posts = [
-        Post(id: UUID(), date: Date(), goodItems: ["Пункт 1", "Пункт 2"], badItems: ["Пункт 3"], published: true),
-        Post(id: UUID(), date: Date().addingTimeInterval(-86400), goodItems: ["Пункт 4"], badItems: [], published: false)
-    ]
-    return ReportsView().environmentObject(store)
+    let store: PostStore = {
+        let s = PostStore()
+        s.posts = [
+            Post(id: UUID(), date: Date(), goodItems: ["Пункт 1", "Пункт 2"], badItems: ["Пункт 3"], published: true, voiceNotes: [VoiceNote(id: UUID(), path: "/path/to/voice.m4a")]),
+            Post(id: UUID(), date: Date().addingTimeInterval(-86400), goodItems: ["Пункт 4"], badItems: [], published: false, voiceNotes: [])
+        ]
+        return s
+    }()
+    ReportsView().environmentObject(store)
 } 

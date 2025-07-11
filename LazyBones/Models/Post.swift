@@ -1,4 +1,5 @@
 import Foundation
+import AVFoundation
 
 /// Модель отчёта пользователя
 struct Post: Codable, Identifiable {
@@ -7,6 +8,7 @@ struct Post: Codable, Identifiable {
     let goodItems: [String]
     let badItems: [String]
     let published: Bool
+    var voiceNotes: [VoiceNote] // Массив голосовых заметок
 }
 
 /// Протокол хранилища отчётов
@@ -16,6 +18,7 @@ protocol PostStoreProtocol: ObservableObject {
     func save()
     func add(post: Post)
     func clear()
+    func getDeviceName() -> String
 }
 
 /// Хранилище отчётов с поддержкой App Group
@@ -38,12 +41,23 @@ class PostStore: ObservableObject, PostStoreProtocol {
     
     /// Загрузка отчётов из UserDefaults
     func load() {
-        guard let data = userDefaults?.data(forKey: key),
-              let decoded = try? JSONDecoder().decode([Post].self, from: data) else {
+        guard let data = userDefaults?.data(forKey: key) else {
             posts = []
             return
         }
-        posts = decoded.sorted { $0.date > $1.date }
+        // Попытка декодировать как новый формат
+        if let decoded = try? JSONDecoder().decode([Post].self, from: data) {
+            posts = decoded.sorted { $0.date > $1.date }
+        } else if let legacyDecoded = try? JSONDecoder().decode([LegacyPost].self, from: data) {
+            // Миграция старых данных
+            posts = legacyDecoded.map { legacy in
+                let notes: [VoiceNote] = legacy.voiceNoteURL != nil ? [VoiceNote(id: UUID(), path: legacy.voiceNoteURL!)] : []
+                return Post(id: legacy.id, date: legacy.date, goodItems: legacy.goodItems, badItems: legacy.badItems, published: legacy.published, voiceNotes: notes)
+            }.sorted { $0.date > $1.date }
+            save() // Сохраняем в новом формате
+        } else {
+            posts = []
+        }
     }
     
     /// Сохранение отчётов в UserDefaults
@@ -72,6 +86,11 @@ class PostStore: ObservableObject, PostStoreProtocol {
         }
     }
     
+    /// Получение имени устройства
+    func getDeviceName() -> String {
+        return userDefaults?.string(forKey: "deviceName") ?? "Устройство"
+    }
+    
     // MARK: - Telegram Integration
     func saveTelegramSettings(token: String?, chatId: String?) {
         telegramToken = token
@@ -79,8 +98,19 @@ class PostStore: ObservableObject, PostStoreProtocol {
         userDefaults?.set(token, forKey: tokenKey)
         userDefaults?.set(chatId, forKey: chatIdKey)
     }
+    
     func loadTelegramSettings() {
         telegramToken = userDefaults?.string(forKey: tokenKey)
         telegramChatId = userDefaults?.string(forKey: chatIdKey)
     }
+}
+
+// Вспомогательная структура для миграции
+private struct LegacyPost: Codable {
+    let id: UUID
+    let date: Date
+    let goodItems: [String]
+    let badItems: [String]
+    let published: Bool
+    let voiceNoteURL: String?
 } 
