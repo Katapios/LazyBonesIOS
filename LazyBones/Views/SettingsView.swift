@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var showSaved = false
     @State private var telegramToken: String = ""
     @State private var telegramChatId: String = ""
+    @State private var telegramBotId: String = ""
     @State private var telegramStatus: String? = nil
     var body: some View {
         NavigationView {
@@ -37,8 +38,13 @@ struct SettingsView: View {
                         .textContentType(.none)
                         .autocapitalization(.none)
                         .disableAutocorrection(true)
+                    TextField("ID бота (опционально)", text: $telegramBotId)
+                        .textContentType(.none)
+                        .autocapitalization(.none)
+                        .disableAutocorrection(true)
+                        .help("ID бота нужен для фильтрации и удаления только своих сообщений")
                     Button("Сохранить Telegram-данные") {
-                        store.saveTelegramSettings(token: telegramToken.isEmpty ? nil : telegramToken, chatId: telegramChatId.isEmpty ? nil : telegramChatId)
+                        store.saveTelegramSettings(token: telegramToken.isEmpty ? nil : telegramToken, chatId: telegramChatId.isEmpty ? nil : telegramChatId, botId: telegramBotId.isEmpty ? nil : telegramBotId)
                         telegramStatus = "Сохранено!"
                     }
                     .buttonStyle(.borderedProminent)
@@ -82,6 +88,7 @@ struct SettingsView: View {
                 loadDeviceName()
                 telegramToken = store.telegramToken ?? ""
                 telegramChatId = store.telegramChatId ?? ""
+                telegramBotId = store.telegramBotId ?? ""
             }
         }
         .hideKeyboardOnTap()

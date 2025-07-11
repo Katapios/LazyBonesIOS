@@ -9,6 +9,15 @@ struct Post: Codable, Identifiable {
     let badItems: [String]
     let published: Bool
     var voiceNotes: [VoiceNote] // Массив голосовых заметок
+    // --- Telegram integration fields ---
+    var authorUsername: String? // username автора из Telegram
+    var authorFirstName: String? // имя автора из Telegram
+    var authorLastName: String? // фамилия автора из Telegram
+    var isExternal: Bool? // true, если отчет из Telegram
+    var externalVoiceNoteURLs: [URL]? // ссылки на голосовые заметки из Telegram
+    var externalText: String? // полный текст сообщения из Telegram с разметкой
+    var externalMessageId: Int? // message_id из Telegram
+    var authorId: Int? // ID автора сообщения из Telegram
 }
 
 /// Протокол хранилища отчётов
@@ -25,18 +34,27 @@ protocol PostStoreProtocol: ObservableObject {
 class PostStore: ObservableObject, PostStoreProtocol {
     static let appGroup = "group.com.katapios.LazyBones"
     @Published var posts: [Post] = []
+    @Published var externalPosts: [Post] = [] // Внешние отчеты из Telegram
     @Published var telegramToken: String? = nil
     @Published var telegramChatId: String? = nil
+    @Published var telegramBotId: String? = nil
+    @Published var lastUpdateId: Int? = nil
     
     private let userDefaults: UserDefaults?
     private let key = "posts"
     private let tokenKey = "telegramToken"
     private let chatIdKey = "telegramChatId"
+    private let botIdKey = "telegramBotId"
+    private let lastUpdateIdKey = "lastUpdateId"
+    
+    // Кэширование внешних отчетов
+    private let externalKey = "externalPosts"
     
     init() {
         userDefaults = UserDefaults(suiteName: Self.appGroup)
         load()
         loadTelegramSettings()
+        loadExternalPosts() // Загружаем внешние отчеты при инициализации
     }
     
     /// Загрузка отчётов из UserDefaults
@@ -92,16 +110,177 @@ class PostStore: ObservableObject, PostStoreProtocol {
     }
     
     // MARK: - Telegram Integration
-    func saveTelegramSettings(token: String?, chatId: String?) {
+    func saveTelegramSettings(token: String?, chatId: String?, botId: String?) {
         telegramToken = token
         telegramChatId = chatId
+        telegramBotId = botId
         userDefaults?.set(token, forKey: tokenKey)
         userDefaults?.set(chatId, forKey: chatIdKey)
+        userDefaults?.set(botId, forKey: botIdKey)
     }
     
     func loadTelegramSettings() {
         telegramToken = userDefaults?.string(forKey: tokenKey)
         telegramChatId = userDefaults?.string(forKey: chatIdKey)
+        telegramBotId = userDefaults?.string(forKey: botIdKey)
+        lastUpdateId = userDefaults?.integer(forKey: lastUpdateIdKey)
+    }
+    
+    func saveLastUpdateId(_ updateId: Int) {
+        lastUpdateId = updateId
+        userDefaults?.set(updateId, forKey: lastUpdateIdKey)
+    }
+    
+    // Загрузка внешних отчетов из Telegram
+    func fetchExternalPosts(completion: @escaping (Bool) -> Void) {
+        guard let token = telegramToken, let chatId = telegramChatId, !token.isEmpty, !chatId.isEmpty else {
+            completion(false)
+            return
+        }
+        let api = TelegramAPIService(token: token, chatId: chatId)
+        
+        // Используем offset для получения только новых сообщений
+        let offset = lastUpdateId != nil ? lastUpdateId! + 1 : nil
+        api.fetchMessages(offset: offset, limit: 20, botId: telegramBotId) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let messages):
+                    if !messages.isEmpty {
+                        // Сохраняем последний update_id для следующего запроса
+                        if let lastMessage = messages.last {
+                            self.saveLastUpdateId(lastMessage.updateId)
+                        }
+                        
+                        let posts = messages.map { msg in
+                            Post(
+                                id: UUID(),
+                                date: msg.date,
+                                goodItems: [],
+                                badItems: [],
+                                published: true,
+                                voiceNotes: [],
+                                authorUsername: msg.authorUsername,
+                                authorFirstName: msg.authorFirstName,
+                                authorLastName: msg.authorLastName,
+                                isExternal: true,
+                                externalVoiceNoteURLs: nil, // TODO: download voice if present
+                                externalText: msg.caption ?? msg.text, // сначала caption, потом text
+                                externalMessageId: msg.id, // сохраняем message_id
+                                authorId: msg.authorId // сохраняем ID автора
+                            )
+                        }
+                        
+                        // Добавляем новые сообщения к существующим (не заменяем)
+                        self.externalPosts.append(contentsOf: posts)
+                        self.externalPosts.sort { $0.date > $1.date } // Сортируем по дате
+                        self.saveExternalPosts()
+                    }
+                    completion(true)
+                case .failure:
+                    completion(false)
+                }
+            }
+        }
+    }
+    // Сохраняем внешние отчеты в кэш
+    func saveExternalPosts() {
+        guard let data = try? JSONEncoder().encode(externalPosts) else { return }
+        userDefaults?.set(data, forKey: externalKey)
+    }
+    // Загружаем внешние отчеты из кэша
+    func loadExternalPosts() {
+        guard let data = userDefaults?.data(forKey: externalKey),
+              let decoded = try? JSONDecoder().decode([Post].self, from: data) else {
+            externalPosts = []
+            return
+        }
+        externalPosts = decoded
+    }
+    // Удалить только сообщения бота из Telegram
+    func deleteBotMessages(completion: @escaping (Bool) -> Void) {
+        guard let token = telegramToken, let chatId = telegramChatId, !token.isEmpty, !chatId.isEmpty else {
+            completion(false)
+            return
+        }
+        
+        // Фильтруем только сообщения бота (которые можно удалить)
+        let botMessageIds = externalPosts.compactMap { post -> Int? in
+            // Проверяем, что это сообщение от бота (если у нас есть botId)
+            if let botId = telegramBotId, let authorId = post.authorId, String(authorId) == botId {
+                return post.externalMessageId
+            }
+            // Если botId не указан, считаем все сообщения потенциально удаляемыми
+            return post.externalMessageId
+        }
+        
+        if botMessageIds.isEmpty {
+            completion(true)
+            return
+        }
+        
+        let api = TelegramAPIService(token: token, chatId: chatId)
+        api.deleteMessages(messageIds: botMessageIds) { success in
+            DispatchQueue.main.async {
+                if success {
+                    // Удаляем из локального списка только те сообщения, которые были удалены
+                    self.externalPosts.removeAll { post in
+                        botMessageIds.contains(post.externalMessageId ?? 0)
+                    }
+                    self.saveExternalPosts()
+                }
+                completion(success)
+            }
+        }
+    }
+    
+    // Удалить всю историю бота из Telegram (все сообщения бота)
+    func deleteAllBotMessages(completion: @escaping (Bool) -> Void) {
+        guard let token = telegramToken, let chatId = telegramChatId, !token.isEmpty, !chatId.isEmpty else {
+            completion(false)
+            return
+        }
+        
+        // Получаем все сообщения из Telegram и фильтруем только сообщения бота
+        let api = TelegramAPIService(token: token, chatId: chatId)
+        api.fetchMessages(offset: nil, limit: 100, botId: telegramBotId) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let messages):
+                    // Фильтруем только сообщения бота
+                    let botMessageIds = messages.compactMap { message -> Int? in
+                        if message.isFromBot {
+                            return message.id
+                        }
+                        return nil
+                    }
+                    
+                    if botMessageIds.isEmpty {
+                        completion(true)
+                        return
+                    }
+                    
+                    // Удаляем все сообщения бота
+                    api.deleteMessages(messageIds: botMessageIds) { success in
+                        DispatchQueue.main.async {
+                            if success {
+                                // Сбрасываем lastUpdateId после успешного удаления всей истории
+                                self.lastUpdateId = nil
+                                self.userDefaults?.removeObject(forKey: self.lastUpdateIdKey)
+                            }
+                            completion(success)
+                        }
+                    }
+                    
+                case .failure:
+                    completion(false)
+                }
+            }
+        }
+    }
+    
+    // Объединить локальные и внешние отчеты для отображения
+    var allPosts: [Post] {
+        return posts + externalPosts
     }
 }
 
