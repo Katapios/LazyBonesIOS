@@ -10,6 +10,8 @@
 		7C8266262E1F92BA00365472 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7C8266252E1F92B900365472 /* WidgetKit.framework */; };
 		7C8266282E1F92BA00365472 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7C8266272E1F92BA00365472 /* SwiftUI.framework */; };
 		7C8266392E1F92BC00365472 /* LazyBonesWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7C8266232E1F92B900365472 /* LazyBonesWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		7CB9111B2E213A81005E97AD /* LazyBonesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CB911182E213A81005E97AD /* LazyBonesTests.swift */; };
+		7CB9111C2E213A81005E97AD /* VoiceRecorderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CB911192E213A81005E97AD /* VoiceRecorderTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -50,6 +52,8 @@
 		7C8266252E1F92B900365472 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		7C8266272E1F92BA00365472 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		7C8266402E1F9DD500365472 /* LazyBonesWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LazyBonesWidgetExtension.entitlements; sourceTree = "<group>"; };
+		7CB911182E213A81005E97AD /* LazyBonesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LazyBonesTests.swift; sourceTree = "<group>"; };
+		7CB911192E213A81005E97AD /* VoiceRecorderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceRecorderTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -63,11 +67,6 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		7C4B25762E20F66900602163 /* LazyBonesTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = LazyBonesTests;
-			sourceTree = "<group>";
-		};
 		7C82660B2E1F903200365472 /* LazyBones */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = LazyBones;
@@ -113,10 +112,10 @@
 		7C8266002E1F903200365472 = {
 			isa = PBXGroup;
 			children = (
+				7CB9111A2E213A81005E97AD /* Tests */,
 				7C8266402E1F9DD500365472 /* LazyBonesWidgetExtension.entitlements */,
 				7C82660B2E1F903200365472 /* LazyBones */,
 				7C8266292E1F92BA00365472 /* LazyBonesWidget */,
-				7C4B25762E20F66900602163 /* LazyBonesTests */,
 				7C8266242E1F92B900365472 /* Frameworks */,
 				7C82660A2E1F903200365472 /* Products */,
 			);
@@ -141,6 +140,15 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		7CB9111A2E213A81005E97AD /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				7CB911182E213A81005E97AD /* LazyBonesTests.swift */,
+				7CB911192E213A81005E97AD /* VoiceRecorderTests.swift */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -156,9 +164,6 @@
 			);
 			dependencies = (
 				7C4B257A2E20F66900602163 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				7C4B25762E20F66900602163 /* LazyBonesTests */,
 			);
 			name = LazyBonesTests;
 			packageProductDependencies = (
@@ -285,6 +290,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7CB9111B2E213A81005E97AD /* LazyBonesTests.swift in Sources */,
+				7CB9111C2E213A81005E97AD /* VoiceRecorderTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

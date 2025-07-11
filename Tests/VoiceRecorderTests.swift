@@ -12,11 +12,14 @@ class VoiceRecorderTests: XCTestCase {
             goodItems: ["Тест хороший"],
             badItems: ["Тест плохой"],
             published: true,
-            voiceNotes: ["/test/path/voice1.m4a", "/test/path/voice2.m4a"]
+            voiceNotes: [
+                VoiceNote(id: UUID(), path: "/test/path/voice1.m4a"),
+                VoiceNote(id: UUID(), path: "/test/path/voice2.m4a")
+            ]
         )
         XCTAssertEqual(post.voiceNotes.count, 2)
-        XCTAssertEqual(post.voiceNotes[0], "/test/path/voice1.m4a")
-        XCTAssertEqual(post.voiceNotes[1], "/test/path/voice2.m4a")
+        XCTAssertEqual(post.voiceNotes[0].path, "/test/path/voice1.m4a")
+        XCTAssertEqual(post.voiceNotes[1].path, "/test/path/voice2.m4a")
     }
     
     func testAddAndRemoveVoiceNote() {
@@ -28,13 +31,15 @@ class VoiceRecorderTests: XCTestCase {
             published: false,
             voiceNotes: []
         )
-        post.voiceNotes.append("/test/path/voice1.m4a")
+        let note1 = VoiceNote(id: UUID(), path: "/test/path/voice1.m4a")
+        let note2 = VoiceNote(id: UUID(), path: "/test/path/voice2.m4a")
+        post.voiceNotes.append(note1)
         XCTAssertEqual(post.voiceNotes.count, 1)
-        post.voiceNotes.append("/test/path/voice2.m4a")
+        post.voiceNotes.append(note2)
         XCTAssertEqual(post.voiceNotes.count, 2)
         post.voiceNotes.remove(at: 0)
         XCTAssertEqual(post.voiceNotes.count, 1)
-        XCTAssertEqual(post.voiceNotes[0], "/test/path/voice2.m4a")
+        XCTAssertEqual(post.voiceNotes[0].path, "/test/path/voice2.m4a")
     }
     
     func testDeviceNameRetrieval() {
@@ -50,7 +55,10 @@ class VoiceRecorderTests: XCTestCase {
             goodItems: ["Пункт 1", "Пункт 2"],
             badItems: ["Пункт 3"],
             published: true,
-            voiceNotes: ["/test/voice1.m4a", "/test/voice2.m4a"]
+            voiceNotes: [
+                VoiceNote(id: UUID(), path: "/test/voice1.m4a"),
+                VoiceNote(id: UUID(), path: "/test/voice2.m4a")
+            ]
         )
         let store = PostStore()
         let deviceName = store.getDeviceName()
