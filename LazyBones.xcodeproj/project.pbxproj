@@ -53,20 +53,6 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		7C4B257F2E20F67E00602163 /* Exceptions for "LazyBones" folder in "LazyBones" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				VoiceRecorderTests.swift,
-			);
-			target = 7C8266082E1F903200365472 /* LazyBones */;
-		};
-		7C4B25802E20F67E00602163 /* Exceptions for "LazyBones" folder in "LazyBonesTests" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				VoiceRecorderTests.swift,
-			);
-			target = 7C4B25742E20F66900602163 /* LazyBonesTests */;
-		};
 		7C82663A2E1F92BC00365472 /* Exceptions for "LazyBonesWidget" folder in "LazyBonesWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -84,10 +70,6 @@
 		};
 		7C82660B2E1F903200365472 /* LazyBones */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				7C4B257F2E20F67E00602163 /* Exceptions for "LazyBones" folder in "LazyBones" target */,
-				7C4B25802E20F67E00602163 /* Exceptions for "LazyBones" folder in "LazyBonesTests" target */,
-			);
 			path = LazyBones;
 			sourceTree = "<group>";
 		};
