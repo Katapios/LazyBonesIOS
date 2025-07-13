@@ -195,6 +195,38 @@ struct ReportCardView: View {
     var isSelectable: Bool = false
     var isSelected: Bool = false
     var onSelect: (() -> Void)? = nil
+    
+    // MARK: - Icon Mapping
+    private func getIconForItem(_ item: String, isGood: Bool) -> String {
+        let lowercasedItem = item.lowercased()
+        
+        // Маппинг для "Я молодец"
+        if isGood {
+            if lowercasedItem.contains("не хлебил") { return "🚫" }
+            if lowercasedItem.contains("не новостил") { return "📰" }
+            if lowercasedItem.contains("не ел вредное") { return "🍴" }
+            if lowercasedItem.contains("гулял") { return "🚶" }
+            if lowercasedItem.contains("кодил") { return "💻" }
+            if lowercasedItem.contains("рисовал") { return "🎨" }
+            if lowercasedItem.contains("читал") { return "📚" }
+            if lowercasedItem.contains("смотрел туториалы") { return "▶️" }
+        }
+        // Маппинг для "Я не молодец"
+        else {
+            if lowercasedItem.contains("хлебил") { return "❌" }
+            if lowercasedItem.contains("новостил") { return "📰" }
+            if lowercasedItem.contains("ел вредное") { return "🍴" }
+            if lowercasedItem.contains("не гулял") { return "🚶" }
+            if lowercasedItem.contains("не кодил") { return "💻" }
+            if lowercasedItem.contains("не рисовал") { return "🎨" }
+            if lowercasedItem.contains("не читал") { return "📚" }
+            if lowercasedItem.contains("не смотрел туториалы") { return "▶️" }
+        }
+        
+        // Дефолтные иконки для нераспознанных пунктов
+        return isGood ? "✅" : "❌"
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -225,15 +257,33 @@ struct ReportCardView: View {
                     .font(.body)
             } else {
                 if !post.goodItems.isEmpty {
-                    Text("Я молодец:").font(.subheadline).bold()
-                    ForEach(post.goodItems.filter { !$0.isEmpty }.uniqued(), id: \ .self) { item in
-                        Text("• " + item)
+                    Text("✅ Я молодец:").font(.subheadline).bold()
+                    ForEach(Array(post.goodItems.filter { !$0.isEmpty }.uniqued().enumerated()), id: \.element) { index, item in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text("\(index + 1).")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .frame(width: 20, alignment: .leading)
+                            Text(getIconForItem(item, isGood: true))
+                                .font(.system(size: 16))
+                            Text(item)
+                                .font(.body)
+                        }
                     }
                 }
                 if !post.badItems.isEmpty {
-                    Text("Я не молодец:").font(.subheadline).bold()
-                    ForEach(post.badItems.filter { !$0.isEmpty }.uniqued(), id: \ .self) { item in
-                        Text("• " + item)
+                    Text("❌ Я не молодец:").font(.subheadline).bold()
+                    ForEach(Array(post.badItems.filter { !$0.isEmpty }.uniqued().enumerated()), id: \.element) { index, item in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text("\(index + 1).")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .frame(width: 20, alignment: .leading)
+                            Text(getIconForItem(item, isGood: false))
+                                .font(.system(size: 16))
+                            Text(item)
+                                .font(.body)
+                        }
                     }
                 }
             }

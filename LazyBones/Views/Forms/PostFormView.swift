@@ -267,6 +267,37 @@ struct PostFormView: View {
             badFocus = new.id
         }
     }
+    
+    // MARK: - Icon Mapping
+    private func getIconForItem(_ item: String, isGood: Bool) -> String {
+        let lowercasedItem = item.lowercased()
+        
+        // Маппинг для "Я молодец"
+        if isGood {
+            if lowercasedItem.contains("не хлебил") { return "🚫" }
+            if lowercasedItem.contains("не новостил") { return "📰" }
+            if lowercasedItem.contains("не ел вредное") { return "🍴" }
+            if lowercasedItem.contains("гулял") { return "🚶" }
+            if lowercasedItem.contains("кодил") { return "💻" }
+            if lowercasedItem.contains("рисовал") { return "🎨" }
+            if lowercasedItem.contains("читал") { return "📚" }
+            if lowercasedItem.contains("смотрел туториалы") { return "▶️" }
+        }
+        // Маппинг для "Я не молодец"
+        else {
+            if lowercasedItem.contains("хлебил") { return "❌" }
+            if lowercasedItem.contains("новостил") { return "📰" }
+            if lowercasedItem.contains("ел вредное") { return "🍴" }
+            if lowercasedItem.contains("не гулял") { return "🚶" }
+            if lowercasedItem.contains("не кодил") { return "💻" }
+            if lowercasedItem.contains("не рисовал") { return "🎨" }
+            if lowercasedItem.contains("не читал") { return "📚" }
+            if lowercasedItem.contains("не смотрел туториалы") { return "▶️" }
+        }
+        
+        // Дефолтные иконки для нераспознанных пунктов
+        return isGood ? "✅" : "❌"
+    }
     func removeGoodItem(_ item: ChecklistItem) {
         guard goodItems.count > 1 else { return }
         if let idx = goodItems.firstIndex(of: item) {
@@ -373,13 +404,19 @@ struct PostFormView: View {
         message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
         
         if !post.goodItems.isEmpty {
-            message += "<b>Я молодец:</b>\n"
-            for item in post.goodItems { message += "• \(item)\n" }
+            message += "<b>✅ Я молодец:</b>\n"
+            for (index, item) in post.goodItems.enumerated() {
+                let icon = getIconForItem(item, isGood: true)
+                message += "\(index + 1). \(icon) \(item)\n"
+            }
             message += "\n"
         }
         if !post.badItems.isEmpty {
-            message += "<b>Я не молодец:</b>\n"
-            for item in post.badItems { message += "• \(item)\n" }
+            message += "<b>❌ Я не молодец:</b>\n"
+            for (index, item) in post.badItems.enumerated() {
+                let icon = getIconForItem(item, isGood: false)
+                message += "\(index + 1). \(icon) \(item)\n"
+            }
         }
         
         if post.voiceNotes.count > 0 {
