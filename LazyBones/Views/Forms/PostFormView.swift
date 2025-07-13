@@ -1,5 +1,70 @@
 import SwiftUI
 
+// MARK: - Tag Models
+struct TagItem: Identifiable, Hashable {
+    let id = UUID()
+    let text: String
+    let icon: String
+    let color: Color
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+    
+    static func == (lhs: TagItem, rhs: TagItem) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
+// MARK: - Tag Brick Component
+struct TagBrickView: View {
+    let tag: TagItem
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 6) {
+                Image(systemName: tag.icon)
+                    .font(.system(size: 14, weight: .medium))
+                Text(tag.text)
+                    .font(.system(size: 14, weight: .medium))
+            }
+            .foregroundColor(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(tag.color)
+            .cornerRadius(20)
+            .shadow(color: tag.color.opacity(0.3), radius: 2, x: 0, y: 1)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Tag Section Component
+struct TagSectionView: View {
+    let title: String
+    let tags: [TagItem]
+    let onTagTap: (TagItem) -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.headline)
+                .foregroundColor(.primary)
+            
+            LazyVGrid(columns: [
+                GridItem(.adaptive(minimum: 100, maximum: 150), spacing: 8)
+            ], spacing: 8) {
+                ForEach(tags) { tag in
+                    TagBrickView(tag: tag) {
+                        onTagTap(tag)
+                    }
+                }
+            }
+        }
+    }
+}
+
 struct ChecklistItem: Identifiable, Equatable {
     let id: UUID
     var text: String
@@ -63,6 +128,29 @@ struct PostFormView: View {
     @State private var isSending: Bool = false
     @State private var sendStatus: String? = nil
     
+    // MARK: - Predefined Tags
+    private let goodTags: [TagItem] = [
+        TagItem(text: "не хлебил", icon: "xmark.circle.fill", color: .green),
+        TagItem(text: "не новостил", icon: "newspaper.fill", color: .blue),
+        TagItem(text: "не ел вредное", icon: "fork.knife", color: .orange),
+        TagItem(text: "гулял", icon: "figure.walk", color: .mint),
+        TagItem(text: "кодил", icon: "laptopcomputer", color: .purple),
+        TagItem(text: "рисовал", icon: "paintbrush.fill", color: .pink),
+        TagItem(text: "читал", icon: "book.fill", color: .indigo),
+        TagItem(text: "смотрел туториалы", icon: "play.rectangle.fill", color: .red)
+    ]
+    
+    private let badTags: [TagItem] = [
+        TagItem(text: "хлебил", icon: "xmark.circle.fill", color: .red),
+        TagItem(text: "новостил", icon: "newspaper.fill", color: .orange),
+        TagItem(text: "ел вредное", icon: "fork.knife", color: .pink),
+        TagItem(text: "не гулял", icon: "figure.walk", color: .gray),
+        TagItem(text: "не кодил", icon: "laptopcomputer", color: .brown),
+        TagItem(text: "не рисовал", icon: "paintbrush.fill", color: .secondary),
+        TagItem(text: "не читал", icon: "book.fill", color: .mint),
+        TagItem(text: "не смотрел туториалы", icon: "play.rectangle.fill", color: .cyan)
+    ]
+    
     init(title: String = "Создать отчёт", post: Post? = nil, onSave: (() -> Void)? = nil, onPublish: (() -> Void)? = nil) {
         self.title = title
         self.post = post
@@ -83,6 +171,13 @@ struct PostFormView: View {
         NavigationView {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    // Секция тегов для "Я молодец"
+                    TagSectionView(
+                        title: "Быстрые теги для 'Я молодец':",
+                        tags: goodTags,
+                        onTagTap: addGoodTag
+                    )
+                    
                     ChecklistSectionView(
                         title: "Я молодец:",
                         items: $goodItems,
@@ -91,6 +186,14 @@ struct PostFormView: View {
                         onAdd: addGoodItem,
                         onRemove: removeGoodItem
                     )
+                    
+                    // Секция тегов для "Я не молодец"
+                    TagSectionView(
+                        title: "Быстрые теги для 'Я не молодец':",
+                        tags: badTags,
+                        onTagTap: addBadTag
+                    )
+                    
                     ChecklistSectionView(
                         title: "Я не молодец:",
                         items: $badItems,
@@ -145,6 +248,24 @@ struct PostFormView: View {
         goodItems.append(new)
         print("[DEBUG] goodItems после добавления:", goodItems.map { $0.text })
         goodFocus = new.id
+    }
+    
+    func addGoodTag(_ tag: TagItem) {
+        // Проверяем, нет ли уже такого тега
+        if !goodItems.contains(where: { $0.text == tag.text }) {
+            let new = ChecklistItem(id: UUID(), text: tag.text)
+            goodItems.append(new)
+            goodFocus = new.id
+        }
+    }
+    
+    func addBadTag(_ tag: TagItem) {
+        // Проверяем, нет ли уже такого тега
+        if !badItems.contains(where: { $0.text == tag.text }) {
+            let new = ChecklistItem(id: UUID(), text: tag.text)
+            badItems.append(new)
+            badFocus = new.id
+        }
     }
     func removeGoodItem(_ item: ChecklistItem) {
         guard goodItems.count > 1 else { return }
