@@ -83,41 +83,11 @@ struct LazyBonesWidgetEntryView : View {
     
     @AppStorage("notificationsEnabled", store: UserDefaults(suiteName: "group.com.katapios.LazyBones"))
     var notificationsEnabled: Bool = false
+    @Environment(\.widgetFamily) var family
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            VStack(spacing: 0) {
-                Spacer(minLength: 8)
-                VStack(spacing: 0) {
-                    Text("𝕷𝖆𝖇: 🅞’𝖙𝖗𝟗𝖈")
-                        .font(.system(size: 22, weight: .bold, design: .default))
-                        .multilineTextAlignment(.center)
-                    if !entry.deviceName.isEmpty {
-                        Text(entry.deviceName)
-                            .font(.headline)
-                            .multilineTextAlignment(.center)
-                    }
-                }
-                Text(formattedDate(entry.date))
-                    .font(.subheadline)
-                HStack(spacing: 12) {
-                    Text(statusEmoji)
-                        .font(.system(size: 44))
-                        .frame(width: 54, height: 54)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(statusText)
-                            .font(.title3)
-                            .foregroundColor(statusColor)
-                    }
-                }
-                if entry.reportStatus != "done" {
-                    Text(entry.timerString)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                Spacer(minLength: 8)
-            }
-            .padding(.horizontal)
+            content
             HStack {
                 Spacer()
                 Image(systemName: notificationsEnabled ? "bell.fill" : "bell.slash.fill")
@@ -126,6 +96,129 @@ struct LazyBonesWidgetEntryView : View {
             }
         }
     }
+
+    @ViewBuilder
+    var content: some View {
+        switch family {
+        case .systemSmall:
+            VStack(spacing: 8) {
+                Spacer(minLength: 4)
+                Text("𝕷𝖆𝖇: 🅞’𝖙𝖗𝟗𝖈")
+                    .font(.caption)
+                    .minimumScaleFactor(1.5)
+                    .multilineTextAlignment(.center)
+                Text(entry.deviceName)
+                Image(systemName: statusSymbol)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 40, height: 40)
+                    .foregroundColor(statusColor)
+                if entry.reportStatus != "done" {
+                    VStack(spacing: 0) {
+                        Text(timerPrefix)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                        Text(timerValue)
+                            .font(.caption2).bold()
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                Spacer(minLength: 4)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .padding()
+        case .systemMedium:
+            HStack(spacing: 12) {
+                Image(systemName: statusSymbol)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 80, height: 80)
+                    .padding(.trailing, 15)
+                    .foregroundColor(statusColor)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("𝕷𝖆𝖇: 🅞’𝖙𝖗𝟗𝖈")
+                        .font(.headline)
+                        .lineLimit(1)
+                    Text(entry.deviceName)
+                        .font(.headline)
+                        .lineLimit(1)
+                    Text(formattedDate(entry.date))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text(statusText)
+                        .font(.body)
+                        .foregroundColor(statusColor)
+                    if entry.reportStatus != "done" {
+                        Text(entry.timerString)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                Spacer()
+            }
+            .padding()
+        case .systemLarge:
+            VStack(alignment: .center, spacing: 0) {
+                Spacer()
+                VStack(alignment: .center, spacing: 20) {
+                    Text("𝕷𝖆𝖇: 🅞’𝖙𝖗𝟗𝖈")
+                        .font(.largeTitle.bold())
+                        .multilineTextAlignment(.center)
+                    Text(entry.deviceName)
+                        .font(.title2)
+                        .lineLimit(1)
+                        .multilineTextAlignment(.center)
+                    Image(systemName: statusSymbol)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 80, height: 80)
+                        .foregroundColor(statusColor)
+                        .padding(.vertical, 8)
+                    Text(statusText)
+                        .font(.title.bold())
+                        .foregroundColor(statusColor)
+                        .multilineTextAlignment(.center)
+                    Text(formattedDate(entry.date))
+                        .font(.title3)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                    if entry.reportStatus != "done" {
+                        VStack(spacing: 2) {
+                            Text(timerPrefix)
+                                .font(.title3)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                            Text(timerValue)
+                                .font(.largeTitle.bold())
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                Spacer()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .padding()
+        default:
+            VStack {
+                Image(systemName: statusSymbol)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 40, height: 40)
+                    .foregroundColor(statusColor)
+                Text(statusText)
+                    .font(.body)
+                    .foregroundColor(statusColor)
+            }
+            .padding()
+        }
+    }
+
     var statusText: String {
         switch entry.reportStatus {
         case "done": return "Отчёт сделан"
@@ -133,11 +226,11 @@ struct LazyBonesWidgetEntryView : View {
         default: return "Отчёт не сделан"
         }
     }
-    var statusEmoji: String {
+    var statusSymbol: String {
         switch entry.reportStatus {
-        case "done": return "👍"
-        case "inProgress": return "⚙️"
-        default: return "👎"
+        case "done": return "checkmark.seal.fill"
+        case "inProgress": return "gearshape.fill"
+        default: return "xmark.seal.fill"
         }
     }
     var statusColor: Color {
@@ -153,17 +246,17 @@ struct LazyBonesWidgetEntryView : View {
         formatter.dateStyle = .full
         return formatter.string(from: date)
     }
-    func endOfDay(from date: Date) -> Date {
-        let calendar = Calendar.current
-        return calendar.date(bySettingHour: 23, minute: 59, second: 59, of: date) ?? date
+
+    var timerPrefix: String {
+        if entry.timerString.hasPrefix("До конца") { return "До конца:" }
+        if entry.timerString.hasPrefix("До старта") { return "До старта:" }
+        return ""
     }
-    func timerString(until end: Date) -> String {
-        let now = Date()
-        let diff = Calendar.current.dateComponents([.hour, .minute, .second], from: now, to: end)
-        let h = max(0, diff.hour ?? 0)
-        let m = max(0, diff.minute ?? 0)
-        let s = max(0, diff.second ?? 0)
-        return String(format: "%02d:%02d:%02d", h, m, s)
+    var timerValue: String {
+        if let range = entry.timerString.range(of: ": ") {
+            return String(entry.timerString[range.upperBound...])
+        }
+        return entry.timerString
     }
 }
 
