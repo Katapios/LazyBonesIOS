@@ -1,5 +1,6 @@
 import Foundation
 import AVFoundation
+import WidgetKit
 
 /// Модель отчёта пользователя
 struct Post: Codable, Identifiable {
@@ -107,6 +108,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
             saveForceUnlock()
         }
         updateReportStatus()
+        WidgetCenter.shared.reloadAllTimelines()
     }
     
     /// Очистка всех отчётов
@@ -114,6 +116,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
         posts = []
         save()
         updateReportStatus()
+        WidgetCenter.shared.reloadAllTimelines()
     }
     
     /// Обновление существующего отчёта по id
@@ -126,6 +129,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
                 saveForceUnlock()
             }
             updateReportStatus()
+            WidgetCenter.shared.reloadAllTimelines()
         }
     }
     
@@ -308,6 +312,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
         if forceUnlock {
             reportStatus = .notStarted
             saveReportStatus()
+            WidgetCenter.shared.reloadAllTimelines()
             return
         }
         let today = Calendar.current.startOfDay(for: Date())
@@ -323,6 +328,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
             reportStatus = .notStarted
         }
         saveReportStatus()
+        WidgetCenter.shared.reloadAllTimelines()
     }
     func saveReportStatus() {
         userDefaults?.set(reportStatus.rawValue, forKey: reportStatusKey)
@@ -340,6 +346,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
         saveForceUnlock()
         reportStatus = .notStarted
         saveReportStatus()
+        WidgetCenter.shared.reloadAllTimelines()
     }
     func saveForceUnlock() {
         userDefaults?.set(forceUnlock, forKey: forceUnlockKey)
