@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import WidgetKit
+import UserNotifications
 
 /// Модель отчёта пользователя
 struct Post: Codable, Identifiable {
@@ -50,6 +51,16 @@ class PostStore: ObservableObject, PostStoreProtocol {
     @Published var reportStatus: ReportStatus = .notStarted
     @Published var forceUnlock: Bool = false
 
+    // --- Notification settings ---
+    @Published var notificationsEnabled: Bool = false {
+        didSet { saveNotificationSettings();
+            if notificationsEnabled { requestNotificationPermissionAndSchedule() } else { cancelAllNotifications() }
+        }
+    }
+    @Published var notificationIntervalHours: Int = 1 { // 1-12
+        didSet { saveNotificationSettings(); if notificationsEnabled { scheduleNotifications() } }
+    }
+
     private let localService: LocalReportService
     private var telegramService: TelegramService?
 
@@ -60,6 +71,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
         loadExternalPosts()
         loadReportStatus()
         loadForceUnlock()
+        loadNotificationSettings()
         updateReportStatus()
     }
 
@@ -296,6 +308,65 @@ class PostStore: ObservableObject, PostStoreProtocol {
     // Объединить локальные и внешние отчеты для отображения
     var allPosts: [Post] {
         return posts + externalPosts
+    }
+
+    // MARK: - Notification Settings
+    private let notifEnabledKey = "notificationsEnabled"
+    private let notifIntervalKey = "notificationIntervalHours"
+    func saveNotificationSettings() {
+        let ud = UserDefaults(suiteName: Self.appGroup)
+        ud?.set(notificationsEnabled, forKey: notifEnabledKey)
+        ud?.set(notificationIntervalHours, forKey: notifIntervalKey)
+    }
+    func loadNotificationSettings() {
+        let ud = UserDefaults(suiteName: Self.appGroup)
+        notificationsEnabled = ud?.bool(forKey: notifEnabledKey) ?? false
+        notificationIntervalHours = ud?.integer(forKey: notifIntervalKey) == 0 ? 1 : ud!.integer(forKey: notifIntervalKey)
+    }
+
+    // MARK: - Notification Logic
+    func requestNotificationPermissionAndSchedule() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+            DispatchQueue.main.async {
+                if granted { self.scheduleNotifications() }
+                else { self.notificationsEnabled = false }
+            }
+        }
+    }
+    func scheduleNotifications() {
+        cancelAllNotifications()
+        guard notificationsEnabled else { return }
+        let center = UNUserNotificationCenter.current()
+        let now = Date()
+        let calendar = Calendar.current
+        let startHour = 8
+        let endHour = 20
+        let interval = notificationIntervalHours
+        for hour in stride(from: startHour, to: endHour, by: interval) {
+            var dateComponents = calendar.dateComponents([.year, .month, .day], from: now)
+            dateComponents.hour = hour
+            dateComponents.minute = 0
+            let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
+            let content = UNMutableNotificationContent()
+            let timeLeft = self.timeLeftString(untilHour: endHour)
+            content.title = "Не забудь заполнить отчет Лаботрясов!"
+            content.body = "До блокировки отчета: \(timeLeft)\nНе облажайся, бро! верю в тебя."
+            content.sound = .default
+            let request = UNNotificationRequest(identifier: "LazyBonesNotif_\(hour)", content: content, trigger: trigger)
+            center.add(request)
+        }
+    }
+    func cancelAllNotifications() {
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+    }
+    func timeLeftString(untilHour: Int) -> String {
+        let now = Date()
+        let calendar = Calendar.current
+        let end = calendar.date(bySettingHour: untilHour, minute: 0, second: 0, of: now) ?? now
+        let diff = calendar.dateComponents([.hour, .minute], from: now, to: end)
+        let h = max(0, diff.hour ?? 0)
+        let m = max(0, diff.minute ?? 0)
+        return String(format: "%02d:%02d", h, m)
     }
 }
 

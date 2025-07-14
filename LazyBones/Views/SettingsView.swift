@@ -63,6 +63,17 @@ struct SettingsView: View {
                             .foregroundColor(status == "Успешно!" ? .green : .red)
                     }
                 }
+                Section(header: Text("Настройка уведомлений")) {
+                    Toggle("Получать уведомления", isOn: $store.notificationsEnabled)
+                    if store.notificationsEnabled {
+                        Picker("Интервал уведомлений (часы)", selection: $store.notificationIntervalHours) {
+                            ForEach(1...12, id: \.self) { hour in
+                                Text("Каждые \(hour) ч.").tag(hour)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
+                }
                 Section(header: Text("Данные")) {
                     Button(role: .destructive) {
                         showAlert = true

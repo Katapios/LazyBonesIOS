@@ -80,40 +80,51 @@ struct SimpleEntry: TimelineEntry {
 
 struct LazyBonesWidgetEntryView : View {
     var entry: SimpleEntry
+    
+    @AppStorage("notificationsEnabled", store: UserDefaults(suiteName: "group.com.katapios.LazyBones"))
+    var notificationsEnabled: Bool = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 8)
+        ZStack(alignment: .topTrailing) {
             VStack(spacing: 0) {
-                Text("𝕷𝖆𝖇: 🅞’𝖙𝖗𝟗𝖈")
-                    .font(.system(size: 22, weight: .bold, design: .default))
-                    .multilineTextAlignment(.center)
-                if !entry.deviceName.isEmpty {
-                    Text(entry.deviceName)
-                        .font(.headline)
+                Spacer(minLength: 8)
+                VStack(spacing: 0) {
+                    Text("𝕷𝖆𝖇: 🅞’𝖙𝖗𝟗𝖈")
+                        .font(.system(size: 22, weight: .bold, design: .default))
                         .multilineTextAlignment(.center)
+                    if !entry.deviceName.isEmpty {
+                        Text(entry.deviceName)
+                            .font(.headline)
+                            .multilineTextAlignment(.center)
+                    }
                 }
-            }
-            Text(formattedDate(entry.date))
-                .font(.subheadline)
-            HStack(spacing: 12) {
-                Text(statusEmoji)
-                    .font(.system(size: 44))
-                    .frame(width: 54, height: 54)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(statusText)
-                        .font(.title3)
-                        .foregroundColor(statusColor)
+                Text(formattedDate(entry.date))
+                    .font(.subheadline)
+                HStack(spacing: 12) {
+                    Text(statusEmoji)
+                        .font(.system(size: 44))
+                        .frame(width: 54, height: 54)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(statusText)
+                            .font(.title3)
+                            .foregroundColor(statusColor)
+                    }
                 }
+                if entry.reportStatus != "done" {
+                    Text(entry.timerString)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer(minLength: 8)
             }
-            if entry.reportStatus != "done" {
-                Text(entry.timerString)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+            .padding(.horizontal)
+            HStack {
+                Spacer()
+                Image(systemName: notificationsEnabled ? "bell.fill" : "bell.slash.fill")
+                    .foregroundColor(notificationsEnabled ? .accentColor : .gray)
+                    .padding(8)
             }
-            Spacer(minLength: 8)
         }
-        .padding(.horizontal)
     }
     var statusText: String {
         switch entry.reportStatus {
