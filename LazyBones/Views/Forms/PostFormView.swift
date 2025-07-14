@@ -217,6 +217,7 @@ struct PostFormView: View {
                 }
                 .padding()
             }
+            .hideKeyboardOnTap()
             .navigationTitle(title)
             .toolbar {
                 ToolbarItem(placement: .bottomBar) {
@@ -247,7 +248,6 @@ struct PostFormView: View {
                 }
             }
         }
-        .hideKeyboardOnTap()
     }
     
     // MARK: - Actions
@@ -354,33 +354,30 @@ struct PostFormView: View {
     func publishAndNotify() {
         let filteredGood = goodItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
         let filteredBad = badItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        let newPost = Post(id: post?.id ?? UUID(), date: Date(), goodItems: filteredGood, badItems: filteredBad, published: true, voiceNotes: voiceNotes)
+        let draftPost = Post(id: post?.id ?? UUID(), date: Date(), goodItems: filteredGood, badItems: filteredBad, published: false, voiceNotes: voiceNotes)
         if let _ = post {
-            store.update(post: newPost)
+            store.update(post: draftPost)
         } else {
-            store.add(post: newPost)
+            store.add(post: draftPost)
         }
         if let token = store.telegramToken, let chatId = store.telegramChatId, !token.isEmpty, !chatId.isEmpty {
-            sendToTelegram(token: token, chatId: chatId, post: newPost)
+            sendToTelegram(token: token, chatId: chatId, post: draftPost)
         } else {
-            onPublish?()
-            dismiss()
+            self.sendStatus = "Ошибка: заполните токен и chat_id в настройках"
+            // Не меняем статус, не вызываем onPublish
         }
     }
     
     func sendToTelegram(token: String, chatId: String, post: Post) {
         isSending = true
         sendStatus = nil
-        // Сначала отправляем текстовое сообщение
         sendTextMessage(token: token, chatId: chatId, post: post) { success in
             if success && post.voiceNotes.count > 0 {
                 self.sendAllVoiceNotes(token: token, chatId: chatId, voiceNotes: post.voiceNotes.map { $0.path }) { allSuccess in
                     DispatchQueue.main.async {
                         self.isSending = false
                         if allSuccess {
-                            self.sendStatus = "Успешно отправлено!"
-                            self.onPublish?()
-                            self.dismiss()
+                            self.finalizePublish(post: post)
                         } else {
                             self.sendStatus = "Ошибка отправки голосовых заметок"
                         }
@@ -390,15 +387,22 @@ struct PostFormView: View {
                 DispatchQueue.main.async {
                     self.isSending = false
                     if success {
-                        self.sendStatus = "Успешно отправлено!"
-                        self.onPublish?()
-                        self.dismiss()
+                        self.finalizePublish(post: post)
                     } else {
                         self.sendStatus = "Ошибка отправки: неверный токен или chat_id"
                     }
                 }
             }
         }
+    }
+
+    private func finalizePublish(post: Post) {
+        // Обновляем пост как опубликованный только если отправка успешна
+        let publishedPost = Post(id: post.id, date: post.date, goodItems: post.goodItems, badItems: post.badItems, published: true, voiceNotes: post.voiceNotes)
+        store.update(post: publishedPost)
+        self.sendStatus = "Успешно отправлено!"
+        self.onPublish?()
+        self.dismiss()
     }
     
     private func sendTextMessage(token: String, chatId: String, post: Post, completion: @escaping (Bool) -> Void) {

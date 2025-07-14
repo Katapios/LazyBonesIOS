@@ -110,8 +110,8 @@ struct SettingsView: View {
                 telegramChatId = store.telegramChatId ?? ""
                 telegramBotId = store.telegramBotId ?? ""
             }
+            .hideKeyboardOnTap()
         }
-        .hideKeyboardOnTap()
     }
     func saveDeviceName() {
         let userDefaults = UserDefaults(suiteName: "group.com.katapios.LazyBones")
