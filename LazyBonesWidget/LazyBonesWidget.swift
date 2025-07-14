@@ -10,16 +10,16 @@ import SwiftUI
 
 struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), reportDone: false, deviceName: Self.deviceName(), timerString: Self.currentTimerString())
+        SimpleEntry(date: Date(), reportStatus: Self.currentReportStatus(), deviceName: Self.deviceName(), timerString: Self.currentTimerString())
     }
 
     func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> ()) {
-        let entry = SimpleEntry(date: Date(), reportDone: Self.isReportDoneToday(), deviceName: Self.deviceName(), timerString: Self.currentTimerString())
+        let entry = SimpleEntry(date: Date(), reportStatus: Self.currentReportStatus(), deviceName: Self.deviceName(), timerString: Self.currentTimerString())
         completion(entry)
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> ()) {
-        let entry = SimpleEntry(date: Date(), reportDone: Self.isReportDoneToday(), deviceName: Self.deviceName(), timerString: Self.currentTimerString())
+        let entry = SimpleEntry(date: Date(), reportStatus: Self.currentReportStatus(), deviceName: Self.deviceName(), timerString: Self.currentTimerString())
         let timeline = Timeline(entries: [entry], policy: .after(Calendar.current.startOfDay(for: Date().addingTimeInterval(86400))))
         completion(timeline)
     }
@@ -64,11 +64,16 @@ struct Provider: TimelineProvider {
             return "Время отчёта истекло"
         }
     }
+    static func currentReportStatus() -> String {
+        let userDefaults = UserDefaults(suiteName: "group.com.katapios.LazyBones")
+        let status = userDefaults?.string(forKey: "reportStatus") ?? "notStarted"
+        return status
+    }
 }
 
 struct SimpleEntry: TimelineEntry {
     let date: Date
-    let reportDone: Bool
+    let reportStatus: String
     let deviceName: String
     let timerString: String
 }
@@ -83,28 +88,41 @@ struct LazyBonesWidgetEntryView : View {
                 .multilineTextAlignment(.center)
             Text(formattedDate(entry.date))
                 .font(.subheadline)
-            if entry.reportDone {
-                HStack(spacing: 8) {
-                    Text("Отчёт сделан")
-                        .font(.title3)
-                        .foregroundColor(.green)
-                    Image(systemName: "hand.thumbsup.fill")
-                        .foregroundColor(.green)
-                }
-            } else {
-                HStack(spacing: 8) {
-                    Text("Отчёт не сделан")
-                        .font(.title3)
-                        .foregroundColor(.red)
-                    Image(systemName: "hand.thumbsdown.fill")
-                        .foregroundColor(.red)
-                }
+            HStack(spacing: 8) {
+                Text(statusText)
+                    .font(.title3)
+                    .foregroundColor(statusColor)
+                Image(systemName: statusIcon)
+                    .foregroundColor(statusColor)
+            }
+            if entry.reportStatus != "done" {
                 Text(entry.timerString)
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
         }
         .padding()
+    }
+    var statusText: String {
+        switch entry.reportStatus {
+        case "done": return "Отчёт сделан"
+        case "inProgress": return "Отчёт заполняется"
+        default: return "Отчёт не сделан"
+        }
+    }
+    var statusIcon: String {
+        switch entry.reportStatus {
+        case "done": return "checkmark.circle.fill"
+        case "inProgress": return "gearshape.fill"
+        default: return "exclamationmark.circle.fill"
+        }
+    }
+    var statusColor: Color {
+        switch entry.reportStatus {
+        case "done": return .green
+        case "inProgress": return .orange
+        default: return .red
+        }
     }
     func formattedDate(_ date: Date) -> String {
         let formatter = DateFormatter()
@@ -154,8 +172,9 @@ extension ConfigurationAppIntent {
 #Preview(as: .systemSmall) {
     LazyBonesWidget()
 } timeline: {
-    SimpleEntry(date: .now, reportDone: false, deviceName: "iPhone Дениса", timerString: "До старта: 00:00:00")
-    SimpleEntry(date: .now, reportDone: true, deviceName: "iPhone Дениса", timerString: "Время отчёта истекло")
+    SimpleEntry(date: .now, reportStatus: "notStarted", deviceName: "iPhone Дениса", timerString: "До старта: 00:00:00")
+    SimpleEntry(date: .now, reportStatus: "inProgress", deviceName: "iPhone Дениса", timerString: "До конца: 00:00:00")
+    SimpleEntry(date: .now, reportStatus: "done", deviceName: "iPhone Дениса", timerString: "Время отчёта истекло")
 }
 
 struct Post: Codable, Identifiable {

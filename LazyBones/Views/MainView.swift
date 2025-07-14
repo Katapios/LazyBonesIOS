@@ -5,7 +5,6 @@ struct MainView: View {
     @State private var showPostForm = false
     @State private var timeLeft: String = ""
     @State private var timer: Timer? = nil
-    @State private var isPublishedToday: Bool = false
     @EnvironmentObject var store: PostStore
     
     var postForToday: Post? {
@@ -18,19 +17,26 @@ struct MainView: View {
                 .font(.largeTitle)
                 .bold()
                 .onAppear(perform: startTimer)
-            Text(todayStatus)
-                .font(.title2)
-                .foregroundColor(todayStatusColor)
+            HStack(spacing: 8) {
+                if store.reportStatus == .inProgress {
+                    Image(systemName: "gearshape.fill")
+                        .foregroundColor(.orange)
+                }
+                Text(reportStatusText)
+                    .font(.title2)
+                    .foregroundColor(reportStatusColor)
+            }
             Button(action: { showPostForm = true }) {
                 Text(postForToday != nil ? "Редактировать отчёт" : "Создать отчёт")
                     .font(.headline)
                     .padding()
                     .frame(maxWidth: .infinity)
-                    .background(Color.blue)
+                    .background(store.reportStatus == .done ? Color.gray : Color.blue)
                     .foregroundColor(.white)
                     .cornerRadius(12)
             }
             .padding(.horizontal)
+            .disabled(store.reportStatus == .done)
             Spacer()
         }
         .sheet(isPresented: $showPostForm) {
@@ -38,15 +44,14 @@ struct MainView: View {
                 title: postForToday != nil ? "Редактировать отчёт" : "Создать отчёт",
                 post: postForToday,
                 onSave: {
-                    isPublishedToday = store.posts.contains { Calendar.current.isDateInToday($0.date) && $0.published }
+                    store.updateReportStatus()
                     stopTimer()
                     updateTimeLeft()
                 },
                 onPublish: {
-                    isPublishedToday = true
+                    store.updateReportStatus()
                     stopTimer()
                     updateTimeLeft()
-                    // После публикации сбрасываем состояние, чтобы снова появилась кнопка 'Создать отчёт'
                     store.load() // обновляем список постов
                 }
             )
@@ -55,20 +60,23 @@ struct MainView: View {
         .padding()
         .onAppear {
             store.load()
-            isPublishedToday = store.posts.contains { Calendar.current.isDateInToday($0.date) && $0.published }
+            store.updateReportStatus()
         }
     }
     
-    /// Статус отчёта за сегодня
-    var todayStatus: String {
-        if isPublishedToday || store.posts.first(where: { Calendar.current.isDateInToday($0.date) && $0.published }) != nil {
-            return "Отчёт сделан"
-        } else {
-            return "Отчёт не сделан"
+    var reportStatusText: String {
+        switch store.reportStatus {
+        case .notStarted: return "Отчёт не сделан"
+        case .inProgress: return "Отчёт заполняется"
+        case .done: return "Отчёт сделан"
         }
     }
-    var todayStatusColor: Color {
-        todayStatus == "Отчёт сделан" ? .green : .red
+    var reportStatusColor: Color {
+        switch store.reportStatus {
+        case .notStarted: return .red
+        case .inProgress: return .orange
+        case .done: return .green
+        }
     }
     
     /// Запуск и обновление таймера обратного отсчёта
@@ -89,7 +97,7 @@ struct MainView: View {
         let now = Date()
         let start = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: now)!
         let end = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: now)!
-        if isPublishedToday || store.posts.first(where: { Calendar.current.isDateInToday($0.date) && $0.published }) != nil {
+        if store.reportStatus == .done {
             // После публикации показываем время до 8:00 следующего дня
             let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
             let nextStart = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: tomorrow)!

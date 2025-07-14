@@ -30,6 +30,13 @@ protocol PostStoreProtocol: ObservableObject {
     func getDeviceName() -> String
 }
 
+// MARK: - Статус отчёта
+enum ReportStatus: String, Codable {
+    case notStarted
+    case inProgress
+    case done
+}
+
 /// Хранилище отчётов с поддержкой App Group
 class PostStore: ObservableObject, PostStoreProtocol {
     static let appGroup = "group.com.katapios.LazyBones"
@@ -39,6 +46,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
     @Published var telegramChatId: String? = nil
     @Published var telegramBotId: String? = nil
     @Published var lastUpdateId: Int? = nil
+    @Published var reportStatus: ReportStatus = .notStarted
     
     private let userDefaults: UserDefaults?
     private let key = "posts"
@@ -46,6 +54,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
     private let chatIdKey = "telegramChatId"
     private let botIdKey = "telegramBotId"
     private let lastUpdateIdKey = "lastUpdateId"
+    private let reportStatusKey = "reportStatus"
     
     // Кэширование внешних отчетов
     private let externalKey = "externalPosts"
@@ -55,6 +64,8 @@ class PostStore: ObservableObject, PostStoreProtocol {
         load()
         loadTelegramSettings()
         loadExternalPosts() // Загружаем внешние отчеты при инициализации
+        loadReportStatus()
+        updateReportStatus()
     }
     
     /// Загрузка отчётов из UserDefaults
@@ -88,12 +99,14 @@ class PostStore: ObservableObject, PostStoreProtocol {
     func add(post: Post) {
         posts.append(post)
         save()
+        updateReportStatus()
     }
     
     /// Очистка всех отчётов
     func clear() {
         posts = []
         save()
+        updateReportStatus()
     }
     
     /// Обновление существующего отчёта по id
@@ -101,6 +114,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
         if let idx = posts.firstIndex(where: { $0.id == post.id }) {
             posts[idx] = post
             save()
+            updateReportStatus()
         }
     }
     
@@ -275,6 +289,33 @@ class PostStore: ObservableObject, PostStoreProtocol {
                     completion(false)
                 }
             }
+        }
+    }
+    
+    // MARK: - Report Status
+    func updateReportStatus() {
+        let today = Calendar.current.startOfDay(for: Date())
+        if let todayPost = posts.first(where: { Calendar.current.isDate($0.date, inSameDayAs: today) }) {
+            if todayPost.published {
+                reportStatus = .done
+            } else if !todayPost.goodItems.isEmpty || !todayPost.badItems.isEmpty || !todayPost.voiceNotes.isEmpty {
+                reportStatus = .inProgress
+            } else {
+                reportStatus = .notStarted
+            }
+        } else {
+            reportStatus = .notStarted
+        }
+        saveReportStatus()
+    }
+    func saveReportStatus() {
+        userDefaults?.set(reportStatus.rawValue, forKey: reportStatusKey)
+    }
+    func loadReportStatus() {
+        if let raw = userDefaults?.string(forKey: reportStatusKey), let status = ReportStatus(rawValue: raw) {
+            reportStatus = status
+        } else {
+            reportStatus = .notStarted
         }
     }
     
