@@ -230,7 +230,6 @@ struct PostFormView: View {
                             isEnabled: canSave && !isSending,
                             compact: true
                         )
-                        .frame(maxWidth: .infinity)
                         LargeButtonView(
                             title: "Опубликовать",
                             icon: "paperplane.fill",
@@ -239,8 +238,8 @@ struct PostFormView: View {
                             isEnabled: canSave && !isSending,
                             compact: true
                         )
-                        .frame(maxWidth: .infinity)
                     }
+                    .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 4)
                 }
                 ToolbarItem(placement: .cancellationAction) {

@@ -16,8 +16,9 @@ struct LargeButtonView: View {
                 Text(title)
                     .font(compact ? .body.bold() : .title2.bold())
             }
-            .frame(maxWidth: .infinity, minHeight: compact ? 40 : 56)
+            .frame(minWidth: 120, minHeight: compact ? 40 : 56)
             .padding(.vertical, compact ? 4 : 8)
+            .padding(.horizontal, compact ? 16 : 24)
             .background(
                 RoundedRectangle(cornerRadius: compact ? 14 : 20, style: .continuous)
                     .fill(color.opacity(isEnabled ? 0.85 : 0.4))

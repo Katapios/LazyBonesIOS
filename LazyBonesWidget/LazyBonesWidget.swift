@@ -82,7 +82,8 @@ struct LazyBonesWidgetEntryView : View {
     var entry: SimpleEntry
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 0) {
+            Spacer(minLength: 8)
             VStack(spacing: 0) {
                 Text("𝕷𝖆𝖇: 🅞’𝖙𝖗𝟗𝖈")
                     .font(.system(size: 22, weight: .bold, design: .default))
@@ -110,8 +111,9 @@ struct LazyBonesWidgetEntryView : View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
+            Spacer(minLength: 8)
         }
-        .padding()
+        .padding(.horizontal)
     }
     var statusText: String {
         switch entry.reportStatus {
