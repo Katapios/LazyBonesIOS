@@ -220,19 +220,36 @@ struct PostFormView: View {
             .navigationTitle(title)
             .toolbar {
                 ToolbarItem(placement: .bottomBar) {
-                    HStack {
-                        Button("Сохранить") {
-                            saveAndNotify()
+                    HStack(spacing: 16) {
+                        Button(action: saveAndNotify) {
+                            HStack {
+                                Image(systemName: "tray.and.arrow.down.fill")
+                                Text("Сохранить")
+                            }
+                            .font(.title3.bold())
+                            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 54)
                         }
                         .buttonStyle(.borderedProminent)
+                        .tint(.blue)
+                        .cornerRadius(16)
+                        .shadow(color: Color.blue.opacity(0.15), radius: 4, x: 0, y: 2)
                         .disabled(!canSave || isSending)
-                        Spacer()
-                        Button("Опубликовать") {
-                            publishAndNotify()
+
+                        Button(action: publishAndNotify) {
+                            HStack {
+                                Image(systemName: "paperplane.fill")
+                                Text("Опубликовать")
+                            }
+                            .font(.title3.bold())
+                            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 54)
                         }
                         .buttonStyle(.borderedProminent)
+                        .tint(.green)
+                        .cornerRadius(16)
+                        .shadow(color: Color.green.opacity(0.15), radius: 4, x: 0, y: 2)
                         .disabled(!canSave || isSending)
                     }
+                    .padding(.vertical, 8)
                 }
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Отмена") { dismiss() }

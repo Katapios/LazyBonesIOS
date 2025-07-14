@@ -27,13 +27,18 @@ struct MainView: View {
                     .foregroundColor(reportStatusColor)
             }
             Button(action: { showPostForm = true }) {
-                Text(postForToday != nil ? "Редактировать отчёт" : "Создать отчёт")
-                    .font(.headline)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(store.reportStatus == .done ? Color.gray : Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
+                HStack(spacing: 12) {
+                    Image(systemName: postForToday != nil ? "pencil.circle.fill" : "plus.circle.fill")
+                        .font(.system(size: 28, weight: .bold))
+                    Text(postForToday != nil ? "Редактировать отчёт" : "Создать отчёт")
+                        .font(.title2.bold())
+                }
+                .frame(maxWidth: .infinity, minHeight: 60)
+                .padding(.vertical, 8)
+                .background(store.reportStatus == .done ? Color.gray : Color.accentColor)
+                .foregroundColor(.white)
+                .cornerRadius(16)
+                .shadow(color: Color.accentColor.opacity(store.reportStatus == .done ? 0 : 0.18), radius: 6, x: 0, y: 3)
             }
             .padding(.horizontal)
             .disabled(store.reportStatus == .done)

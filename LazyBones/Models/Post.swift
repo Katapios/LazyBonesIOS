@@ -103,12 +103,14 @@ class PostStore: ObservableObject, PostStoreProtocol {
     func add(post: Post) {
         posts.append(post)
         save()
-        if post.published {
+        let today = Calendar.current.startOfDay(for: Date())
+        if forceUnlock && Calendar.current.isDate(post.date, inSameDayAs: today) {
             forceUnlock = false
             saveForceUnlock()
         }
         updateReportStatus()
         WidgetCenter.shared.reloadAllTimelines()
+        print("[DEBUG] add: published=\(post.published), forceUnlock=\(forceUnlock), reportStatus=\(reportStatus)")
     }
     
     /// Очистка всех отчётов
@@ -124,12 +126,14 @@ class PostStore: ObservableObject, PostStoreProtocol {
         if let idx = posts.firstIndex(where: { $0.id == post.id }) {
             posts[idx] = post
             save()
-            if post.published {
+            let today = Calendar.current.startOfDay(for: Date())
+            if forceUnlock && Calendar.current.isDate(post.date, inSameDayAs: today) {
                 forceUnlock = false
                 saveForceUnlock()
             }
             updateReportStatus()
             WidgetCenter.shared.reloadAllTimelines()
+            print("[DEBUG] update: published=\(post.published), forceUnlock=\(forceUnlock), reportStatus=\(reportStatus)")
         }
     }
     
@@ -313,6 +317,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
             reportStatus = .notStarted
             saveReportStatus()
             WidgetCenter.shared.reloadAllTimelines()
+            print("[DEBUG] updateReportStatus (forceUnlock): forceUnlock=\(forceUnlock), reportStatus=\(reportStatus)")
             return
         }
         let today = Calendar.current.startOfDay(for: Date())
@@ -329,6 +334,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
         }
         saveReportStatus()
         WidgetCenter.shared.reloadAllTimelines()
+        print("[DEBUG] updateReportStatus: forceUnlock=\(forceUnlock), reportStatus=\(reportStatus)")
     }
     func saveReportStatus() {
         userDefaults?.set(reportStatus.rawValue, forKey: reportStatusKey)
@@ -347,6 +353,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
         reportStatus = .notStarted
         saveReportStatus()
         WidgetCenter.shared.reloadAllTimelines()
+        print("[DEBUG] unlock: forceUnlock=\(forceUnlock), reportStatus=\(reportStatus)")
     }
     func saveForceUnlock() {
         userDefaults?.set(forceUnlock, forKey: forceUnlockKey)
