@@ -26,22 +26,14 @@ struct MainView: View {
                     .font(.title2)
                     .foregroundColor(reportStatusColor)
             }
-            Button(action: { showPostForm = true }) {
-                HStack(spacing: 12) {
-                    Image(systemName: postForToday != nil ? "pencil.circle.fill" : "plus.circle.fill")
-                        .font(.system(size: 28, weight: .bold))
-                    Text(postForToday != nil ? "Редактировать отчёт" : "Создать отчёт")
-                        .font(.title2.bold())
-                }
-                .frame(maxWidth: .infinity, minHeight: 60)
-                .padding(.vertical, 8)
-                .background(store.reportStatus == .done ? Color.gray : Color.accentColor)
-                .foregroundColor(.white)
-                .cornerRadius(16)
-                .shadow(color: Color.accentColor.opacity(store.reportStatus == .done ? 0 : 0.18), radius: 6, x: 0, y: 3)
-            }
+            LargeButtonView(
+                title: postForToday != nil ? "Редактировать отчёт" : "Создать отчёт",
+                icon: postForToday != nil ? "pencil.circle.fill" : "plus.circle.fill",
+                color: store.reportStatus == .done ? .gray : .accentColor,
+                action: { showPostForm = true },
+                isEnabled: store.reportStatus != .done
+            )
             .padding(.horizontal)
-            .disabled(store.reportStatus == .done)
             Spacer()
         }
         .sheet(isPresented: $showPostForm) {

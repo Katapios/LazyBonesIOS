@@ -49,56 +49,28 @@ class PostStore: ObservableObject, PostStoreProtocol {
     @Published var lastUpdateId: Int? = nil
     @Published var reportStatus: ReportStatus = .notStarted
     @Published var forceUnlock: Bool = false
-    
-    private let userDefaults: UserDefaults?
-    private let key = "posts"
-    private let tokenKey = "telegramToken"
-    private let chatIdKey = "telegramChatId"
-    private let botIdKey = "telegramBotId"
-    private let lastUpdateIdKey = "lastUpdateId"
-    private let reportStatusKey = "reportStatus"
-    private let forceUnlockKey = "forceUnlock"
-    
-    // Кэширование внешних отчетов
-    private let externalKey = "externalPosts"
-    
-    init() {
-        userDefaults = UserDefaults(suiteName: Self.appGroup)
+
+    private let localService: LocalReportService
+    private var telegramService: TelegramService?
+
+    init(localService: LocalReportService = .shared) {
+        self.localService = localService
         load()
         loadTelegramSettings()
-        loadExternalPosts() // Загружаем внешние отчеты при инициализации
+        loadExternalPosts()
         loadReportStatus()
         loadForceUnlock()
         updateReportStatus()
     }
-    
-    /// Загрузка отчётов из UserDefaults
+
+    /// Загрузка отчётов из LocalReportService
     func load() {
-        guard let data = userDefaults?.data(forKey: key) else {
-            posts = []
-            return
-        }
-        // Попытка декодировать как новый формат
-        if let decoded = try? JSONDecoder().decode([Post].self, from: data) {
-            posts = decoded.sorted { $0.date > $1.date }
-        } else if let legacyDecoded = try? JSONDecoder().decode([LegacyPost].self, from: data) {
-            // Миграция старых данных
-            posts = legacyDecoded.map { legacy in
-                let notes: [VoiceNote] = legacy.voiceNoteURL != nil ? [VoiceNote(id: UUID(), path: legacy.voiceNoteURL!)] : []
-                return Post(id: legacy.id, date: legacy.date, goodItems: legacy.goodItems, badItems: legacy.badItems, published: legacy.published, voiceNotes: notes)
-            }.sorted { $0.date > $1.date }
-            save() // Сохраняем в новом формате
-        } else {
-            posts = []
-        }
+        posts = localService.loadPosts()
     }
-    
-    /// Сохранение отчётов в UserDefaults
+    /// Сохранение отчётов через LocalReportService
     func save() {
-        guard let data = try? JSONEncoder().encode(posts) else { return }
-        userDefaults?.set(data, forKey: key)
+        localService.savePosts(posts)
     }
-    
     /// Добавление нового отчёта
     func add(post: Post) {
         posts.append(post)
@@ -106,21 +78,19 @@ class PostStore: ObservableObject, PostStoreProtocol {
         let today = Calendar.current.startOfDay(for: Date())
         if forceUnlock && Calendar.current.isDate(post.date, inSameDayAs: today) {
             forceUnlock = false
-            saveForceUnlock()
+            localService.saveForceUnlock(false)
         }
         updateReportStatus()
         WidgetCenter.shared.reloadAllTimelines()
         print("[DEBUG] add: published=\(post.published), forceUnlock=\(forceUnlock), reportStatus=\(reportStatus)")
     }
-    
     /// Очистка всех отчётов
     func clear() {
         posts = []
-        save()
+        localService.clearPosts()
         updateReportStatus()
         WidgetCenter.shared.reloadAllTimelines()
     }
-    
     /// Обновление существующего отчёта по id
     func update(post: Post) {
         if let idx = posts.firstIndex(where: { $0.id == post.id }) {
@@ -129,61 +99,61 @@ class PostStore: ObservableObject, PostStoreProtocol {
             let today = Calendar.current.startOfDay(for: Date())
             if forceUnlock && Calendar.current.isDate(post.date, inSameDayAs: today) {
                 forceUnlock = false
-                saveForceUnlock()
+                localService.saveForceUnlock(false)
             }
             updateReportStatus()
             WidgetCenter.shared.reloadAllTimelines()
             print("[DEBUG] update: published=\(post.published), forceUnlock=\(forceUnlock), reportStatus=\(reportStatus)")
         }
     }
-    
-    /// Получение имени устройства
     func getDeviceName() -> String {
+        // Можно вынести в отдельный сервис при необходимости
+        let userDefaults = UserDefaults(suiteName: Self.appGroup)
         return userDefaults?.string(forKey: "deviceName") ?? "Устройство"
     }
-    
     // MARK: - Telegram Integration
+    func setTelegramService() {
+        guard let token = telegramToken, let chatId = telegramChatId, !token.isEmpty, !chatId.isEmpty else {
+            telegramService = nil
+            return
+        }
+        telegramService = TelegramService(token: token, chatId: chatId)
+    }
     func saveTelegramSettings(token: String?, chatId: String?, botId: String?) {
         telegramToken = token
         telegramChatId = chatId
         telegramBotId = botId
-        userDefaults?.set(token, forKey: tokenKey)
-        userDefaults?.set(chatId, forKey: chatIdKey)
-        userDefaults?.set(botId, forKey: botIdKey)
+        let userDefaults = UserDefaults(suiteName: Self.appGroup)
+        userDefaults?.set(token, forKey: "telegramToken")
+        userDefaults?.set(chatId, forKey: "telegramChatId")
+        userDefaults?.set(botId, forKey: "telegramBotId")
+        setTelegramService()
     }
-    
     func loadTelegramSettings() {
-        telegramToken = userDefaults?.string(forKey: tokenKey)
-        telegramChatId = userDefaults?.string(forKey: chatIdKey)
-        telegramBotId = userDefaults?.string(forKey: botIdKey)
-        lastUpdateId = userDefaults?.integer(forKey: lastUpdateIdKey)
+        let userDefaults = UserDefaults(suiteName: Self.appGroup)
+        telegramToken = userDefaults?.string(forKey: "telegramToken")
+        telegramChatId = userDefaults?.string(forKey: "telegramChatId")
+        telegramBotId = userDefaults?.string(forKey: "telegramBotId")
+        lastUpdateId = userDefaults?.integer(forKey: "lastUpdateId")
+        setTelegramService()
     }
-    
     func saveLastUpdateId(_ updateId: Int) {
         lastUpdateId = updateId
-        userDefaults?.set(updateId, forKey: lastUpdateIdKey)
+        let userDefaults = UserDefaults(suiteName: Self.appGroup)
+        userDefaults?.set(updateId, forKey: "lastUpdateId")
     }
-    
     // Загрузка внешних отчетов из Telegram
     func fetchExternalPosts(completion: @escaping (Bool) -> Void) {
-        guard let token = telegramToken, let chatId = telegramChatId, !token.isEmpty, !chatId.isEmpty else {
-            completion(false)
-            return
-        }
-        let api = TelegramAPIService(token: token, chatId: chatId)
-        
-        // Используем offset для получения только новых сообщений
+        guard let telegramService = telegramService else { completion(false); return }
         let offset = lastUpdateId != nil ? lastUpdateId! + 1 : nil
-        api.fetchMessages(offset: offset, limit: 20, botId: telegramBotId) { result in
+        telegramService.fetchMessages(offset: offset, limit: 20, botId: telegramBotId) { result in
             DispatchQueue.main.async {
                 switch result {
                 case .success(let messages):
                     if !messages.isEmpty {
-                        // Сохраняем последний update_id для следующего запроса
                         if let lastMessage = messages.last {
                             self.saveLastUpdateId(lastMessage.updateId)
                         }
-                        
                         let posts = messages.map { msg in
                             Post(
                                 id: UUID(),
@@ -196,16 +166,14 @@ class PostStore: ObservableObject, PostStoreProtocol {
                                 authorFirstName: msg.authorFirstName,
                                 authorLastName: msg.authorLastName,
                                 isExternal: true,
-                                externalVoiceNoteURLs: nil, // TODO: download voice if present
-                                externalText: msg.caption ?? msg.text, // сначала caption, потом text
-                                externalMessageId: msg.id, // сохраняем message_id
-                                authorId: msg.authorId // сохраняем ID автора
+                                externalVoiceNoteURLs: nil,
+                                externalText: msg.caption ?? msg.text,
+                                externalMessageId: msg.id,
+                                authorId: msg.authorId
                             )
                         }
-                        
-                        // Добавляем новые сообщения к существующим (не заменяем)
                         self.externalPosts.append(contentsOf: posts)
-                        self.externalPosts.sort { $0.date > $1.date } // Сортируем по дате
+                        self.externalPosts.sort { $0.date > $1.date }
                         self.saveExternalPosts()
                     }
                     completion(true)
@@ -215,47 +183,35 @@ class PostStore: ObservableObject, PostStoreProtocol {
             }
         }
     }
-    // Сохраняем внешние отчеты в кэш
     func saveExternalPosts() {
         guard let data = try? JSONEncoder().encode(externalPosts) else { return }
-        userDefaults?.set(data, forKey: externalKey)
+        let userDefaults = UserDefaults(suiteName: Self.appGroup)
+        userDefaults?.set(data, forKey: "externalPosts")
     }
-    // Загружаем внешние отчеты из кэша
     func loadExternalPosts() {
-        guard let data = userDefaults?.data(forKey: externalKey),
+        let userDefaults = UserDefaults(suiteName: Self.appGroup)
+        guard let data = userDefaults?.data(forKey: "externalPosts"),
               let decoded = try? JSONDecoder().decode([Post].self, from: data) else {
             externalPosts = []
             return
         }
         externalPosts = decoded
     }
-    // Удалить только сообщения бота из Telegram
     func deleteBotMessages(completion: @escaping (Bool) -> Void) {
-        guard let token = telegramToken, let chatId = telegramChatId, !token.isEmpty, !chatId.isEmpty else {
-            completion(false)
-            return
-        }
-        
-        // Фильтруем только сообщения бота (которые можно удалить)
+        guard let telegramService = telegramService else { completion(false); return }
         let botMessageIds = externalPosts.compactMap { post -> Int? in
-            // Проверяем, что это сообщение от бота (если у нас есть botId)
             if let botId = telegramBotId, let authorId = post.authorId, String(authorId) == botId {
                 return post.externalMessageId
             }
-            // Если botId не указан, считаем все сообщения потенциально удаляемыми
             return post.externalMessageId
         }
-        
         if botMessageIds.isEmpty {
             completion(true)
             return
         }
-        
-        let api = TelegramAPIService(token: token, chatId: chatId)
-        api.deleteMessages(messageIds: botMessageIds) { success in
+        telegramService.deleteMessages(messageIds: botMessageIds) { success in
             DispatchQueue.main.async {
                 if success {
-                    // Удаляем из локального списка только те сообщения, которые были удалены
                     self.externalPosts.removeAll { post in
                         botMessageIds.contains(post.externalMessageId ?? 0)
                     }
@@ -265,57 +221,43 @@ class PostStore: ObservableObject, PostStoreProtocol {
             }
         }
     }
-    
-    // Удалить всю историю бота из Telegram (все сообщения бота)
     func deleteAllBotMessages(completion: @escaping (Bool) -> Void) {
-        guard let token = telegramToken, let chatId = telegramChatId, !token.isEmpty, !chatId.isEmpty else {
-            completion(false)
-            return
-        }
-        
-        // Получаем все сообщения из Telegram и фильтруем только сообщения бота
-        let api = TelegramAPIService(token: token, chatId: chatId)
-        api.fetchMessages(offset: nil, limit: 100, botId: telegramBotId) { result in
+        guard let telegramService = telegramService else { completion(false); return }
+        telegramService.fetchMessages(offset: nil, limit: 100, botId: telegramBotId) { result in
             DispatchQueue.main.async {
                 switch result {
                 case .success(let messages):
-                    // Фильтруем только сообщения бота
                     let botMessageIds = messages.compactMap { message -> Int? in
                         if message.isFromBot {
                             return message.id
                         }
                         return nil
                     }
-                    
                     if botMessageIds.isEmpty {
                         completion(true)
                         return
                     }
-                    
-                    // Удаляем все сообщения бота
-                    api.deleteMessages(messageIds: botMessageIds) { success in
+                    telegramService.deleteMessages(messageIds: botMessageIds) { success in
                         DispatchQueue.main.async {
                             if success {
-                                // Сбрасываем lastUpdateId после успешного удаления всей истории
                                 self.lastUpdateId = nil
-                                self.userDefaults?.removeObject(forKey: self.lastUpdateIdKey)
+                                let userDefaults = UserDefaults(suiteName: Self.appGroup)
+                                userDefaults?.removeObject(forKey: "lastUpdateId")
                             }
                             completion(success)
                         }
                     }
-                    
                 case .failure:
                     completion(false)
                 }
             }
         }
     }
-    
     // MARK: - Report Status
     func updateReportStatus() {
         if forceUnlock {
             reportStatus = .notStarted
-            saveReportStatus()
+            localService.saveReportStatus(.notStarted)
             WidgetCenter.shared.reloadAllTimelines()
             print("[DEBUG] updateReportStatus (forceUnlock): forceUnlock=\(forceUnlock), reportStatus=\(reportStatus)")
             return
@@ -332,36 +274,25 @@ class PostStore: ObservableObject, PostStoreProtocol {
         } else {
             reportStatus = .notStarted
         }
-        saveReportStatus()
+        localService.saveReportStatus(reportStatus)
         WidgetCenter.shared.reloadAllTimelines()
         print("[DEBUG] updateReportStatus: forceUnlock=\(forceUnlock), reportStatus=\(reportStatus)")
     }
-    func saveReportStatus() {
-        userDefaults?.set(reportStatus.rawValue, forKey: reportStatusKey)
-    }
     func loadReportStatus() {
-        if let raw = userDefaults?.string(forKey: reportStatusKey), let status = ReportStatus(rawValue: raw) {
-            reportStatus = status
-        } else {
-            reportStatus = .notStarted
-        }
+        reportStatus = localService.getReportStatus()
     }
     /// Разблокировать возможность создания отчёта (не трогая локальные отчёты)
     func unlockReportCreation() {
         forceUnlock = true
-        saveForceUnlock()
+        localService.saveForceUnlock(true)
         reportStatus = .notStarted
-        saveReportStatus()
+        localService.saveReportStatus(.notStarted)
         WidgetCenter.shared.reloadAllTimelines()
         print("[DEBUG] unlock: forceUnlock=\(forceUnlock), reportStatus=\(reportStatus)")
     }
-    func saveForceUnlock() {
-        userDefaults?.set(forceUnlock, forKey: forceUnlockKey)
-    }
     func loadForceUnlock() {
-        forceUnlock = userDefaults?.bool(forKey: forceUnlockKey) ?? false
+        forceUnlock = localService.getForceUnlock()
     }
-    
     // Объединить локальные и внешние отчеты для отображения
     var allPosts: [Post] {
         return posts + externalPosts
