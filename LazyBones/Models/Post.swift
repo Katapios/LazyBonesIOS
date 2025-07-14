@@ -47,6 +47,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
     @Published var telegramBotId: String? = nil
     @Published var lastUpdateId: Int? = nil
     @Published var reportStatus: ReportStatus = .notStarted
+    @Published var forceUnlock: Bool = false
     
     private let userDefaults: UserDefaults?
     private let key = "posts"
@@ -55,6 +56,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
     private let botIdKey = "telegramBotId"
     private let lastUpdateIdKey = "lastUpdateId"
     private let reportStatusKey = "reportStatus"
+    private let forceUnlockKey = "forceUnlock"
     
     // Кэширование внешних отчетов
     private let externalKey = "externalPosts"
@@ -65,6 +67,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
         loadTelegramSettings()
         loadExternalPosts() // Загружаем внешние отчеты при инициализации
         loadReportStatus()
+        loadForceUnlock()
         updateReportStatus()
     }
     
@@ -99,6 +102,10 @@ class PostStore: ObservableObject, PostStoreProtocol {
     func add(post: Post) {
         posts.append(post)
         save()
+        if post.published {
+            forceUnlock = false
+            saveForceUnlock()
+        }
         updateReportStatus()
     }
     
@@ -114,6 +121,10 @@ class PostStore: ObservableObject, PostStoreProtocol {
         if let idx = posts.firstIndex(where: { $0.id == post.id }) {
             posts[idx] = post
             save()
+            if post.published {
+                forceUnlock = false
+                saveForceUnlock()
+            }
             updateReportStatus()
         }
     }
@@ -294,6 +305,11 @@ class PostStore: ObservableObject, PostStoreProtocol {
     
     // MARK: - Report Status
     func updateReportStatus() {
+        if forceUnlock {
+            reportStatus = .notStarted
+            saveReportStatus()
+            return
+        }
         let today = Calendar.current.startOfDay(for: Date())
         if let todayPost = posts.first(where: { Calendar.current.isDate($0.date, inSameDayAs: today) }) {
             if todayPost.published {
@@ -317,6 +333,19 @@ class PostStore: ObservableObject, PostStoreProtocol {
         } else {
             reportStatus = .notStarted
         }
+    }
+    /// Разблокировать возможность создания отчёта (не трогая локальные отчёты)
+    func unlockReportCreation() {
+        forceUnlock = true
+        saveForceUnlock()
+        reportStatus = .notStarted
+        saveReportStatus()
+    }
+    func saveForceUnlock() {
+        userDefaults?.set(forceUnlock, forKey: forceUnlockKey)
+    }
+    func loadForceUnlock() {
+        forceUnlock = userDefaults?.bool(forKey: forceUnlockKey) ?? false
     }
     
     // Объединить локальные и внешние отчеты для отображения

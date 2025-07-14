@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var telegramChatId: String = ""
     @State private var telegramBotId: String = ""
     @State private var telegramStatus: String? = nil
+    @State private var showUnlockAlert = false
     var body: some View {
         NavigationView {
             Form {
@@ -66,11 +67,21 @@ struct SettingsView: View {
                     Button(role: .destructive) {
                         showAlert = true
                     } label: {
-                        Text("Сбросить все отчёты")
+                        Text("Сбросить все локальные отчёты")
                             .frame(maxWidth: .infinity, alignment: .center)
                     }
                     .buttonStyle(.bordered)
                     .foregroundColor(.red)
+                    .padding(.vertical, 4)
+
+                    Button {
+                        showUnlockAlert = true
+                    } label: {
+                        Text("Разблокировать отчёты")
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.blue)
                     .padding(.vertical, 4)
                 }
             }
@@ -83,6 +94,15 @@ struct SettingsView: View {
                 }
                 Button("Отмена", role: .cancel) {}
                 Text("Все отчёты будут удалены безвозвратно.")
+            }
+            .alert("Разблокировать отчёты?", isPresented: $showUnlockAlert) {
+                Button("Разблокировать", role: .destructive) {
+                    store.unlockReportCreation()
+                    store.updateReportStatus()
+                    WidgetCenter.shared.reloadAllTimelines()
+                }
+                Button("Отмена", role: .cancel) {}
+                Text("Будет разблокирована возможность создания отчёта. Локальные отчёты не будут удалены.")
             }
             .onAppear {
                 loadDeviceName()
