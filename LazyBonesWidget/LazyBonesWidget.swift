@@ -83,17 +83,27 @@ struct LazyBonesWidgetEntryView : View {
 
     var body: some View {
         VStack(spacing: 8) {
-            Text("Лаботряс" + (entry.deviceName.isEmpty ? "" : " " + entry.deviceName))
-                .font(.headline)
-                .multilineTextAlignment(.center)
+            VStack(spacing: 0) {
+                Text("𝕷𝖆𝖇: 🅞’𝖙𝖗𝟗𝖈")
+                    .font(.system(size: 22, weight: .bold, design: .default))
+                    .multilineTextAlignment(.center)
+                if !entry.deviceName.isEmpty {
+                    Text(entry.deviceName)
+                        .font(.headline)
+                        .multilineTextAlignment(.center)
+                }
+            }
             Text(formattedDate(entry.date))
                 .font(.subheadline)
-            HStack(spacing: 8) {
-                Text(statusText)
-                    .font(.title3)
-                    .foregroundColor(statusColor)
-                Image(systemName: statusIcon)
-                    .foregroundColor(statusColor)
+            HStack(spacing: 12) {
+                Text(statusEmoji)
+                    .font(.system(size: 44))
+                    .frame(width: 54, height: 54)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(statusText)
+                        .font(.title3)
+                        .foregroundColor(statusColor)
+                }
             }
             if entry.reportStatus != "done" {
                 Text(entry.timerString)
@@ -110,11 +120,11 @@ struct LazyBonesWidgetEntryView : View {
         default: return "Отчёт не сделан"
         }
     }
-    var statusIcon: String {
+    var statusEmoji: String {
         switch entry.reportStatus {
-        case "done": return "checkmark.circle.fill"
-        case "inProgress": return "gearshape.fill"
-        default: return "exclamationmark.circle.fill"
+        case "done": return "👍"
+        case "inProgress": return "⚙️"
+        default: return "👎"
         }
     }
     var statusColor: Color {
