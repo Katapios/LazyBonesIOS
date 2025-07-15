@@ -11,6 +11,57 @@ struct MainView: View {
     
     var body: some View {
         VStack(spacing: 14) {
+            // --- Приветственный блок теперь первым ---
+            VStack(spacing: 10) {
+                Text("Молодец")
+                    .font(.caption)
+                    .foregroundColor(.blue)
+                Image(systemName: "arrow.up")
+                    .font(.body)
+                    .foregroundColor(.blue)
+                ZStack {
+                    Circle()
+                        .stroke(Color.gray.opacity(0.2), lineWidth: 2)
+                        .frame(width: 48, height: 48)
+                    Text("\(goodCountToday)")
+                        .font(.system(size: 28, weight: .bold, design: .serif))
+                        .foregroundColor(Color.blue)
+                }
+                Text("Здорово,")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .font(.title2)
+                Text("𝕷𝖆𝖇: 🅞’𝖙𝖗𝟗𝖈")
+                    .font(.custom("Georgia-Bold", size: 35))
+                    .kerning(1)
+                    .padding()
+                    .background(
+                        Capsule()
+                            .fill(Color(.black).opacity(0.85))
+                    )
+                    .foregroundStyle(.white)
+                Text("У тебя:")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .font(.title2)
+                ZStack {
+                    Circle()
+                        .stroke(Color.gray.opacity(0.2), lineWidth: 2)
+                        .frame(width: 48, height: 48)
+                    Text("\(badCountToday)")
+                        .font(.system(size: 28, weight: .bold, design: .serif))
+                        .foregroundColor(Color.pink)
+                }
+                Image(systemName: "arrow.down")
+                    .font(.body)
+                    .foregroundColor(.pink)
+                Text("Не молодец")
+                    .font(.caption)
+                    .foregroundColor(Color.pink)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            // --- Таймер, статус и кнопка теперь ниже ---
             GradientRingTimerView(
                 progress: timerProgress,
                 timeText: timerTimeTextOnly,
@@ -36,57 +87,6 @@ struct MainView: View {
                 isEnabled: store.reportStatus != .done
             )
             .padding(.horizontal)
-            // Новый приветственный блок
-            VStack(spacing: 10) {
-                Text("Молодец")
-                    .font(.caption)
-                    .foregroundColor(.blue)
-                Image(systemName: "arrow.up")
-                    .font(.body)
-                    .foregroundColor(.blue)
-                ZStack {
-                    Circle()
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 2)
-                        .frame(width: 48, height: 48)
-                    Text("\(goodCountToday)")
-                        .font(.system(size: 28, weight: .bold, design: .serif))
-                        .foregroundColor(Color.blue)
-                }
-                Text("Здорово,")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .font(.title2)
-                Text("𝕷𝖆𝖇: 🅞’𝖙𝖗𝟗𝖈")
-                    .font(.custom("Georgia-Bold", size: 35))
-                    .kerning(1)
-                    .padding()
-                
-                    .background(
-                        Capsule()
-                            .fill(Color(.black).opacity(0.85))
-                    )
-                    .foregroundStyle(.white)
-                Text("Как успехи?")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .font(.title2)
-                ZStack {
-                    Circle()
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 2)
-                        .frame(width: 48, height: 48)
-                    Text("\(badCountToday)")
-                        .font(.system(size: 28, weight: .bold, design: .serif))
-                        .foregroundColor(Color.pink)
-                }
-                Image(systemName: "arrow.down")
-                    .font(.body)
-                    .foregroundColor(.pink)
-                Text("Не молодец")
-                    .font(.caption)
-                    .foregroundColor(Color.pink)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
         }
         .padding(.vertical, 16)
         .frame(maxHeight: .infinity, alignment: .center)
