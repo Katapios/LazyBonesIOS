@@ -49,8 +49,8 @@ struct TagSectionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
-                .font(.headline)
-                .foregroundColor(.primary)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
             
             LazyVGrid(columns: [
                 GridItem(.adaptive(minimum: 100, maximum: 150), spacing: 8)
@@ -127,6 +127,8 @@ struct PostFormView: View {
     var onPublish: (() -> Void)? = nil
     @State private var isSending: Bool = false
     @State private var sendStatus: String? = nil
+    @State private var selectedTab: TabType = .good
+    enum TabType { case good, bad }
     
     // MARK: - Predefined Tags
     private let goodTags: [TagItem] = [
@@ -160,10 +162,12 @@ struct PostFormView: View {
             _goodItems = State(initialValue: post.goodItems.map { ChecklistItem(id: UUID(), text: $0) })
             _badItems = State(initialValue: post.badItems.map { ChecklistItem(id: UUID(), text: $0) })
             _voiceNotes = State(initialValue: post.voiceNotes)
+            self.title = "Редактирование отчёта"
         } else {
             _goodItems = State(initialValue: [ChecklistItem(id: UUID(), text: "")])
             _badItems = State(initialValue: [ChecklistItem(id: UUID(), text: "")])
             _voiceNotes = State(initialValue: [])
+            self.title = "Создание отчёта"
         }
     }
     
@@ -171,40 +175,83 @@ struct PostFormView: View {
         NavigationView {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    // Секция тегов для "Я молодец"
-                    TagSectionView(
-                        title: "Быстрые теги для 'Я молодец':",
-                        tags: goodTags,
-                        onTagTap: addGoodTag
-                    )
-                    
-                    ChecklistSectionView(
-                        title: "Я молодец:",
-                        items: $goodItems,
-                        focusPrefix: "good",
-                        focusField: _goodFocus,
-                        onAdd: addGoodItem,
-                        onRemove: removeGoodItem
-                    )
-                    
-                    // Секция тегов для "Я не молодец"
-                    TagSectionView(
-                        title: "Быстрые теги для 'Я не молодец':",
-                        tags: badTags,
-                        onTagTap: addBadTag
-                    )
-                    
-                    ChecklistSectionView(
-                        title: "Я не молодец:",
-                        items: $badItems,
-                        focusPrefix: "bad",
-                        focusField: _badFocus,
-                        onAdd: addBadItem,
-                        onRemove: removeBadItem
-                    )
-                    
+                    // Компактный свитчер ЛОБ/БОЛ над контентом
+                    HStack(spacing: 0) {
+                        Button(action: { selectedTab = .good }) {
+                            HStack(spacing: 2) {
+                                Text("ЛОБ")
+                                    .font(.system(size: 14.3, weight: .bold)) // 13 * 1.1
+                                    .foregroundColor(selectedTab == .good ? .green : .primary)
+                                Text("(")
+                                    .font(.system(size: 14.3))
+                                    .foregroundColor(.secondary)
+                                Text("\(goodItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count)")
+                                    .font(.system(size: 14.3))
+                                    .foregroundColor(.secondary)
+                                Text(")")
+                                    .font(.system(size: 14.3))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal, 6.6) // 6 * 1.1
+                            .padding(.vertical, 2.2)  // 2 * 1.1
+                            .background(selectedTab == .good ? Color.green.opacity(0.12) : Color.clear)
+                            .cornerRadius(6.6) // 6 * 1.1
+                        }
+                        Button(action: { selectedTab = .bad }) {
+                            HStack(spacing: 2) {
+                                Text("БОЛ")
+                                    .font(.system(size: 14.3, weight: .bold))
+                                    .foregroundColor(selectedTab == .bad ? .red : .primary)
+                                Text("(")
+                                    .font(.system(size: 14.3))
+                                    .foregroundColor(.secondary)
+                                Text("\(badItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count)")
+                                    .font(.system(size: 14.3))
+                                    .foregroundColor(.secondary)
+                                Text(")")
+                                    .font(.system(size: 14.3))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal, 6.6)
+                            .padding(.vertical, 2.2)
+                            .background(selectedTab == .bad ? Color.red.opacity(0.12) : Color.clear)
+                            .cornerRadius(6.6)
+                        }
+                    }
+                    .background(Color(.systemGray6))
+                    .cornerRadius(8.8) // 8 * 1.1
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    // --- остальной контент формы ниже ---
+                    if selectedTab == .good {
+                        TagSectionView(
+                            title: "Быстрые теги для 'Я молодец':",
+                            tags: goodTags,
+                            onTagTap: addGoodTag
+                        )
+                        ChecklistSectionView(
+                            title: "Я молодец:",
+                            items: $goodItems,
+                            focusPrefix: "good",
+                            focusField: _goodFocus,
+                            onAdd: addGoodItem,
+                            onRemove: removeGoodItem
+                        )
+                    } else {
+                        TagSectionView(
+                            title: "Быстрые теги для 'Я не молодец':",
+                            tags: badTags,
+                            onTagTap: addBadTag
+                        )
+                        ChecklistSectionView(
+                            title: "Я не молодец:",
+                            items: $badItems,
+                            focusPrefix: "bad",
+                            focusField: _badFocus,
+                            onAdd: addBadItem,
+                            onRemove: removeBadItem
+                        )
+                    }
                     VoiceRecorderListView(voiceNotes: $voiceNotes)
-                    
                     if isSending {
                         ProgressView("Отправка в Telegram...")
                     }
@@ -219,6 +266,7 @@ struct PostFormView: View {
             }
             .hideKeyboardOnTap()
             .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .bottomBar) {
                     HStack(spacing: 10) {
