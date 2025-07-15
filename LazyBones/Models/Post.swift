@@ -278,6 +278,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
             reportStatus = .notStarted
             localService.saveReportStatus(.notStarted)
             WidgetCenter.shared.reloadAllTimelines()
+            if notificationsEnabled { scheduleNotifications() }
             print("[DEBUG] updateReportStatus (forceUnlock): forceUnlock=\(forceUnlock), reportStatus=\(reportStatus)")
             return
         }
@@ -295,6 +296,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
         }
         localService.saveReportStatus(reportStatus)
         WidgetCenter.shared.reloadAllTimelines()
+        if notificationsEnabled { scheduleNotifications() }
         print("[DEBUG] updateReportStatus: forceUnlock=\(forceUnlock), reportStatus=\(reportStatus)")
     }
     func loadReportStatus() {

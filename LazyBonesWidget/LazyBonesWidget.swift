@@ -19,8 +19,20 @@ struct Provider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> ()) {
-        let entry = SimpleEntry(date: Date(), reportStatus: Self.currentReportStatus(), deviceName: Self.deviceName(), timerString: Self.currentTimerString())
-        let timeline = Timeline(entries: [entry], policy: .after(Calendar.current.startOfDay(for: Date().addingTimeInterval(86400))))
+        var entries: [SimpleEntry] = []
+        let now = Date()
+        // Обновлять каждую минуту на ближайший час
+        for minuteOffset in 0..<60 {
+            let entryDate = Calendar.current.date(byAdding: .minute, value: minuteOffset, to: now)!
+            let entry = SimpleEntry(
+                date: entryDate,
+                reportStatus: Self.currentReportStatus(),
+                deviceName: Self.deviceName(),
+                timerString: Self.currentTimerString(for: entryDate)
+            )
+            entries.append(entry)
+        }
+        let timeline = Timeline(entries: entries, policy: .atEnd)
         completion(timeline)
     }
 
@@ -52,6 +64,21 @@ struct Provider: TimelineProvider {
     static func currentTimerString() -> String {
         let calendar = Calendar.current
         let now = Date()
+        let start = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: now)!
+        let end = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: now)!
+        if now < start {
+            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: start)
+            return "До старта: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+        } else if now >= start && now <= end {
+            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: end)
+            return "До конца: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+        } else {
+            return "Время отчёта истекло"
+        }
+    }
+    static func currentTimerString(for date: Date) -> String {
+        let calendar = Calendar.current
+        let now = date
         let start = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: now)!
         let end = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: now)!
         if now < start {

@@ -14,6 +14,7 @@ struct TagPickerUIKitWheel: UIViewRepresentable {
         picker.dataSource = context.coordinator
         picker.delegate = context.coordinator
         picker.selectRow(selectedIndex, inComponent: 0, animated: false)
+        context.coordinator.pickerView = picker
         // Добавим tap gesture только если тег один
         if tags.count == 1 {
             let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTapOnPicker))
@@ -60,6 +61,7 @@ struct TagPickerUIKitWheel: UIViewRepresentable {
     class Coordinator: NSObject, UIPickerViewDataSource, UIPickerViewDelegate {
         var parent: TagPickerUIKitWheel
         private var lastSelectedRow: Int?
+        weak var pickerView: UIPickerView?
         init(_ parent: TagPickerUIKitWheel) {
             self.parent = parent
         }
@@ -87,10 +89,10 @@ struct TagPickerUIKitWheel: UIViewRepresentable {
             return label
         }
         func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
-            // Автоматический выбор тега при остановке колеса
             if parent.tags.indices.contains(row) {
                 parent.selectedIndex = row
                 parent.onSelect(parent.tags[row])
+                pickerView.selectRow(row, inComponent: 0, animated: true)
             }
         }
         func pickerView(_ pickerView: UIPickerView, rowHeightForComponent component: Int) -> CGFloat {
