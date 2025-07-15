@@ -129,6 +129,8 @@ struct PostFormView: View {
     @State private var sendStatus: String? = nil
     @State private var selectedTab: TabType = .good
     enum TabType { case good, bad }
+    @State private var pickerIndexGood: Int = 0
+    @State private var pickerIndexBad: Int = 0
     
     // MARK: - Predefined Tags
     private let goodTags: [TagItem] = [
@@ -177,7 +179,10 @@ struct PostFormView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     // Компактный свитчер ЛОБ/БОЛ над контентом
                     HStack(spacing: 0) {
-                        Button(action: { selectedTab = .good }) {
+                        Button(action: { 
+                            selectedTab = .good
+                            pickerIndexGood = 0 // сбросить индекс
+                        }) {
                             HStack(spacing: 2) {
                                 Text("ЛОБ")
                                     .font(.system(size: 14.3, weight: .bold)) // 13 * 1.1
@@ -197,7 +202,10 @@ struct PostFormView: View {
                             .background(selectedTab == .good ? Color.green.opacity(0.12) : Color.clear)
                             .cornerRadius(6.6) // 6 * 1.1
                         }
-                        Button(action: { selectedTab = .bad }) {
+                        Button(action: { 
+                            selectedTab = .bad
+                            pickerIndexBad = 0 // сбросить индекс
+                        }) {
                             HStack(spacing: 2) {
                                 Text("БОЛ")
                                     .font(.system(size: 14.3, weight: .bold))
@@ -221,13 +229,54 @@ struct PostFormView: View {
                     .background(Color(.systemGray6))
                     .cornerRadius(8.8) // 8 * 1.1
                     .frame(maxWidth: .infinity, alignment: .center)
+                    // Всегда вычислять теги для колеса и горизонтального списка реактивно
+                    let allTags: [TagItem] = selectedTab == .good ? goodTags : badTags
+                    let selectedItems: [ChecklistItem] = selectedTab == .good ? goodItems : badItems
+                    let selectedTexts: Set<String> = Set(selectedItems.map { $0.text })
+                    let availableTags: [TagItem] = allTags.filter { !selectedTexts.contains($0.text) }
+                    let pickerIndex: Binding<Int> = selectedTab == .good ? $pickerIndexGood : $pickerIndexBad
+                    if !availableTags.isEmpty {
+                        TagPickerUIKitWheel(tags: availableTags, selectedIndex: pickerIndex) { tag in
+                            let prevIndex = pickerIndex.wrappedValue
+                            let prevCount = availableTags.count
+                            if selectedTab == .good {
+                                addGoodTag(tag)
+                            } else {
+                                addBadTag(tag)
+                            }
+                            DispatchQueue.main.async {
+                                let newCount = (selectedTab == .good ? goodTags : badTags).filter { !Set((selectedTab == .good ? goodItems : badItems).map { $0.text }).contains($0.text) }.count
+                                if prevIndex < newCount {
+                                    pickerIndex.wrappedValue = prevIndex
+                                } else {
+                                    pickerIndex.wrappedValue = max(0, newCount - 1)
+                                }
+                            }
+                        }
+                        .frame(height: 180)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .id(selectedTab) // <--- добавлено для корректного обновления
+                    }
+                    // Список выбранных тегов (тоже с TagBrickView, тап — удалить)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(selectedItems) { item in
+                                // Для ЛОБ искать только в goodTags, для БОЛ — только в badTags
+                                let tag = (selectedTab == .good ? goodTags : badTags).first(where: { $0.text == item.text }) ?? TagItem(text: item.text, icon: "tag", color: .gray)
+                                TagBrickView(tag: tag) {
+                                    // Удалить тег из списка и вернуть в picker
+                                    if selectedTab == .good {
+                                        removeGoodItem(item)
+                                    } else {
+                                        removeBadItem(item)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
                     // --- остальной контент формы ниже ---
                     if selectedTab == .good {
-                        TagSectionView(
-                            title: "Быстрые теги для 'Я молодец':",
-                            tags: goodTags,
-                            onTagTap: addGoodTag
-                        )
                         ChecklistSectionView(
                             title: "Я молодец:",
                             items: $goodItems,
@@ -237,11 +286,6 @@ struct PostFormView: View {
                             onRemove: removeGoodItem
                         )
                     } else {
-                        TagSectionView(
-                            title: "Быстрые теги для 'Я не молодец':",
-                            tags: badTags,
-                            onTagTap: addBadTag
-                        )
                         ChecklistSectionView(
                             title: "Я не молодец:",
                             items: $badItems,
@@ -310,7 +354,7 @@ struct PostFormView: View {
         if !goodItems.contains(where: { $0.text == tag.text }) {
             let new = ChecklistItem(id: UUID(), text: tag.text)
             goodItems.append(new)
-            goodFocus = new.id
+            // goodFocus = new.id // убрано, чтобы не вызывать клавиатуру
         }
     }
     
@@ -319,7 +363,7 @@ struct PostFormView: View {
         if !badItems.contains(where: { $0.text == tag.text }) {
             let new = ChecklistItem(id: UUID(), text: tag.text)
             badItems.append(new)
-            badFocus = new.id
+            // badFocus = new.id // убрано, чтобы не вызывать клавиатуру
         }
     }
     
