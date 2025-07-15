@@ -50,7 +50,8 @@ class PostStore: ObservableObject, PostStoreProtocol {
     @Published var lastUpdateId: Int? = nil
     @Published var reportStatus: ReportStatus = .notStarted
     @Published var forceUnlock: Bool = false
-
+    @Published var timeLeft: String = "" // Новое свойство для отображения таймера
+    private var timer: Timer? = nil
     // --- Notification settings ---
     @Published var notificationsEnabled: Bool = false {
         didSet { saveNotificationSettings();
@@ -73,6 +74,12 @@ class PostStore: ObservableObject, PostStoreProtocol {
         loadForceUnlock()
         loadNotificationSettings()
         updateReportStatus()
+        updateTimeLeft()
+        startTimer()
+    }
+
+    deinit {
+        stopTimer()
     }
 
     /// Загрузка отчётов из LocalReportService
@@ -367,6 +374,40 @@ class PostStore: ObservableObject, PostStoreProtocol {
         let h = max(0, diff.hour ?? 0)
         let m = max(0, diff.minute ?? 0)
         return String(format: "%02d:%02d", h, m)
+    }
+
+    // MARK: - Timer Logic
+    /// Таймер
+    func startTimer() {
+        stopTimer()
+        updateTimeLeft()
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            self?.updateTimeLeft()
+        }
+    }
+    func stopTimer() {
+        timer?.invalidate()
+        timer = nil
+    }
+    func updateTimeLeft() {
+        let calendar = Calendar.current
+        let now = Date()
+        let start = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: now)!
+        let end = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: now)!
+        if reportStatus == .done {
+            let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
+            let nextStart = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: tomorrow)!
+            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: nextStart)
+            timeLeft = "До старта: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+        } else if now < start {
+            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: start)
+            timeLeft = "До старта: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+        } else if now >= start && now <= end {
+            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: end)
+            timeLeft = "До конца: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+        } else {
+            timeLeft = "Время отчёта истекло"
+        }
     }
 }
 
