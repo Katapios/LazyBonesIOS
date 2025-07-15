@@ -40,31 +40,6 @@ struct TagBrickView: View {
     }
 }
 
-// MARK: - Tag Section Component
-struct TagSectionView: View {
-    let title: String
-    let tags: [TagItem]
-    let onTagTap: (TagItem) -> Void
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            
-            LazyVGrid(columns: [
-                GridItem(.adaptive(minimum: 100, maximum: 150), spacing: 8)
-            ], spacing: 8) {
-                ForEach(tags) { tag in
-                    TagBrickView(tag: tag) {
-                        onTagTap(tag)
-                    }
-                }
-            }
-        }
-    }
-}
-
 struct ChecklistItem: Identifiable, Equatable {
     let id: UUID
     var text: String
@@ -231,34 +206,22 @@ struct PostFormView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     // Всегда вычислять теги для колеса и горизонтального списка реактивно
                     let allTags: [TagItem] = selectedTab == .good ? goodTags : badTags
-                    let selectedItems: [ChecklistItem] = selectedTab == .good ? goodItems : badItems
-                    let selectedTexts: Set<String> = Set(selectedItems.map { $0.text })
-                    let availableTags: [TagItem] = allTags.filter { !selectedTexts.contains($0.text) }
                     let pickerIndex: Binding<Int> = selectedTab == .good ? $pickerIndexGood : $pickerIndexBad
-                    if !availableTags.isEmpty {
-                        TagPickerUIKitWheel(tags: availableTags, selectedIndex: pickerIndex) { tag in
-                            let prevIndex = pickerIndex.wrappedValue
-                            let prevCount = availableTags.count
+                    if !allTags.isEmpty {
+                        TagPickerUIKitWheel(tags: allTags, selectedIndex: pickerIndex) { tag in
                             if selectedTab == .good {
                                 addGoodTag(tag)
                             } else {
                                 addBadTag(tag)
                             }
-                            DispatchQueue.main.async {
-                                let newCount = (selectedTab == .good ? goodTags : badTags).filter { !Set((selectedTab == .good ? goodItems : badItems).map { $0.text }).contains($0.text) }.count
-                                if prevIndex < newCount {
-                                    pickerIndex.wrappedValue = prevIndex
-                                } else {
-                                    pickerIndex.wrappedValue = max(0, newCount - 1)
-                                }
-                            }
                         }
                         .frame(height: 180)
                         .frame(maxWidth: .infinity, alignment: .center)
-                        .id(selectedTab) // <--- добавлено для корректного обновления
+                        .id(selectedTab)
                     }
                     // Список выбранных тегов (тоже с TagBrickView, тап — удалить)
                     ScrollView(.horizontal, showsIndicators: false) {
+                        let selectedItems: [ChecklistItem] = selectedTab == .good ? goodItems : badItems
                         HStack(spacing: 8) {
                             ForEach(selectedItems) { item in
                                 // Для ЛОБ искать только в goodTags, для БОЛ — только в badTags

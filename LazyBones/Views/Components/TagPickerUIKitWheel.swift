@@ -14,6 +14,12 @@ struct TagPickerUIKitWheel: UIViewRepresentable {
         picker.dataSource = context.coordinator
         picker.delegate = context.coordinator
         picker.selectRow(selectedIndex, inComponent: 0, animated: false)
+        // Добавим tap gesture только если тег один
+        if tags.count == 1 {
+            let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTapOnPicker))
+            picker.addGestureRecognizer(tap)
+            picker.isUserInteractionEnabled = true
+        }
         return picker
     }
 
@@ -33,6 +39,20 @@ struct TagPickerUIKitWheel: UIViewRepresentable {
         if selectedIndex != safeIndex {
             DispatchQueue.main.async {
                 self.selectedIndex = safeIndex
+            }
+        }
+        // Обновим жесты: если тегов один — добавить, иначе убрать
+        if tags.count == 1 {
+            if uiView.gestureRecognizers?.first(where: { $0 is UITapGestureRecognizer }) == nil {
+                let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTapOnPicker))
+                uiView.addGestureRecognizer(tap)
+                uiView.isUserInteractionEnabled = true
+            }
+        } else {
+            uiView.gestureRecognizers?.forEach { gr in
+                if gr is UITapGestureRecognizer {
+                    uiView.removeGestureRecognizer(gr)
+                }
             }
         }
     }
@@ -75,6 +95,12 @@ struct TagPickerUIKitWheel: UIViewRepresentable {
         }
         func pickerView(_ pickerView: UIPickerView, rowHeightForComponent component: Int) -> CGFloat {
             44
+        }
+        // --- Новый метод для обработки тапа по колесу, если тег один ---
+        @objc func handleTapOnPicker() {
+            guard parent.tags.count == 1 else { return }
+            parent.selectedIndex = 0
+            parent.onSelect(parent.tags[0])
         }
     }
 }
