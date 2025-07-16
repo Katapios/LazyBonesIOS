@@ -49,6 +49,19 @@ struct ReportsView: View {
                         Image(systemName: "arrow.clockwise")
                     }
                     .buttonStyle(BorderlessButtonStyle())
+                    Spacer(minLength: 8)
+                    Link(destination: URL(string: "https://t.me/+Ny08CEMnQJplMGJi")!) {
+                        HStack(spacing: 4) {
+                            Text("В группу")
+                                .foregroundColor(.blue)
+                                .font(.subheadline)
+                            Image(systemName: "paperplane.fill")
+                                .foregroundColor(.blue)
+                                .imageScale(.large)
+                        }
+                        .padding(.leading, 2)
+                        .help("Вступить в группу Telegram")
+                    }
                 }) {
                     // Предупреждение о техническом ограничении
                     VStack(alignment: .leading, spacing: 4) {

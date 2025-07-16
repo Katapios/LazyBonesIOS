@@ -28,8 +28,8 @@ struct ContentView: View {
                 }
         }
         .environmentObject(store)
-        .onChange(of: scenePhase) { newPhase in
-            if newPhase == .active {
+        .onChange(of: scenePhase) {
+            if scenePhase == .active {
                 WidgetCenter.shared.reloadAllTimelines()
             }
         }
