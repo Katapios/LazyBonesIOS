@@ -6,10 +6,12 @@
 //
 
 import SwiftUI
+import WidgetKit
 
 /// Корневой TabView приложения
 struct ContentView: View {
     @StateObject var store = PostStore()
+    @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         TabView {
             MainView()
@@ -26,6 +28,11 @@ struct ContentView: View {
                 }
         }
         .environmentObject(store)
+        .onChange(of: scenePhase) { newPhase in
+            if newPhase == .active {
+                WidgetCenter.shared.reloadAllTimelines()
+            }
+        }
     }
 }
 

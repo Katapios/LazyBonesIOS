@@ -67,11 +67,11 @@ struct Provider: TimelineProvider {
         let start = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: now)!
         let end = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: now)!
         if now < start {
-            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: start)
-            return "До старта: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+            let diff = calendar.dateComponents([.hour, .minute], from: now, to: start)
+            return "До старта: " + String(format: "%02d:%02d", diff.hour ?? 0, diff.minute ?? 0)
         } else if now >= start && now <= end {
-            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: end)
-            return "До конца: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+            let diff = calendar.dateComponents([.hour, .minute], from: now, to: end)
+            return "До конца: " + String(format: "%02d:%02d", diff.hour ?? 0, diff.minute ?? 0)
         } else {
             return "Время отчёта истекло"
         }
@@ -82,11 +82,11 @@ struct Provider: TimelineProvider {
         let start = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: now)!
         let end = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: now)!
         if now < start {
-            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: start)
-            return "До старта: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+            let diff = calendar.dateComponents([.hour, .minute], from: now, to: start)
+            return "До старта: " + String(format: "%02d:%02d", diff.hour ?? 0, diff.minute ?? 0)
         } else if now >= start && now <= end {
-            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: end)
-            return "До конца: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+            let diff = calendar.dateComponents([.hour, .minute], from: now, to: end)
+            return "До конца: " + String(format: "%02d:%02d", diff.hour ?? 0, diff.minute ?? 0)
         } else {
             return "Время отчёта истекло"
         }

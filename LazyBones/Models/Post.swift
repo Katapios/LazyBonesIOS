@@ -396,6 +396,12 @@ class PostStore: ObservableObject, PostStoreProtocol {
         let now = Date()
         let start = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: now)!
         let end = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: now)!
+        // --- Новый день: если нет отчёта на сегодня или дата отчёта не совпадает с сегодняшней, обновить статус ---
+        let today = calendar.startOfDay(for: now)
+        let hasTodayPost = posts.contains(where: { calendar.isDate($0.date, inSameDayAs: today) })
+        if !hasTodayPost || (reportStatus == .done && hasTodayPost) {
+            updateReportStatus()
+        }
         if reportStatus == .done {
             let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
             let nextStart = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: tomorrow)!
