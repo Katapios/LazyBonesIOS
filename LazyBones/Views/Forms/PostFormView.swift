@@ -339,7 +339,7 @@ struct PostFormView: View {
                             icon: "paperplane.fill",
                             color: .green,
                             action: publishAndNotify,
-                            isEnabled: canSave && !isSending,
+                            isEnabled: canPublish && !isSending,
                             compact: true
                         )
                     }
@@ -437,6 +437,11 @@ struct PostFormView: View {
     }
     
     var canSave: Bool {
+        goodItems.contains(where: { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }) ||
+        badItems.contains(where: { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty })
+    }
+    
+    var canPublish: Bool {
         goodItems.contains(where: { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }) &&
         badItems.contains(where: { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty })
     }
