@@ -5,33 +5,10 @@ struct ReportCardView: View {
     var isSelectable: Bool = false
     var isSelected: Bool = false
     var onSelect: (() -> Void)? = nil
-    
-    private func getIconForItem(_ item: String, isGood: Bool) -> String {
-        let lowercasedItem = item.lowercased()
-        if isGood {
-            if lowercasedItem.contains("не хлебил") { return "🚫" }
-            if lowercasedItem.contains("не новостил") { return "📰" }
-            if lowercasedItem.contains("не ел вредное") { return "🍴" }
-            if lowercasedItem.contains("гулял") { return "🚶" }
-            if lowercasedItem.contains("кодил") { return "💻" }
-            if lowercasedItem.contains("рисовал") { return "🎨" }
-            if lowercasedItem.contains("читал") { return "📚" }
-            if lowercasedItem.contains("смотрел туториалы") { return "▶️" }
-        } else {
-            if lowercasedItem.contains("хлебил") { return "❌" }
-            if lowercasedItem.contains("новостил") { return "📰" }
-            if lowercasedItem.contains("ел вредное") { return "🍴" }
-            if lowercasedItem.contains("не гулял") { return "🚶" }
-            if lowercasedItem.contains("не кодил") { return "💻" }
-            if lowercasedItem.contains("не рисовал") { return "🎨" }
-            if lowercasedItem.contains("не читал") { return "📚" }
-            if lowercasedItem.contains("не смотрел туториалы") { return "▶️" }
-        }
-        return isGood ? "✅" : "❌"
-    }
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text(post.date, style: .date)
                     .font(.headline)
@@ -60,32 +37,40 @@ struct ReportCardView: View {
                     .font(.body)
             } else {
                 if !post.goodItems.isEmpty {
-                    Text("✅ Я молодец:").font(.subheadline).bold()
-                    ForEach(Array(post.goodItems.filter { !$0.isEmpty }.uniqued().enumerated()), id: \.element) { index, item in
-                        HStack(alignment: .top, spacing: 8) {
-                            Text("\(index + 1).")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .frame(width: 20, alignment: .leading)
-                            Text(getIconForItem(item, isGood: true))
-                                .font(.system(size: 16))
-                            Text(item)
-                                .font(.body)
+                    Text("Я молодец:")
+                        .font(.subheadline).bold()
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 8)
+                        .background(Color.green.opacity(0.12))
+                        .cornerRadius(8)
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(Array(post.goodItems.filter { !$0.isEmpty }.uniqued().enumerated()), id: \.element) { index, item in
+                            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                Text("\(index + 1).")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text(item)
+                                    .font(.body)
+                            }
                         }
                     }
                 }
                 if !post.badItems.isEmpty {
-                    Text("❌ Я не молодец:").font(.subheadline).bold()
-                    ForEach(Array(post.badItems.filter { !$0.isEmpty }.uniqued().enumerated()), id: \.element) { index, item in
-                        HStack(alignment: .top, spacing: 8) {
-                            Text("\(index + 1).")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .frame(width: 20, alignment: .leading)
-                            Text(getIconForItem(item, isGood: false))
-                                .font(.system(size: 16))
-                            Text(item)
-                                .font(.body)
+                    Text("Я не молодец:")
+                        .font(.subheadline).bold()
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 8)
+                        .background(Color.red.opacity(0.12))
+                        .cornerRadius(8)
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(Array(post.badItems.filter { !$0.isEmpty }.uniqued().enumerated()), id: \.element) { index, item in
+                            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                Text("\(index + 1).")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text(item)
+                                    .font(.body)
+                            }
                         }
                     }
                 }
@@ -115,15 +100,13 @@ struct ReportCardView: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .background(Color(.secondarySystemGroupedBackground).opacity(isSelected ? 0.25 : 0.12))
+                .fill(colorScheme == .dark ? Color(.secondarySystemGroupedBackground) : Color.white)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 18)
                 .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
         )
-        .shadow(color: Color.black.opacity(0.06), radius: 4, x: 0, y: 2)
-        .padding(.vertical, 4)
+        .shadow(color: colorScheme == .dark ? Color.black.opacity(0.18) : Color.black.opacity(0.06), radius: 4, x: 0, y: 2)
         .contentShape(Rectangle())
         .onTapGesture {
             if isSelectable { onSelect?() }

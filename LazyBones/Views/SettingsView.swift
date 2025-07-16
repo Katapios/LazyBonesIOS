@@ -122,6 +122,7 @@ struct SettingsView: View {
                 telegramBotId = store.telegramBotId ?? ""
             }
             .hideKeyboardOnTap()
+            .scrollIndicators(.hidden)
         }
     }
     func saveDeviceName() {

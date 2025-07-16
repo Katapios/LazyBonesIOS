@@ -1,5 +1,4 @@
 import SwiftUI
-    //import LazyBones.Views.Components.ReportCardView
 
 /// Вкладка 'Отчёты': список всех постов с датами и чеклистами
 struct ReportsView: View {
@@ -8,105 +7,102 @@ struct ReportsView: View {
     @State private var externalError: String? = nil
     @State private var isSelectionMode = false
     @State private var selectedLocalReportIDs: Set<UUID> = []
+
     var body: some View {
         NavigationView {
-            List {
-                // Локальные отчеты
-                if !store.posts.isEmpty {
-                    Section(header: HStack {
-                        Text("Локальные отчёты").font(.title3).foregroundColor(.accentColor)
-                        if isSelectionMode {
-                            Spacer()
-                            Button(action: selectAllLocalReports) {
-                                Text(selectedLocalReportIDs.count == store.posts.count ? "Снять все" : "Выбрать все")
-                                    .font(.caption)
+            ScrollView {
+                VStack(spacing: 16) {
+                    // --- Локальные отчёты ---
+                    if !store.posts.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("ЛОКАЛЬНЫЕ ОТЧЁТЫ")
+                                .font(.title3)
+                                .foregroundColor(.accentColor)
+                                .padding(.horizontal, 8)
+                                .padding(.top, 8)
+                            if isSelectionMode {
+                                Button(action: selectAllLocalReports) {
+                                    Text(selectedLocalReportIDs.count == store.posts.count ? "Снять все" : "Выбрать все")
+                                        .font(.caption)
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                        .foregroundColor(.primary)
+                                }
+                                .buttonStyle(.bordered)
+                                .padding(.vertical, 2)
                             }
-                        }
-                    }) {
-                        ForEach(store.posts) { post in
-                            ReportCardView(post: post, isSelectable: isSelectionMode, isSelected: selectedLocalReportIDs.contains(post.id)) {
-                                toggleSelection(for: post.id)
-                            }
-                        }
-                    }
-                }
-                // Внешние отчеты из Telegram
-                Section(header: HStack(spacing: 8) {
-                    Text("Из Telegram").font(.title3).foregroundColor(.accentColor)
-                    if isLoadingExternal {
-                        ProgressView().scaleEffect(0.7)
-                    }
-                    Button(action: {
-                        isLoadingExternal = true
-                        externalError = nil
-                        store.fetchExternalPosts { success in
-                            isLoadingExternal = false
-                            if !success {
-                                externalError = "Ошибка загрузки из Telegram"
-                            }
-                        }
-                    }) {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .buttonStyle(BorderlessButtonStyle())
-                    Spacer(minLength: 8)
-                    Link(destination: URL(string: "https://t.me/+Ny08CEMnQJplMGJi")!) {
-                        HStack(spacing: 4) {
-                            Text("В группу")
-                                .foregroundColor(.blue)
-                                .font(.subheadline)
-                            Image(systemName: "paperplane.fill")
-                                .foregroundColor(.blue)
-                                .imageScale(.large)
-                        }
-                        .padding(.leading, 2)
-                        .help("Вступить в группу Telegram")
-                    }
-                }) {
-                    // Предупреждение о техническом ограничении
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.orange)
-                            Text("Техническое ограничение")
-                                .font(.caption)
-                                .foregroundColor(.orange)
-                        }
-                        Text("Бот не может видеть свои собственные сообщения через Telegram Bot API. Поэтому отправленные вами отчёты могут не отображаться в этом списке.")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.vertical, 4)
-                    
-                    Button(action: {
-                        store.deleteAllBotMessages { success in
-                            if success {
-                                withAnimation {
-                                    store.externalPosts.removeAll()
-                                    store.saveExternalPosts()
+                            ForEach(store.posts) { post in
+                                ReportCardView(
+                                    post: post,
+                                    isSelectable: isSelectionMode,
+                                    isSelected: selectedLocalReportIDs.contains(post.id)
+                                ) {
+                                    toggleSelection(for: post.id)
                                 }
                             }
                         }
-                    }) {
-                        Label("Очистить всю историю", systemImage: "trash.fill")
-                            .foregroundColor(.red)
                     }
-                    .buttonStyle(BorderlessButtonStyle())
-                    .help("Удалить ВСЕ сообщения бота из Telegram (включая невидимые)")
-                    
+
+                    // --- Внешние отчёты из Telegram ---
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("ИЗ TELEGRAM")
+                            .font(.title3)
+                            .foregroundColor(.accentColor)
+                            .padding(.horizontal, 8)
+                            .padding(.top, 8)
+                        HStack(spacing: 12) {
+                            Button(action: reloadExternalReports) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "arrow.clockwise")
+                                    Text("Обновить")
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                            Link(destination: URL(string: "https://t.me/+Ny08CEMnQJplMGJi")!) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "paperplane.fill")
+                                    Text("В группу")
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                            if isLoadingExternal {
+                                ProgressView().scaleEffect(0.7)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 2)
+                        if store.externalPosts.isEmpty && !isLoadingExternal {
+                            Text("Нет внешних отчётов")
+                                .foregroundColor(.primary)
+                                .font(.caption)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.vertical, 16)
+                        }
+                        ForEach(store.externalPosts) { post in
+                            ReportCardView(post: post, isSelectable: false, isSelected: false, onSelect: nil)
+                        }
+                    }
+
+                    // --- Техническое предупреждение ---
+                    telegramWarning
+                        .foregroundColor(.primary)
+
+                    // --- Кнопка очистки истории ---
+                    telegramClearButton
+                        .foregroundColor(.primary)
+
+                    // --- Ошибка загрузки ---
                     if let error = externalError {
-                        Text(error).foregroundColor(.red)
-                    }
-                    if store.externalPosts.isEmpty && !isLoadingExternal {
-                        Text("Нет внешних отчётов").foregroundColor(.gray)
-                    }
-                    ForEach(store.externalPosts) { post in
-                        ReportCardView(post: post, isSelectable: false, isSelected: false, onSelect: nil)
+                        Text(error)
+                            .foregroundColor(.primary)
+                            .font(.caption)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 16)
                     }
                 }
+                .padding()
             }
-            .listStyle(InsetGroupedListStyle())
             .navigationTitle("Отчёты")
+            .scrollIndicators(.hidden)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(isSelectionMode ? "Отмена" : "Выбрать") {
@@ -127,6 +123,36 @@ struct ReportsView: View {
             }
         }
     }
+
+    // MARK: - Telegram Warning Block
+    private var telegramWarning: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.orange)
+                Text("Техническое ограничение")
+                    .font(.caption)
+                    .foregroundColor(.orange)
+            }
+            Text("Бот не может видеть свои собственные сообщения через Telegram Bot API. Поэтому отправленные вами отчёты могут не отображаться в этом списке.")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        }
+    }
+
+    // MARK: - Telegram Clear Button
+    private var telegramClearButton: some View {
+        Button(action: clearExternalReports) {
+            Label("Очистить всю историю", systemImage: "trash.fill")
+                .foregroundColor(.red)
+                .frame(maxWidth: .infinity, alignment: .center)
+        }
+        .buttonStyle(.bordered)
+        .padding(.vertical, 2)
+        .help("Удалить ВСЕ сообщения бота из Telegram (включая невидимые)")
+    }
+
+    // MARK: - Actions
     private func toggleSelection(for id: UUID) {
         if selectedLocalReportIDs.contains(id) {
             selectedLocalReportIDs.remove(id)
@@ -147,6 +173,26 @@ struct ReportsView: View {
             selectedLocalReportIDs.removeAll()
             isSelectionMode = false
             store.save() // если есть метод сохранения
+        }
+    }
+    private func reloadExternalReports() {
+        isLoadingExternal = true
+        externalError = nil
+        store.fetchExternalPosts { success in
+            isLoadingExternal = false
+            if !success {
+                externalError = "Ошибка загрузки из Telegram"
+            }
+        }
+    }
+    private func clearExternalReports() {
+        store.deleteAllBotMessages { success in
+            if success {
+                withAnimation {
+                    store.externalPosts.removeAll()
+                    store.saveExternalPosts()
+                }
+            }
         }
     }
 }

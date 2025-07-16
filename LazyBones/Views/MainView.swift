@@ -4,6 +4,7 @@ import SwiftUI
 struct MainView: View {
     @State private var showPostForm = false
     @EnvironmentObject var store: PostStore
+    @Environment(\.colorScheme) var colorScheme
 
     var postForToday: Post? {
         store.posts.first(where: {
@@ -35,13 +36,14 @@ struct MainView: View {
                     .font(.title2)
                 VStack {
                     Text("𝕷𝖆𝖇: 🅞’𝖙𝖗𝟗𝖈")
+                        .foregroundColor(colorScheme == .dark ? .black : .white)
                 }
                 .font(.custom("Georgia-Bold", size: 35))
                 .kerning(1)
                 .padding()
                 .background(
                     Capsule()
-                        .fill(Color(.black).opacity(0.85))
+                        .fill(colorScheme == .dark ? Color.white : Color(.black).opacity(0.85))
                 )
                 .foregroundStyle(.white)
 
