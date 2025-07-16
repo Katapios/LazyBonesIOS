@@ -16,20 +16,6 @@ struct MainView: View {
         VStack(spacing: 14) {
             // --- Приветственный блок теперь первым ---
             VStack(spacing: 10) {
-                Text("Молодец")
-                    .font(.caption)
-                    .foregroundColor(.blue)
-                Image(systemName: "arrow.up")
-                    .font(.body)
-                    .foregroundColor(.blue)
-                ZStack {
-                    Circle()
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 2)
-                        .frame(width: 48, height: 48)
-                    Text("\(goodCountToday)")
-                        .font(.system(size: 28, weight: .bold, design: .serif))
-                        .foregroundColor(Color.blue)
-                }
                 Text("Здорово,")
                     .font(.headline)
                     .fontWeight(.semibold)
@@ -43,28 +29,21 @@ struct MainView: View {
                 .padding()
                 .background(
                     Capsule()
-                        .fill(colorScheme == .dark ? Color.white : Color(.black).opacity(0.85))
+                        .fill(
+                            colorScheme == .dark
+                                ? Color.white : Color(.black).opacity(0.85)
+                        )
                 )
                 .foregroundStyle(.white)
 
-                Text("У тебя:")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .font(.title2)
-                ZStack {
-                    Circle()
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 2)
-                        .frame(width: 48, height: 48)
-                    Text("\(badCountToday)")
-                        .font(.system(size: 28, weight: .bold, design: .serif))
-                        .foregroundColor(Color.pink)
+                HStack(spacing: 8) {
+                    Text(reportStatusText)
+                        .font(.title2)
+                        .foregroundColor(reportStatusColor)
                 }
-                Image(systemName: "arrow.down")
-                    .font(.body)
-                    .foregroundColor(.pink)
-                Text("Не молодец")
-                    .font(.caption)
-                    .foregroundColor(Color.pink)
+                .font(.headline)
+                .fontWeight(.semibold)
+                .font(.title2)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
@@ -77,10 +56,23 @@ struct MainView: View {
                 ringLineWidth: 15,
                 timeFontSize: 24
             )
-            HStack(spacing: 8) {
-                Text(reportStatusText)
-                    .font(.title2)
-                    .foregroundColor(reportStatusColor)
+            HStack(spacing: 32) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.gray.opacity(0.2), lineWidth: 3)
+                        .frame(width: 100, height: 100)
+                    Text("\(goodCountToday)")
+                        .font(.system(size: 100, weight: .bold, design: .serif))
+                        .foregroundColor(Color.green)
+                }
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.gray.opacity(0.2), lineWidth: 3)
+                        .frame(width: 100, height: 100)
+                    Text("\(badCountToday)")
+                        .font(.system(size: 100, weight: .bold, design: .serif))
+                        .foregroundColor(Color.pink)
+                }
             }
             LargeButtonView(
                 title: postForToday != nil
