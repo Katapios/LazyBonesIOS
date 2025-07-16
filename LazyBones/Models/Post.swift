@@ -304,12 +304,16 @@ class PostStore: ObservableObject, PostStoreProtocol {
     }
     /// Разблокировать возможность создания отчёта (не трогая локальные отчёты)
     func unlockReportCreation() {
-        forceUnlock = true
-        localService.saveForceUnlock(true)
+        let today = Calendar.current.startOfDay(for: Date())
+        // Удаляем опубликованный отчет за сегодня, если есть
+        posts.removeAll { post in
+            Calendar.current.isDate(post.date, inSameDayAs: today) && post.published
+        }
         reportStatus = .notStarted
+        save()
         localService.saveReportStatus(.notStarted)
         WidgetCenter.shared.reloadAllTimelines()
-        print("[DEBUG] unlock: forceUnlock=\(forceUnlock), reportStatus=\(reportStatus)")
+        print("[DEBUG] unlock: удален опубликованный отчет за сегодня, reportStatus=\(reportStatus)")
     }
     func loadForceUnlock() {
         forceUnlock = localService.getForceUnlock()
