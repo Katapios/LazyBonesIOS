@@ -392,7 +392,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
         }
         // Только оставшиеся уведомления на сегодня
         let currentHour = calendar.component(.hour, from: now)
-        let todayHours = hours.filter { $0 > currentHour }
+        let todayHours = hours.filter { $0 >= currentHour }
         for hour in todayHours {
             var dateComponents = calendar.dateComponents([.year, .month, .day], from: now)
             dateComponents.hour = hour
@@ -405,6 +405,12 @@ class PostStore: ObservableObject, PostStoreProtocol {
             content.sound = .default
             let request = UNNotificationRequest(identifier: "LazyBonesNotif_\(hour)", content: content, trigger: trigger)
             center.add(request)
+            // DEBUG LOG
+            let type = isLast ? "[ПРЕДОСТЕРЕГАЮЩЕЕ]" : "[ОБЫЧНОЕ]"
+            let scheduledDate = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: now) ?? now
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            print("[DEBUG][NOTIF] \(type) Уведомление на: \(formatter.string(from: scheduledDate)), сейчас: \(formatter.string(from: now))")
         }
     }
     func cancelAllNotifications() {
