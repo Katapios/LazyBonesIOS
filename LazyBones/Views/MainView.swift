@@ -4,11 +4,13 @@ import SwiftUI
 struct MainView: View {
     @State private var showPostForm = false
     @EnvironmentObject var store: PostStore
-    
+
     var postForToday: Post? {
-        store.posts.first(where: { Calendar.current.isDateInToday($0.date) && !$0.published })
+        store.posts.first(where: {
+            Calendar.current.isDateInToday($0.date) && !$0.published
+        })
     }
-    
+
     var body: some View {
         VStack(spacing: 14) {
             // --- Приветственный блок теперь первым ---
@@ -31,15 +33,18 @@ struct MainView: View {
                     .font(.headline)
                     .fontWeight(.semibold)
                     .font(.title2)
-                Text("𝕷𝖆𝖇: 🅞’𝖙𝖗𝟗𝖈")
-                    .font(.custom("Georgia-Bold", size: 35))
-                    .kerning(1)
-                    .padding()
-                    .background(
-                        Capsule()
-                            .fill(Color(.black).opacity(0.85))
-                    )
-                    .foregroundStyle(.white)
+                VStack {
+                    Text("𝕷𝖆𝖇: 🅞’𝖙𝖗𝟗𝖈")
+                }
+                .font(.custom("Georgia-Bold", size: 35))
+                .kerning(1)
+                .padding()
+                .background(
+                    Capsule()
+                        .fill(Color(.black).opacity(0.85))
+                )
+                .foregroundStyle(.white)
+
                 Text("У тебя:")
                     .font(.headline)
                     .fontWeight(.semibold)
@@ -71,17 +76,15 @@ struct MainView: View {
                 timeFontSize: 24
             )
             HStack(spacing: 8) {
-                if store.reportStatus == .inProgress {
-                    Image(systemName: "gearshape.fill")
-                        .foregroundColor(.orange)
-                }
                 Text(reportStatusText)
                     .font(.title2)
                     .foregroundColor(reportStatusColor)
             }
             LargeButtonView(
-                title: postForToday != nil ? "Редактировать отчёт" : "Создать отчёт",
-                icon: postForToday != nil ? "pencil.circle.fill" : "plus.circle.fill",
+                title: postForToday != nil
+                    ? "Редактировать отчёт" : "Создать отчёт",
+                icon: postForToday != nil
+                    ? "pencil.circle.fill" : "plus.circle.fill",
                 color: store.reportStatus == .done ? .gray : .accentColor,
                 action: { showPostForm = true },
                 isEnabled: store.reportStatus != .done
@@ -92,7 +95,8 @@ struct MainView: View {
         .frame(maxHeight: .infinity, alignment: .center)
         .sheet(isPresented: $showPostForm) {
             PostFormView(
-                title: postForToday != nil ? "Редактировать отчёт" : "Создать отчёт",
+                title: postForToday != nil
+                    ? "Редактировать отчёт" : "Создать отчёт",
                 post: postForToday,
                 onSave: {
                     store.updateReportStatus()
@@ -101,14 +105,14 @@ struct MainView: View {
                 onPublish: {
                     store.updateReportStatus()
                     store.updateTimeLeft()
-                    store.load() // обновляем список постов
+                    store.load()  // обновляем список постов
                 }
             )
             .environmentObject(store)
         }
         .padding()
     }
-    
+
     var reportStatusText: String {
         switch store.reportStatus {
         case .notStarted: return "Отчёт не сделан"
@@ -123,13 +127,23 @@ struct MainView: View {
         case .done: return .green
         }
     }
-    
+
     // MARK: - Таймер для кольца
     var timerProgress: Double {
         let calendar = Calendar.current
         let now = Date()
-        let start = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: now)!
-        let end = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: now)!
+        let start = calendar.date(
+            bySettingHour: 8,
+            minute: 0,
+            second: 0,
+            of: now
+        )!
+        let end = calendar.date(
+            bySettingHour: 20,
+            minute: 0,
+            second: 0,
+            of: now
+        )!
         if now < start { return 0 }
         if now > end { return 1 }
         let total = end.timeIntervalSince(start)
@@ -139,19 +153,61 @@ struct MainView: View {
     var timerTimeText: String {
         let calendar = Calendar.current
         let now = Date()
-        let start = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: now)!
-        let end = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: now)!
+        let start = calendar.date(
+            bySettingHour: 8,
+            minute: 0,
+            second: 0,
+            of: now
+        )!
+        let end = calendar.date(
+            bySettingHour: 20,
+            minute: 0,
+            second: 0,
+            of: now
+        )!
         if store.reportStatus == .done {
             let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
-            let nextStart = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: tomorrow)!
-            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: nextStart)
-            return String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+            let nextStart = calendar.date(
+                bySettingHour: 8,
+                minute: 0,
+                second: 0,
+                of: tomorrow
+            )!
+            let diff = calendar.dateComponents(
+                [.hour, .minute, .second],
+                from: now,
+                to: nextStart
+            )
+            return String(
+                format: "%02d:%02d:%02d",
+                diff.hour ?? 0,
+                diff.minute ?? 0,
+                diff.second ?? 0
+            )
         } else if now < start {
-            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: start)
-            return String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+            let diff = calendar.dateComponents(
+                [.hour, .minute, .second],
+                from: now,
+                to: start
+            )
+            return String(
+                format: "%02d:%02d:%02d",
+                diff.hour ?? 0,
+                diff.minute ?? 0,
+                diff.second ?? 0
+            )
         } else if now >= start && now <= end {
-            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: end)
-            return String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+            let diff = calendar.dateComponents(
+                [.hour, .minute, .second],
+                from: now,
+                to: end
+            )
+            return String(
+                format: "%02d:%02d:%02d",
+                diff.hour ?? 0,
+                diff.minute ?? 0,
+                diff.second ?? 0
+            )
         } else {
             return "00:00:00"
         }
@@ -159,8 +215,18 @@ struct MainView: View {
     var timerLabel: String {
         let calendar = Calendar.current
         let now = Date()
-        let start = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: now)!
-        let end = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: now)!
+        let start = calendar.date(
+            bySettingHour: 8,
+            minute: 0,
+            second: 0,
+            of: now
+        )!
+        let end = calendar.date(
+            bySettingHour: 20,
+            minute: 0,
+            second: 0,
+            of: now
+        )!
         if store.reportStatus == .done {
             return "До старта"
         } else if now < start {
@@ -174,10 +240,14 @@ struct MainView: View {
 
     // Количество good и bad пунктов за сегодня
     var goodCountToday: Int {
-        postForToday?.goodItems.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count ?? 0
+        postForToday?.goodItems.filter {
+            !$0.trimmingCharacters(in: .whitespaces).isEmpty
+        }.count ?? 0
     }
     var badCountToday: Int {
-        postForToday?.badItems.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count ?? 0
+        postForToday?.badItems.filter {
+            !$0.trimmingCharacters(in: .whitespaces).isEmpty
+        }.count ?? 0
     }
 
     // Новый геттер: только время без подписи
@@ -192,7 +262,7 @@ struct MainView: View {
 
 // Модный анимированный градиентный таймер-кольцо (ещё компактнее)
 struct GradientRingTimerView: View {
-    var progress: Double // 0.0 ... 1.0
+    var progress: Double  // 0.0 ... 1.0
     var timeText: String
     var label: String?
     var ringSize: CGFloat = 90
@@ -207,17 +277,28 @@ struct GradientRingTimerView: View {
                 .trim(from: 0, to: progress)
                 .stroke(
                     AngularGradient(
-                        gradient: Gradient(colors: [Color.blue, Color.purple, Color.pink, Color.blue]),
+                        gradient: Gradient(colors: [
+                            Color.blue, Color.purple, Color.pink, Color.blue,
+                        ]),
                         center: .center
                     ),
-                    style: StrokeStyle(lineWidth: ringLineWidth, lineCap: .round)
+                    style: StrokeStyle(
+                        lineWidth: ringLineWidth,
+                        lineCap: .round
+                    )
                 )
                 .rotationEffect(.degrees(-90))
                 .frame(width: ringSize, height: ringSize)
                 .animation(.easeInOut(duration: 0.7), value: progress)
             VStack(spacing: 2) {
                 Text(timeText)
-                    .font(.system(size: timeFontSize, weight: .bold, design: .rounded))
+                    .font(
+                        .system(
+                            size: timeFontSize,
+                            weight: .bold,
+                            design: .rounded
+                        )
+                    )
                     .minimumScaleFactor(0.5)
                     .monospacedDigit()
                     .foregroundColor(.primary)
@@ -241,9 +322,16 @@ struct GradientRingTimerView: View {
     let store: PostStore = {
         let s = PostStore()
         s.posts = [
-            Post(id: UUID(), date: Date(), goodItems: ["Пункт 1"], badItems: ["Пункт 2"], published: true, voiceNotes: [])
+            Post(
+                id: UUID(),
+                date: Date(),
+                goodItems: ["Пункт 1"],
+                badItems: ["Пункт 2"],
+                published: true,
+                voiceNotes: []
+            )
         ]
         return s
     }()
     MainView().environmentObject(store)
-} 
+}

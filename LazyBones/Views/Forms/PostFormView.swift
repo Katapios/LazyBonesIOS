@@ -165,7 +165,7 @@ struct PostFormView: View {
                                     pickerIndexGood = 0
                                 }) {
                                     HStack(spacing: 2) {
-                                        Text("👍")
+                                        Text("👍 молодец")
                                             .font(.system(size: 14.3, weight: .bold))
                                             .foregroundColor(selectedTab == .good ? .green : .primary)
                                         Text("(")
@@ -188,7 +188,7 @@ struct PostFormView: View {
                                     pickerIndexBad = 0
                                 }) {
                                     HStack(spacing: 2) {
-                                        Text("👎")
+                                        Text("👎 лаботряс")
                                             .font(.system(size: 14.3, weight: .bold))
                                             .foregroundColor(selectedTab == .bad ? .red : .primary)
                                         Text("(")
