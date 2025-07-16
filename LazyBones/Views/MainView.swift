@@ -128,19 +128,19 @@ struct MainView: View {
         let calendar = Calendar.current
         let now = Date()
         let start = calendar.date(
-            bySettingHour: 8,
+            bySettingHour: store.notificationStartHour,
             minute: 0,
             second: 0,
             of: now
         )!
         let end = calendar.date(
-            bySettingHour: 20,
+            bySettingHour: store.notificationEndHour,
             minute: 0,
             second: 0,
             of: now
         )!
         if now < start { return 0 }
-        if now > end { return 1 }
+        if now >= end { return 1 }
         let total = end.timeIntervalSince(start)
         let passed = now.timeIntervalSince(start)
         return min(max(passed / total, 0), 1)
@@ -149,13 +149,13 @@ struct MainView: View {
         let calendar = Calendar.current
         let now = Date()
         let start = calendar.date(
-            bySettingHour: 8,
+            bySettingHour: store.notificationStartHour,
             minute: 0,
             second: 0,
             of: now
         )!
         let end = calendar.date(
-            bySettingHour: 20,
+            bySettingHour: store.notificationEndHour,
             minute: 0,
             second: 0,
             of: now
@@ -163,7 +163,7 @@ struct MainView: View {
         if store.reportStatus == .done {
             let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
             let nextStart = calendar.date(
-                bySettingHour: 8,
+                bySettingHour: store.notificationStartHour,
                 minute: 0,
                 second: 0,
                 of: tomorrow
@@ -191,7 +191,7 @@ struct MainView: View {
                 diff.minute ?? 0,
                 diff.second ?? 0
             )
-        } else if now >= start && now <= end {
+        } else if now >= start && now < end {
             let diff = calendar.dateComponents(
                 [.hour, .minute, .second],
                 from: now,
@@ -211,13 +211,13 @@ struct MainView: View {
         let calendar = Calendar.current
         let now = Date()
         let start = calendar.date(
-            bySettingHour: 8,
+            bySettingHour: store.notificationStartHour,
             minute: 0,
             second: 0,
             of: now
         )!
         let end = calendar.date(
-            bySettingHour: 20,
+            bySettingHour: store.notificationEndHour,
             minute: 0,
             second: 0,
             of: now
@@ -226,7 +226,7 @@ struct MainView: View {
             return "До старта"
         } else if now < start {
             return "До старта"
-        } else if now >= start && now <= end {
+        } else if now >= start && now < end {
             return "До конца"
         } else {
             return "Время истекло"

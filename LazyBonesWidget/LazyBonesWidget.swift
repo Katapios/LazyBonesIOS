@@ -65,7 +65,7 @@ struct Provider: TimelineProvider {
         let calendar = Calendar.current
         let now = Date()
         let start = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: now)!
-        let end = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: now)!
+        let end = calendar.date(bySettingHour: 22, minute: 0, second: 0, of: now)!
         if now < start {
             let diff = calendar.dateComponents([.hour, .minute], from: now, to: start)
             return "До старта: " + String(format: "%02d:%02d", diff.hour ?? 0, diff.minute ?? 0)
@@ -80,7 +80,7 @@ struct Provider: TimelineProvider {
         let calendar = Calendar.current
         let now = date
         let start = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: now)!
-        let end = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: now)!
+        let end = calendar.date(bySettingHour: 22, minute: 0, second: 0, of: now)!
         if now < start {
             let diff = calendar.dateComponents([.hour, .minute], from: now, to: start)
             return "До старта: " + String(format: "%02d:%02d", diff.hour ?? 0, diff.minute ?? 0)

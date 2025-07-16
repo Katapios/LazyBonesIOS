@@ -61,6 +61,24 @@ class PostStore: ObservableObject, PostStoreProtocol {
     @Published var notificationIntervalHours: Int = 1 { // 1-12
         didSet { saveNotificationSettings(); if notificationsEnabled { scheduleNotifications() } }
     }
+    @Published var notificationStartHour: Int = 8 // В будущем можно сделать настраиваемым
+    @Published var notificationEndHour: Int = 22 // В будущем можно сделать настраиваемым
+
+    // MARK: - Notification Mode
+    enum NotificationMode: String, Codable, CaseIterable {
+        case hourly
+        case twice
+        var description: String {
+            switch self {
+            case .hourly: return "Каждый час"
+            case .twice: return "2 раза в день"
+            }
+        }
+    }
+
+    @Published var notificationMode: NotificationMode = .hourly {
+        didSet { saveNotificationSettings(); if notificationsEnabled { scheduleNotifications() } }
+    }
 
     private let localService: LocalReportService
     private var telegramService: TelegramService?
@@ -326,14 +344,21 @@ class PostStore: ObservableObject, PostStoreProtocol {
     // MARK: - Notification Settings
     private let notifEnabledKey = "notificationsEnabled"
     private let notifIntervalKey = "notificationIntervalHours"
+    private let notifModeKey = "notificationMode"
     func saveNotificationSettings() {
         let ud = UserDefaults(suiteName: Self.appGroup)
         ud?.set(notificationsEnabled, forKey: notifEnabledKey)
+        ud?.set(notificationMode.rawValue, forKey: notifModeKey)
         ud?.set(notificationIntervalHours, forKey: notifIntervalKey)
     }
     func loadNotificationSettings() {
         let ud = UserDefaults(suiteName: Self.appGroup)
         notificationsEnabled = ud?.bool(forKey: notifEnabledKey) ?? false
+        if let modeRaw = ud?.string(forKey: notifModeKey), let mode = NotificationMode(rawValue: modeRaw) {
+            notificationMode = mode
+        } else {
+            notificationMode = .hourly
+        }
         notificationIntervalHours = ud?.integer(forKey: notifIntervalKey) == 0 ? 1 : ud!.integer(forKey: notifIntervalKey)
     }
 
@@ -349,21 +374,34 @@ class PostStore: ObservableObject, PostStoreProtocol {
     func scheduleNotifications() {
         cancelAllNotifications()
         guard notificationsEnabled else { return }
+        // Не создавать уведомления, если отчёт уже отправлен
+        if reportStatus == .done {
+            return
+        }
         let center = UNUserNotificationCenter.current()
         let now = Date()
         let calendar = Calendar.current
-        let startHour = 8
-        let endHour = 20
-        let interval = notificationIntervalHours
-        for hour in stride(from: startHour, to: endHour, by: interval) {
+        let startHour = notificationStartHour
+        let endHour = notificationEndHour
+        var hours: [Int] = []
+        switch notificationMode {
+        case .hourly:
+            hours = Array(stride(from: startHour, to: endHour, by: 1))
+        case .twice:
+            hours = [startHour, endHour - 1]
+        }
+        // Только оставшиеся уведомления на сегодня
+        let currentHour = calendar.component(.hour, from: now)
+        let todayHours = hours.filter { $0 > currentHour }
+        for hour in todayHours {
             var dateComponents = calendar.dateComponents([.year, .month, .day], from: now)
             dateComponents.hour = hour
             dateComponents.minute = 0
-            let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: false)
             let content = UNMutableNotificationContent()
-            let timeLeft = self.timeLeftString(untilHour: endHour)
-            content.title = "Не забудь заполнить отчет Лаботрясов!"
-            content.body = "До блокировки отчета: \(timeLeft)\nНе облажайся, бро! верю в тебя."
+            let isLast = hour == (endHour - 1)
+            content.title = isLast ? "Поторопись! До конца времени отчёта 1 час" : "Не забудь заполнить отчет Лаботрясов!"
+            content.body = isLast ? "Остался всего 1 час, чтобы отправить отчёт!" : "До блокировки отчета: \(self.timeLeftString(untilHour: endHour))\nНе облажайся, бро! верю в тебя."
             content.sound = .default
             let request = UNNotificationRequest(identifier: "LazyBonesNotif_\(hour)", content: content, trigger: trigger)
             center.add(request)
@@ -398,8 +436,8 @@ class PostStore: ObservableObject, PostStoreProtocol {
     func updateTimeLeft() {
         let calendar = Calendar.current
         let now = Date()
-        let start = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: now)!
-        let end = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: now)!
+        let start = calendar.date(bySettingHour: notificationStartHour, minute: 0, second: 0, of: now)!
+        let end = calendar.date(bySettingHour: notificationEndHour, minute: 0, second: 0, of: now)!
         // --- Новый день: если нет отчёта на сегодня или дата отчёта не совпадает с сегодняшней, обновить статус ---
         let today = calendar.startOfDay(for: now)
         let hasTodayPost = posts.contains(where: { calendar.isDate($0.date, inSameDayAs: today) })
@@ -408,13 +446,13 @@ class PostStore: ObservableObject, PostStoreProtocol {
         }
         if reportStatus == .done {
             let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
-            let nextStart = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: tomorrow)!
+            let nextStart = calendar.date(bySettingHour: notificationStartHour, minute: 0, second: 0, of: tomorrow)!
             let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: nextStart)
             timeLeft = "До старта: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
         } else if now < start {
             let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: start)
             timeLeft = "До старта: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
-        } else if now >= start && now <= end {
+        } else if now >= start && now < end {
             let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: end)
             timeLeft = "До конца: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
         } else {
