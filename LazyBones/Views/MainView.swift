@@ -62,7 +62,7 @@ struct MainView: View {
                         .stroke(Color.gray.opacity(0.2), lineWidth: 3)
                         .frame(width: 100, height: 100)
                     Text("\(goodCountToday)")
-                        .font(.system(size: 100, weight: .bold, design: .serif))
+                        .font(.custom("FrakturFont", size: 100))
                         .foregroundColor(Color.green)
                 }
                 ZStack {
@@ -70,7 +70,8 @@ struct MainView: View {
                         .stroke(Color.gray.opacity(0.2), lineWidth: 3)
                         .frame(width: 100, height: 100)
                     Text("\(badCountToday)")
-                        .font(.system(size: 100, weight: .bold, design: .serif))
+                        //.font(.system(size: 100, weight: .bold, design: .serif))
+                        .font(.custom("FrakturFont", size: 100))
                         .foregroundColor(Color.pink)
                 }
             }
