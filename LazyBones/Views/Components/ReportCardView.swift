@@ -46,26 +46,55 @@ struct ReportCardView: View {
                     .font(.body)
             } else {
                 if !post.goodItems.isEmpty {
-                    Text("Я молодец:")
-                        .font(.subheadline).bold()
-                        .padding(.vertical, 4)
-                        .padding(.horizontal, 8)
-                        .background(Color.green.opacity(0.12))
-                        .cornerRadius(8)
+                    // --- Новое: динамический заголовок для кастомного отчета с оценкой ---
+                    if post.type == .custom, let results = post.evaluationResults, results.count == post.goodItems.count {
+                        let goodCount = results.filter { $0 }.count
+                        let badCount = results.filter { !$0 }.count
+                        let isGood = goodCount > badCount
+                        Text(isGood ? "Я молодец:" : "Я не молодец:")
+                            .font(.subheadline).bold()
+                            .padding(.vertical, 4)
+                            .padding(.horizontal, 8)
+                            .background(isGood ? Color.green.opacity(0.12) : Color.red.opacity(0.12))
+                            .cornerRadius(8)
+                    } else {
+                        Text("Я молодец:")
+                            .font(.subheadline).bold()
+                            .padding(.vertical, 4)
+                            .padding(.horizontal, 8)
+                            .background(Color.green.opacity(0.12))
+                            .cornerRadius(8)
+                    }
                     VStack(alignment: .leading, spacing: 2) {
-                        ForEach(
-                            Array(
-                                post.goodItems.filter { !$0.isEmpty }.uniqued()
-                                    .enumerated()
-                            ),
-                            id: \.element
-                        ) { index, item in
-                            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                Text("\(index + 1).")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Text(item)
-                                    .font(.body)
+                        // --- Новое: если есть результаты оценки, показывать goodItems с галочками/крестиками ---
+                        if post.type == .custom, let results = post.evaluationResults, results.count == post.goodItems.count {
+                            ForEach(post.goodItems.indices, id: \.self) { idx in
+                                HStack {
+                                    Text("\(idx + 1).")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text(post.goodItems[idx])
+                                        .font(.body)
+                                    Spacer()
+                                    Image(systemName: results[idx] ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                        .foregroundColor(results[idx] ? .green : .red)
+                                }
+                            }
+                        } else {
+                            ForEach(
+                                Array(
+                                    post.goodItems.filter { !$0.isEmpty }.uniqued()
+                                        .enumerated()
+                                ),
+                                id: \.element
+                            ) { index, item in
+                                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                    Text("\(index + 1).")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text(item)
+                                        .font(.body)
+                                }
                             }
                         }
                     }

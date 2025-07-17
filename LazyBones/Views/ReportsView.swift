@@ -11,10 +11,10 @@ struct ReportsView: View {
     @State private var evaluatingPost: Post? = nil
     @AppStorage("allowCustomReportReevaluation") private var allowCustomReportReevaluation: Bool = false
 
+    // ВАЖНО: Оборачивайте ReportsView в NavigationStack на уровне ContentView или App!
     var body: some View {
-        NavigationView {
-            ScrollView(.vertical, showsIndicators: true) {
-                VStack(spacing: 16) {
+        ScrollView(.vertical, showsIndicators: true) {
+            VStack(spacing: 16) {
                     // --- Локальные отчёты ---
                     if !store.posts.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
@@ -71,7 +71,7 @@ struct ReportsView: View {
                                         isSelectable: isSelectionMode,
                                         isSelected: selectedLocalReportIDs.contains(post.id),
                                         onSelect: { toggleSelection(for: post.id) },
-                                        showEvaluateButton: Calendar.current.isDateInToday(post.date),
+                                        showEvaluateButton: Calendar.current.isDateInToday(post.date) && !isSelectionMode && (post.isEvaluated != true || allowCustomReportReevaluation),
                                         isEvaluated: post.isEvaluated == true && !allowCustomReportReevaluation,
                                         onEvaluate: {
                                             evaluatingPost = post
@@ -85,8 +85,8 @@ struct ReportsView: View {
                                             .padding(.top, 2),
                                         alignment: .bottomTrailing
                                     )
-                                    // Итоговый чеклист после оценки
-                                    if let results = post.evaluationResults, results.count == post.goodItems.count {
+                                    // Итоговый чеклист после оценки (только для не сегодняшних)
+                                    if let results = post.evaluationResults, results.count == post.goodItems.count, !(Calendar.current.isDateInToday(post.date) && post.isEvaluated == true) {
                                         VStack(alignment: .leading, spacing: 2) {
                                             ForEach(post.goodItems.indices, id: \.self) { idx in
                                                 HStack {
@@ -165,38 +165,37 @@ struct ReportsView: View {
             }
             .navigationTitle("Отчёты")
             .scrollIndicators(.hidden)
-        }
-        .toolbar {
-            SwiftUI.ToolbarItem(placement: .navigationBarTrailing) {
-                Button(isSelectionMode ? "Отмена" : "Выбрать") {
-                    withAnimation {
-                        isSelectionMode.toggle()
-                        if !isSelectionMode { selectedLocalReportIDs.removeAll() }
+            .toolbar {
+                SwiftUI.ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(isSelectionMode ? "Отмена" : "Выбрать") {
+                        withAnimation {
+                            isSelectionMode.toggle()
+                            if !isSelectionMode { selectedLocalReportIDs.removeAll() }
+                        }
+                    }
+                }
+                if isSelectionMode && !selectedLocalReportIDs.isEmpty {
+                    SwiftUI.ToolbarItem(placement: .bottomBar) {
+                        Button(role: .destructive, action: deleteSelectedReports) {
+                            Label("Удалить (\(selectedLocalReportIDs.count))", systemImage: "trash")
+                        }
+                        .frame(maxWidth: .infinity)
                     }
                 }
             }
-            if isSelectionMode && !selectedLocalReportIDs.isEmpty {
-                SwiftUI.ToolbarItem(placement: .bottomBar) {
-                    Button(role: .destructive, action: deleteSelectedReports) {
-                        Label("Удалить (\(selectedLocalReportIDs.count))", systemImage: "trash")
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-            }
-        }
-        .sheet(isPresented: $showEvaluationSheet) {
-            if let post = evaluatingPost {
-                CustomReportEvaluationView(post: post) { checked in
-                    if let idx = store.posts.firstIndex(where: { $0.id == post.id }) {
-                        var updated = store.posts[idx]
-                        updated.evaluationResults = checked
-                        updated.isEvaluated = true
-                        store.posts[idx] = updated
-                        store.save()
+            .sheet(isPresented: $showEvaluationSheet) {
+                if let post = evaluatingPost {
+                    CustomReportEvaluationView(post: post) { checked in
+                        if let idx = store.posts.firstIndex(where: { $0.id == post.id }) {
+                            var updated = store.posts[idx]
+                            updated.evaluationResults = checked
+                            updated.isEvaluated = true
+                            store.posts[idx] = updated
+                            store.save()
+                        }
                     }
                 }
             }
-        }
     }
 
     // MARK: - Telegram Warning Block
