@@ -11,6 +11,7 @@ struct Post: Codable, Identifiable {
     let badItems: [String]
     let published: Bool
     var voiceNotes: [VoiceNote] // Массив голосовых заметок
+    var type: PostType // Тип отчета: обычный, кастомный (план/теги)
     // --- Telegram integration fields ---
     var authorUsername: String? // username автора из Telegram
     var authorFirstName: String? // имя автора из Telegram
@@ -22,6 +23,32 @@ struct Post: Codable, Identifiable {
     var authorId: Int? // ID автора сообщения из Telegram
 }
 
+/// Тип отчета
+enum PostType: String, Codable, CaseIterable {
+    case regular // обычный отчет
+    case custom // кастомный отчет (план/теги)
+    case external // внешний отчет из Telegram
+}
+
+// MARK: - Статус отчёта
+enum ReportStatus: String, Codable {
+    case notStarted
+    case inProgress
+    case done
+}
+
+// MARK: - Notification Mode
+enum NotificationMode: String, Codable, CaseIterable {
+    case hourly
+    case twice
+    var description: String {
+        switch self {
+        case .hourly: return "Каждый час"
+        case .twice: return "2 раза в день"
+        }
+    }
+}
+
 /// Протокол хранилища отчётов
 protocol PostStoreProtocol: ObservableObject {
     var posts: [Post] { get set }
@@ -30,13 +57,6 @@ protocol PostStoreProtocol: ObservableObject {
     func add(post: Post)
     func clear()
     func getDeviceName() -> String
-}
-
-// MARK: - Статус отчёта
-enum ReportStatus: String, Codable {
-    case notStarted
-    case inProgress
-    case done
 }
 
 /// Хранилище отчётов с поддержкой App Group
@@ -63,25 +83,13 @@ class PostStore: ObservableObject, PostStoreProtocol {
     }
     @Published var notificationStartHour: Int = 8 // В будущем можно сделать настраиваемым
     @Published var notificationEndHour: Int = 22 // В будущем можно сделать настраиваемым
-
-    // MARK: - Notification Mode
-    enum NotificationMode: String, Codable, CaseIterable {
-        case hourly
-        case twice
-        var description: String {
-            switch self {
-            case .hourly: return "Каждый час"
-            case .twice: return "2 раза в день"
-            }
-        }
-    }
-
     @Published var notificationMode: NotificationMode = .hourly {
         didSet { saveNotificationSettings(); if notificationsEnabled { scheduleNotifications() } }
     }
-
     private let localService: LocalReportService
     private var telegramService: TelegramService?
+    @Published var goodTags: [String] = []
+    @Published var badTags: [String] = []
 
     init(localService: LocalReportService = .shared) {
         self.localService = localService
@@ -94,6 +102,8 @@ class PostStore: ObservableObject, PostStoreProtocol {
         updateReportStatus()
         updateTimeLeft()
         startTimer()
+        loadGoodTags()
+        loadBadTags()
     }
 
     deinit {
@@ -199,6 +209,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
                                 badItems: [],
                                 published: true,
                                 voiceNotes: [],
+                                type: .external,
                                 authorUsername: msg.authorUsername,
                                 authorFirstName: msg.authorFirstName,
                                 authorLastName: msg.authorLastName,
@@ -464,6 +475,45 @@ class PostStore: ObservableObject, PostStoreProtocol {
         } else {
             timeLeft = "Время отчёта истекло"
         }
+    }
+    // MARK: - Good/Bad Tags
+    func loadGoodTags() {
+        goodTags = localService.loadGoodTags()
+    }
+    func saveGoodTags(_ tags: [String]) {
+        localService.saveGoodTags(tags)
+        self.goodTags = tags
+    }
+    func addGoodTag(_ tag: String) {
+        localService.addGoodTag(tag)
+        loadGoodTags()
+    }
+    func removeGoodTag(_ tag: String) {
+        localService.removeGoodTag(tag)
+        loadGoodTags()
+    }
+    func updateGoodTag(old: String, new: String) {
+        localService.updateGoodTag(old: old, new: new)
+        loadGoodTags()
+    }
+    func loadBadTags() {
+        badTags = localService.loadBadTags()
+    }
+    func saveBadTags(_ tags: [String]) {
+        localService.saveBadTags(tags)
+        self.badTags = tags
+    }
+    func addBadTag(_ tag: String) {
+        localService.addBadTag(tag)
+        loadBadTags()
+    }
+    func removeBadTag(_ tag: String) {
+        localService.removeBadTag(tag)
+        loadBadTags()
+    }
+    func updateBadTag(old: String, new: String) {
+        localService.updateBadTag(old: old, new: new)
+        loadBadTags()
     }
 }
 

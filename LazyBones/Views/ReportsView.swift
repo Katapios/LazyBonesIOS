@@ -30,7 +30,7 @@ struct ReportsView: View {
                                 .buttonStyle(.bordered)
                                 .padding(.vertical, 2)
                             }
-                            ForEach(store.posts) { post in
+                            ForEach(store.posts.filter { $0.type == .regular }) { post in
                                 ReportCardView(
                                     post: post,
                                     isSelectable: isSelectionMode,
@@ -38,6 +38,44 @@ struct ReportsView: View {
                                 ) {
                                     toggleSelection(for: post.id)
                                 }
+                            }
+                        }
+                    }
+
+                    // --- Кастомные отчеты ---
+                    if store.posts.contains(where: { $0.type == .custom }) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("КАСТОМНЫЕ ОТЧЁТЫ")
+                                .font(.title3)
+                                .foregroundColor(.accentColor)
+                                .padding(.horizontal, 8)
+                                .padding(.top, 8)
+                            if isSelectionMode {
+                                Button(action: selectAllCustomReports) {
+                                    let customPosts = store.posts.filter { $0.type == .custom }
+                                    Text(selectedLocalReportIDs.count == customPosts.count ? "Снять все" : "Выбрать все")
+                                        .font(.caption)
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                        .foregroundColor(.primary)
+                                }
+                                .buttonStyle(.bordered)
+                                .padding(.vertical, 2)
+                            }
+                            ForEach(store.posts.filter { $0.type == .custom }) { post in
+                                ReportCardView(
+                                    post: post,
+                                    isSelectable: isSelectionMode,
+                                    isSelected: selectedLocalReportIDs.contains(post.id)
+                                ) {
+                                    toggleSelection(for: post.id)
+                                }
+                                .overlay(
+                                    Text(post.date, style: .date)
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                        .padding(.top, 2),
+                                    alignment: .bottomTrailing
+                                )
                             }
                         }
                     }
@@ -167,6 +205,14 @@ struct ReportsView: View {
             selectedLocalReportIDs = Set(store.posts.map { $0.id })
         }
     }
+    private func selectAllCustomReports() {
+        let customPosts = store.posts.filter { $0.type == .custom }
+        if selectedLocalReportIDs.count == customPosts.count {
+            selectedLocalReportIDs.removeAll()
+        } else {
+            selectedLocalReportIDs = Set(customPosts.map { $0.id })
+        }
+    }
     private func deleteSelectedReports() {
         withAnimation {
             store.posts.removeAll { selectedLocalReportIDs.contains($0.id) }
@@ -261,8 +307,10 @@ extension Array where Element: Hashable {
     let store: PostStore = {
         let s = PostStore()
         s.posts = [
-            Post(id: UUID(), date: Date(), goodItems: ["Пункт 1", "Пункт 2"], badItems: ["Пункт 3"], published: true, voiceNotes: [VoiceNote(id: UUID(), path: "/path/to/voice.m4a")]),
-            Post(id: UUID(), date: Date().addingTimeInterval(-86400), goodItems: ["Пункт 4"], badItems: [], published: false, voiceNotes: [])
+            Post(id: UUID(), date: Date(), goodItems: ["Пункт 1", "Пункт 2"], badItems: ["Пункт 3"], published: true, voiceNotes: [VoiceNote(id: UUID(), path: "/path/to/voice.m4a")], type: .regular),
+            Post(id: UUID(), date: Date().addingTimeInterval(-86400), goodItems: ["Пункт 4"], badItems: [], published: false, voiceNotes: [], type: .regular),
+            Post(id: UUID(), date: Date().addingTimeInterval(-3600), goodItems: ["Пункт 5"], badItems: [], published: true, voiceNotes: [], type: .custom),
+            Post(id: UUID(), date: Date().addingTimeInterval(-7200), goodItems: ["Пункт 7"], badItems: ["Пункт 8"], published: false, voiceNotes: [], type: .custom)
         ]
         return s
     }()

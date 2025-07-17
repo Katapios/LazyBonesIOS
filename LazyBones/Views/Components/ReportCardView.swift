@@ -6,7 +6,7 @@ struct ReportCardView: View {
     var isSelected: Bool = false
     var onSelect: (() -> Void)? = nil
     @Environment(\.colorScheme) var colorScheme
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -20,14 +20,19 @@ struct ReportCardView: View {
                 }
                 if isSelectable {
                     Button(action: { onSelect?() }) {
-                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(isSelected ? .accentColor : .gray)
-                            .imageScale(.large)
+                        Image(
+                            systemName: isSelected
+                                ? "checkmark.circle.fill" : "circle"
+                        )
+                        .foregroundColor(isSelected ? .accentColor : .gray)
+                        .imageScale(.large)
                     }
                     .buttonStyle(BorderlessButtonStyle())
                 }
             }
-            if let author = post.authorUsername ?? post.authorFirstName, !author.isEmpty {
+            if let author = post.authorUsername ?? post.authorFirstName,
+                !author.isEmpty
+            {
                 Text("Автор: \(author)")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -44,7 +49,13 @@ struct ReportCardView: View {
                         .background(Color.green.opacity(0.12))
                         .cornerRadius(8)
                     VStack(alignment: .leading, spacing: 2) {
-                        ForEach(Array(post.goodItems.filter { !$0.isEmpty }.uniqued().enumerated()), id: \.element) { index, item in
+                        ForEach(
+                            Array(
+                                post.goodItems.filter { !$0.isEmpty }.uniqued()
+                                    .enumerated()
+                            ),
+                            id: \.element
+                        ) { index, item in
                             HStack(alignment: .firstTextBaseline, spacing: 4) {
                                 Text("\(index + 1).")
                                     .font(.caption)
@@ -63,7 +74,13 @@ struct ReportCardView: View {
                         .background(Color.red.opacity(0.12))
                         .cornerRadius(8)
                     VStack(alignment: .leading, spacing: 2) {
-                        ForEach(Array(post.badItems.filter { !$0.isEmpty }.uniqued().enumerated()), id: \.element) { index, item in
+                        ForEach(
+                            Array(
+                                post.badItems.filter { !$0.isEmpty }.uniqued()
+                                    .enumerated()
+                            ),
+                            id: \.element
+                        ) { index, item in
                             HStack(alignment: .firstTextBaseline, spacing: 4) {
                                 Text("\(index + 1).")
                                     .font(.caption)
@@ -75,7 +92,9 @@ struct ReportCardView: View {
                     }
                 }
             }
-            if let urls = post.externalVoiceNoteURLs?.compactMap({ $0 }).uniqued(), !urls.isEmpty {
+            if let urls = post.externalVoiceNoteURLs?.compactMap({ $0 })
+                .uniqued(), !urls.isEmpty
+            {
                 ForEach(urls, id: \.self) { url in
                     HStack(spacing: 4) {
                         Image(systemName: "mic.fill").foregroundColor(.blue)
@@ -100,13 +119,25 @@ struct ReportCardView: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(colorScheme == .dark ? Color(.secondarySystemGroupedBackground) : Color.white)
+                .fill(
+                    colorScheme == .dark
+                        ? Color(.secondarySystemGroupedBackground) : Color.white
+                )
         )
         .overlay(
             RoundedRectangle(cornerRadius: 18)
-                .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
+                .stroke(
+                    isSelected ? Color.accentColor : Color.clear,
+                    lineWidth: 2
+                )
         )
-        .shadow(color: colorScheme == .dark ? Color.black.opacity(0.18) : Color.black.opacity(0.06), radius: 4, x: 0, y: 2)
+        .shadow(
+            color: colorScheme == .dark
+                ? Color.black.opacity(0.18) : Color.black.opacity(0.06),
+            radius: 4,
+            x: 0,
+            y: 2
+        )
         .contentShape(Rectangle())
         .onTapGesture {
             if isSelectable { onSelect?() }
@@ -123,8 +154,16 @@ struct ReportCardView: View {
 }
 
 #Preview {
-    let post = Post(id: UUID(), date: Date(), goodItems: ["Пункт 1", "Пункт 2"], badItems: ["Пункт 3"], published: true, voiceNotes: [VoiceNote(id: UUID(), path: "/path/to/voice.m4a")])
-    return ReportCardView(post: post)
+    let post = Post(
+        id: UUID(),
+        date: Date(),
+        goodItems: ["Пункт 1", "Пункт 2"],
+        badItems: ["Пункт 3"],
+        published: true,
+        voiceNotes: [VoiceNote(id: UUID(), path: "/path/to/voice.m4a")],
+        type: .regular
+    )
+    ReportCardView(post: post)
         .padding()
         .background(.ultraThinMaterial)
-} 
+}

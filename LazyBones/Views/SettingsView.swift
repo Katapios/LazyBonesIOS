@@ -15,104 +15,10 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Имя телефона для виджета")) {
-                    TextField("Введите имя телефона", text: $deviceName)
-                    Button("Сохранить имя") {
-                        saveDeviceName()
-                        showSaved = true
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 4)
-                    if showSaved {
-                        Text("Сохранено!")
-                            .font(.caption)
-                            .foregroundColor(.green)
-                    }
-                }
-                Section(header: Text("Интеграция с группой в телеграмм")) {
-                    TextField("Токен Telegram-бота", text: $telegramToken)
-                        .textContentType(.none)
-                        .autocapitalization(.none)
-                        .disableAutocorrection(true)
-                    TextField("chat_id группы", text: $telegramChatId)
-                        .textContentType(.none)
-                        .autocapitalization(.none)
-                        .disableAutocorrection(true)
-                    TextField("ID бота (опционально)", text: $telegramBotId)
-                        .textContentType(.none)
-                        .autocapitalization(.none)
-                        .disableAutocorrection(true)
-                        .help("ID бота нужен для фильтрации и удаления только своих сообщений")
-                    Button("Сохранить Telegram-данные") {
-                        store.saveTelegramSettings(token: telegramToken.isEmpty ? nil : telegramToken, chatId: telegramChatId.isEmpty ? nil : telegramChatId, botId: telegramBotId.isEmpty ? nil : telegramBotId)
-                        telegramStatus = "Сохранено!"
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 4)
-                    Button("Проверить связь") {
-                        checkTelegramConnection()
-                    }
-                    .buttonStyle(.bordered)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 4)
-                    if let status = telegramStatus {
-                        Text(status)
-                            .font(.caption)
-                            .foregroundColor(status == "Успешно!" ? .green : .red)
-                    }
-                }
-                Section(header: Text("Настройка уведомлений")) {
-                    Toggle("Получать уведомления", isOn: $store.notificationsEnabled)
-                    if store.notificationsEnabled {
-                        Picker("Режим уведомлений", selection: $store.notificationMode) {
-                            ForEach(PostStore.NotificationMode.allCases, id: \.self) { mode in
-                                Text(mode.description).tag(mode)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        VStack(alignment: .leading, spacing: 4) {
-                            if store.notificationMode == .hourly {
-                                Text("Уведомления каждый час с 8:00 до 21:00. Последнее уведомление в 21:00 — предостерегающее.")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                            } else {
-                                Text("Уведомления только в 8:00 и 21:00. В 21:00 — предостерегающее.")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                            }
-                            if let schedule = notificationScheduleForToday() {
-                                Text("Сегодня уведомления: ")
-                                    .font(.caption)
-                                Text(schedule)
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                }
-                Section(header: Text("Данные")) {
-                    Button(role: .destructive) {
-                        showAlert = true
-                    } label: {
-                        Text("Сбросить все локальные отчёты")
-                            .frame(maxWidth: .infinity, alignment: .center)
-                    }
-                    .buttonStyle(.bordered)
-                    .foregroundColor(.red)
-                    .padding(.vertical, 4)
-
-                    Button {
-                        showUnlockAlert = true
-                    } label: {
-                        Text("Разблокировать отчёты")
-                            .frame(maxWidth: .infinity, alignment: .center)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.blue)
-                    .padding(.vertical, 4)
-                }
+                deviceNameSection
+                telegramSection
+                notificationSection
+                dataSection
             }
             .navigationTitle("Настройки")
             .alert("Вы уверены?", isPresented: $showAlert) {
@@ -143,6 +49,117 @@ struct SettingsView: View {
             .scrollIndicators(.hidden)
         }
     }
+    
+    private var deviceNameSection: some View {
+        Section(header: Text("Имя телефона для виджета")) {
+            TextField("Введите имя телефона", text: $deviceName)
+            Button("Сохранить имя") {
+                saveDeviceName()
+                showSaved = true
+            }
+            .buttonStyle(.borderedProminent)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.vertical, 4)
+            if showSaved {
+                Text("Сохранено!")
+                    .font(.caption)
+                    .foregroundColor(.green)
+            }
+        }
+    }
+    
+    private var telegramSection: some View {
+        Section(header: Text("Интеграция с группой в телеграмм")) {
+            TextField("Токен Telegram-бота", text: $telegramToken)
+                .textContentType(.none)
+                .autocapitalization(.none)
+                .disableAutocorrection(true)
+            TextField("chat_id группы", text: $telegramChatId)
+                .textContentType(.none)
+                .autocapitalization(.none)
+                .disableAutocorrection(true)
+            TextField("ID бота (опционально)", text: $telegramBotId)
+                .textContentType(.none)
+                .autocapitalization(.none)
+                .disableAutocorrection(true)
+                .help("ID бота нужен для фильтрации и удаления только своих сообщений")
+            Button("Сохранить Telegram-данные") {
+                store.saveTelegramSettings(token: telegramToken.isEmpty ? nil : telegramToken, chatId: telegramChatId.isEmpty ? nil : telegramChatId, botId: telegramBotId.isEmpty ? nil : telegramBotId)
+                telegramStatus = "Сохранено!"
+            }
+            .buttonStyle(.borderedProminent)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.vertical, 4)
+            Button("Проверить связь") {
+                checkTelegramConnection()
+            }
+            .buttonStyle(.bordered)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.vertical, 4)
+            if let status = telegramStatus {
+                Text(status)
+                    .font(.caption)
+                    .foregroundColor(status == "Успешно!" ? .green : .red)
+            }
+        }
+    }
+    
+    private var notificationSection: some View {
+        Section(header: Text("Настройка уведомлений")) {
+            Toggle("Получать уведомления", isOn: $store.notificationsEnabled)
+            if store.notificationsEnabled {
+                Picker("Режим уведомлений", selection: $store.notificationMode) {
+                    ForEach(NotificationMode.allCases, id: \.self) { mode in
+                        Text(mode.description).tag(mode as NotificationMode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                VStack(alignment: .leading, spacing: 4) {
+                    if store.notificationMode == .hourly {
+                        Text("Уведомления каждый час с 8:00 до 21:00. Последнее уведомление в 21:00 — предостерегающее.")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    } else {
+                        Text("Уведомления только в 8:00 и 21:00. В 21:00 — предостерегающее.")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                    if let schedule = notificationScheduleForToday() {
+                        Text("Сегодня уведомления: ")
+                            .font(.caption)
+                        Text(schedule)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+    }
+    
+    private var dataSection: some View {
+        Section(header: Text("Данные")) {
+            Button(role: .destructive) {
+                showAlert = true
+            } label: {
+                Text("Сбросить все локальные отчёты")
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .buttonStyle(.bordered)
+            .foregroundColor(.red)
+            .padding(.vertical, 4)
+
+            Button {
+                showUnlockAlert = true
+            } label: {
+                Text("Разблокировать отчёты")
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.blue)
+            .padding(.vertical, 4)
+        }
+    }
+    
     func saveDeviceName() {
         let userDefaults = UserDefaults(suiteName: "group.com.katapios.LazyBones")
         userDefaults?.set(deviceName, forKey: "deviceName")

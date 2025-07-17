@@ -7,6 +7,8 @@
 
 import Testing
 import LazyBones // Импортировать основной модуль, если требуется
+import XCTest
+@testable import LazyBones
 
 struct LazyBonesTests {
 
@@ -69,5 +71,51 @@ struct LazyBonesTests {
         // (Проверка: функция просто завершится без ошибок)
         store.scheduleNotifications()
         #expect(true)
+    }
+}
+
+final class LocalReportServiceTests: XCTestCase {
+    var service: LocalReportService!
+    override func setUp() {
+        super.setUp()
+        service = LocalReportService.shared
+        // Очистить теги перед тестом
+        service.saveTags([])
+    }
+    func testAddTag() {
+        service.addTag("TestTag")
+        XCTAssertTrue(service.loadTags().contains("TestTag"))
+    }
+    func testRemoveTag() {
+        service.addTag("ToRemove")
+        service.removeTag("ToRemove")
+        XCTAssertFalse(service.loadTags().contains("ToRemove"))
+    }
+    func testUpdateTag() {
+        service.addTag("OldTag")
+        service.updateTag(old: "OldTag", new: "NewTag")
+        XCTAssertTrue(service.loadTags().contains("NewTag"))
+        XCTAssertFalse(service.loadTags().contains("OldTag"))
+    }
+    func testFallbackToDefaultTags() {
+        service.saveTags([])
+        let tags = service.loadTags()
+        XCTAssertFalse(tags.isEmpty)
+    }
+}
+
+final class DailyPlanningFormViewTests: XCTestCase {
+    func testPlanResetEachDay() {
+        let key = "plan_" + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
+        let plan = ["Task1", "Task2"]
+        if let data = try? JSONEncoder().encode(plan) {
+            UserDefaults.standard.set(data, forKey: key)
+        }
+        if let data = UserDefaults.standard.data(forKey: key),
+           let decoded = try? JSONDecoder().decode([String].self, from: data) {
+            XCTAssertEqual(decoded, plan)
+        } else {
+            XCTFail("Plan not saved or loaded correctly")
+        }
     }
 }

@@ -110,28 +110,13 @@ struct PostFormView: View {
     @State private var pickerIndexGood: Int = 0
     @State private var pickerIndexBad: Int = 0
     
-    // MARK: - Predefined Tags
-    private let goodTags: [TagItem] = [
-        TagItem(text: "не хлебил", icon: "xmark.circle.fill", color: .green),
-        TagItem(text: "не новостил", icon: "newspaper.fill", color: .blue),
-        TagItem(text: "не ел вредное", icon: "fork.knife", color: .orange),
-        TagItem(text: "гулял", icon: "figure.walk", color: .mint),
-        TagItem(text: "кодил", icon: "laptopcomputer", color: .purple),
-        TagItem(text: "рисовал", icon: "paintbrush.fill", color: .pink),
-        TagItem(text: "читал", icon: "book.fill", color: .indigo),
-        TagItem(text: "смотрел туториалы", icon: "play.rectangle.fill", color: .red)
-    ]
-    
-    private let badTags: [TagItem] = [
-        TagItem(text: "хлебил", icon: "xmark.circle.fill", color: .red),
-        TagItem(text: "новостил", icon: "newspaper.fill", color: .orange),
-        TagItem(text: "ел вредное", icon: "fork.knife", color: .pink),
-        TagItem(text: "не гулял", icon: "figure.walk", color: .gray),
-        TagItem(text: "не кодил", icon: "laptopcomputer", color: .brown),
-        TagItem(text: "не рисовал", icon: "paintbrush.fill", color: .secondary),
-        TagItem(text: "не читал", icon: "book.fill", color: .mint),
-        TagItem(text: "не смотрел туториалы", icon: "play.rectangle.fill", color: .cyan)
-    ]
+    // MARK: - Глобальные теги
+    private var goodTags: [TagItem] {
+        store.goodTags.map { TagItem(text: $0, icon: "tag", color: .green) }
+    }
+    private var badTags: [TagItem] {
+        store.badTags.map { TagItem(text: $0, icon: "tag", color: .red) }
+    }
     
     init(title: String = "Создать отчёт", post: Post? = nil, onSave: (() -> Void)? = nil, onPublish: (() -> Void)? = nil) {
         self.title = title
@@ -449,7 +434,7 @@ struct PostFormView: View {
     func saveAndNotify() {
         let filteredGood = goodItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
         let filteredBad = badItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        let newPost = Post(id: post?.id ?? UUID(), date: Date(), goodItems: filteredGood, badItems: filteredBad, published: false, voiceNotes: voiceNotes)
+        let newPost = Post(id: post?.id ?? UUID(), date: Date(), goodItems: filteredGood, badItems: filteredBad, published: false, voiceNotes: voiceNotes, type: .regular)
         if let _ = post {
             store.update(post: newPost)
         } else {
@@ -462,7 +447,7 @@ struct PostFormView: View {
     func publishAndNotify() {
         let filteredGood = goodItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
         let filteredBad = badItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        let draftPost = Post(id: post?.id ?? UUID(), date: Date(), goodItems: filteredGood, badItems: filteredBad, published: false, voiceNotes: voiceNotes)
+        let draftPost = Post(id: post?.id ?? UUID(), date: Date(), goodItems: filteredGood, badItems: filteredBad, published: false, voiceNotes: voiceNotes, type: .regular)
         if let _ = post {
             store.update(post: draftPost)
         } else {
@@ -506,7 +491,7 @@ struct PostFormView: View {
 
     private func finalizePublish(post: Post) {
         // Обновляем пост как опубликованный только если отправка успешна
-        let publishedPost = Post(id: post.id, date: post.date, goodItems: post.goodItems, badItems: post.badItems, published: true, voiceNotes: post.voiceNotes)
+        let publishedPost = Post(id: post.id, date: post.date, goodItems: post.goodItems, badItems: post.badItems, published: true, voiceNotes: post.voiceNotes, type: .regular)
         store.update(post: publishedPost)
         self.sendStatus = "Успешно отправлено!"
         self.onPublish?()

@@ -323,7 +323,8 @@ struct GradientRingTimerView: View {
                 goodItems: ["Пункт 1"],
                 badItems: ["Пункт 2"],
                 published: true,
-                voiceNotes: []
+                voiceNotes: [],
+                type: .regular
             )
         ]
         return s

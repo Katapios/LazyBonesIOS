@@ -18,6 +18,10 @@ struct ContentView: View {
                 .tabItem {
                     Label("Главная", systemImage: "house")
                 }
+            DailyPlanningFormView()
+                .tabItem {
+                    Label("Планирование", systemImage: "pencil.line")
+                }
             ReportsView()
                 .tabItem {
                     Label("Отчёты", systemImage: "doc.text")
