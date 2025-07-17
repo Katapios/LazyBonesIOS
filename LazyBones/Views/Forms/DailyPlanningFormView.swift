@@ -21,6 +21,7 @@ struct DailyPlanningFormView: View {
     @State private var tagToDelete: String? = nil
     @State private var planToDeleteIndex: Int? = nil
     @State private var tagCategory: Int = 0 // 0 — good, 1 — bad
+    @State private var lastPlanDate: Date = Calendar.current.startOfDay(for: Date())
     
     var body: some View {
         VStack {
@@ -39,6 +40,14 @@ struct DailyPlanningFormView: View {
         .navigationTitle("Планирование")
         .onAppear {
             loadPlan()
+            lastPlanDate = Calendar.current.startOfDay(for: Date())
+        }
+        .onChange(of: Calendar.current.startOfDay(for: Date()), initial: false) { oldDay, newDay in
+            if newDay != lastPlanDate {
+                planItems = []
+                savePlan()
+                lastPlanDate = newDay
+            }
         }
         .alert("Сохранить план как отчет?", isPresented: $showSaveAlert) {
             Button("Сохранить", role: .none) { savePlanAsReport() }
@@ -160,6 +169,7 @@ struct DailyPlanningFormView: View {
         guard !trimmed.isEmpty else { return }
         planItems.append(trimmed)
         newPlanItem = ""
+        savePlan() // автосохранение после добавления
     }
     func startEditPlanItem(_ idx: Int) {
         editingPlanIndex = idx
@@ -195,24 +205,50 @@ struct DailyPlanningFormView: View {
         }
     }
     func savePlanAsReport() {
-        let post = Post(
-            id: UUID(),
-            date: Date(),
-            goodItems: planItems,
-            badItems: [],
-            published: true,
-            voiceNotes: [],
-            type: .custom,
-            authorUsername: nil,
-            authorFirstName: nil,
-            authorLastName: nil,
-            isExternal: false,
-            externalVoiceNoteURLs: nil,
-            externalText: nil,
-            externalMessageId: nil,
-            authorId: nil
-        )
-        store.add(post: post)
+        // Найти существующий кастомный отчет за сегодня
+        let today = Calendar.current.startOfDay(for: Date())
+        if let idx = store.posts.firstIndex(where: { $0.type == .custom && Calendar.current.isDate($0.date, inSameDayAs: today) }) {
+            // Перезаписать существующий отчет
+            let updated = Post(
+                id: store.posts[idx].id,
+                date: Date(),
+                goodItems: planItems,
+                badItems: [],
+                published: true,
+                voiceNotes: [],
+                type: .custom,
+                authorUsername: nil,
+                authorFirstName: nil,
+                authorLastName: nil,
+                isExternal: false,
+                externalVoiceNoteURLs: nil,
+                externalText: nil,
+                externalMessageId: nil,
+                authorId: nil
+            )
+            store.posts[idx] = updated
+            store.save()
+        } else {
+            // Создать новый отчет
+            let post = Post(
+                id: UUID(),
+                date: Date(),
+                goodItems: planItems,
+                badItems: [],
+                published: true,
+                voiceNotes: [],
+                type: .custom,
+                authorUsername: nil,
+                authorFirstName: nil,
+                authorLastName: nil,
+                isExternal: false,
+                externalVoiceNoteURLs: nil,
+                externalText: nil,
+                externalMessageId: nil,
+                authorId: nil
+            )
+            store.add(post: post)
+        }
         savePlan()
     }
     // MARK: - Теги CRUD

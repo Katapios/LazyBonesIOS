@@ -7,10 +7,13 @@ struct ReportsView: View {
     @State private var externalError: String? = nil
     @State private var isSelectionMode = false
     @State private var selectedLocalReportIDs: Set<UUID> = []
+    @State private var showEvaluationSheet = false
+    @State private var evaluatingPost: Post? = nil
+    @AppStorage("allowCustomReportReevaluation") private var allowCustomReportReevaluation: Bool = false
 
     var body: some View {
         NavigationView {
-            ScrollView {
+            ScrollView(.vertical, showsIndicators: true) {
                 VStack(spacing: 16) {
                     // --- Локальные отчёты ---
                     if !store.posts.isEmpty {
@@ -62,20 +65,41 @@ struct ReportsView: View {
                                 .padding(.vertical, 2)
                             }
                             ForEach(store.posts.filter { $0.type == .custom }) { post in
-                                ReportCardView(
-                                    post: post,
-                                    isSelectable: isSelectionMode,
-                                    isSelected: selectedLocalReportIDs.contains(post.id)
-                                ) {
-                                    toggleSelection(for: post.id)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    ReportCardView(
+                                        post: post,
+                                        isSelectable: isSelectionMode,
+                                        isSelected: selectedLocalReportIDs.contains(post.id),
+                                        onSelect: { toggleSelection(for: post.id) },
+                                        showEvaluateButton: Calendar.current.isDateInToday(post.date),
+                                        isEvaluated: post.isEvaluated == true && !allowCustomReportReevaluation,
+                                        onEvaluate: {
+                                            evaluatingPost = post
+                                            showEvaluationSheet = true
+                                        }
+                                    )
+                                    .overlay(
+                                        Text(post.date, style: .date)
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                            .padding(.top, 2),
+                                        alignment: .bottomTrailing
+                                    )
+                                    // Итоговый чеклист после оценки
+                                    if let results = post.evaluationResults, results.count == post.goodItems.count {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            ForEach(post.goodItems.indices, id: \.self) { idx in
+                                                HStack {
+                                                    Text(post.goodItems[idx])
+                                                    Spacer()
+                                                    Image(systemName: results[idx] ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                                        .foregroundColor(results[idx] ? .green : .red)
+                                                }
+                                            }
+                                        }
+                                        .padding(.vertical, 4)
+                                    }
                                 }
-                                .overlay(
-                                    Text(post.date, style: .date)
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                        .padding(.top, 2),
-                                    alignment: .bottomTrailing
-                                )
                             }
                         }
                     }
@@ -141,21 +165,34 @@ struct ReportsView: View {
             }
             .navigationTitle("Отчёты")
             .scrollIndicators(.hidden)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(isSelectionMode ? "Отмена" : "Выбрать") {
-                        withAnimation {
-                            isSelectionMode.toggle()
-                            if !isSelectionMode { selectedLocalReportIDs.removeAll() }
-                        }
+        }
+        .toolbar {
+            SwiftUI.ToolbarItem(placement: .navigationBarTrailing) {
+                Button(isSelectionMode ? "Отмена" : "Выбрать") {
+                    withAnimation {
+                        isSelectionMode.toggle()
+                        if !isSelectionMode { selectedLocalReportIDs.removeAll() }
                     }
                 }
-                if isSelectionMode && !selectedLocalReportIDs.isEmpty {
-                    ToolbarItem(placement: .bottomBar) {
-                        Button(role: .destructive, action: deleteSelectedReports) {
-                            Label("Удалить (\(selectedLocalReportIDs.count))", systemImage: "trash")
-                        }
-                        .frame(maxWidth: .infinity)
+            }
+            if isSelectionMode && !selectedLocalReportIDs.isEmpty {
+                SwiftUI.ToolbarItem(placement: .bottomBar) {
+                    Button(role: .destructive, action: deleteSelectedReports) {
+                        Label("Удалить (\(selectedLocalReportIDs.count))", systemImage: "trash")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .sheet(isPresented: $showEvaluationSheet) {
+            if let post = evaluatingPost {
+                CustomReportEvaluationView(post: post) { checked in
+                    if let idx = store.posts.firstIndex(where: { $0.id == post.id }) {
+                        var updated = store.posts[idx]
+                        updated.evaluationResults = checked
+                        updated.isEvaluated = true
+                        store.posts[idx] = updated
+                        store.save()
                     }
                 }
             }
@@ -300,6 +337,41 @@ extension Array where Element: Hashable {
     func uniqued() -> [Element] {
         var set = Set<Element>()
         return filter { set.insert($0).inserted }
+    }
+}
+
+struct CustomReportEvaluationView: View {
+    let post: Post
+    let onComplete: (_ checked: [Bool]) -> Void
+    @State private var checked: [Bool]
+    @Environment(\.dismiss) var dismiss
+    init(post: Post, onComplete: @escaping ([Bool]) -> Void) {
+        self.post = post
+        self.onComplete = onComplete
+        _checked = State(initialValue: Array(repeating: false, count: post.goodItems.count))
+    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Оцените выполнение плана")
+                .font(.headline)
+            List {
+                ForEach(post.goodItems.indices, id: \.self) { idx in
+                    HStack {
+                        Text(post.goodItems[idx])
+                        Spacer()
+                        Toggle("", isOn: $checked[idx])
+                            .labelsHidden()
+                    }
+                }
+            }
+            Button("Завершить отчет") {
+                onComplete(checked)
+                dismiss()
+            }
+            .buttonStyle(.borderedProminent)
+            .frame(maxWidth: .infinity)
+        }
+        .padding()
     }
 }
 

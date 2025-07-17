@@ -5,6 +5,10 @@ struct ReportCardView: View {
     var isSelectable: Bool = false
     var isSelected: Bool = false
     var onSelect: (() -> Void)? = nil
+    // --- Новое для оценки ---
+    var showEvaluateButton: Bool = false
+    var isEvaluated: Bool = false
+    var onEvaluate: (() -> Void)? = nil
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
@@ -114,6 +118,21 @@ struct ReportCardView: View {
                 Text(post.published ? "Опубликовано" : "Сохранено")
                     .font(.caption2)
                     .foregroundColor(post.published ? .green : .gray)
+            }
+            // --- Кнопка оценки ---
+            if showEvaluateButton {
+                if isEvaluated {
+                    Text("Отчет оценен")
+                        .font(.caption)
+                        .foregroundColor(.green)
+                        .padding(.top, 4)
+                } else {
+                    Button("Оценить отчет") {
+                        onEvaluate?()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .padding(.top, 4)
+                }
             }
         }
         .padding(14)

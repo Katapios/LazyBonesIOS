@@ -235,14 +235,30 @@ struct MainView: View {
 
     // Количество good и bad пунктов за сегодня
     var goodCountToday: Int {
-        postForToday?.goodItems.filter {
-            !$0.trimmingCharacters(in: .whitespaces).isEmpty
-        }.count ?? 0
+        var total = 0
+        // Обычный отчет за сегодня
+        if let regular = store.posts.first(where: { $0.type == .regular && Calendar.current.isDateInToday($0.date) }) {
+            total += regular.goodItems.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
+        }
+        // Кастомный оцененный отчет за сегодня
+        if let custom = store.posts.first(where: { $0.type == .custom && Calendar.current.isDateInToday($0.date) && $0.isEvaluated == true }),
+           let results = custom.evaluationResults {
+            total += results.filter { $0 }.count
+        }
+        return total
     }
     var badCountToday: Int {
-        postForToday?.badItems.filter {
-            !$0.trimmingCharacters(in: .whitespaces).isEmpty
-        }.count ?? 0
+        var total = 0
+        // Обычный отчет за сегодня
+        if let regular = store.posts.first(where: { $0.type == .regular && Calendar.current.isDateInToday($0.date) }) {
+            total += regular.badItems.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
+        }
+        // Кастомный оцененный отчет за сегодня
+        if let custom = store.posts.first(where: { $0.type == .custom && Calendar.current.isDateInToday($0.date) && $0.isEvaluated == true }),
+           let results = custom.evaluationResults {
+            total += results.filter { !$0 }.count
+        }
+        return total
     }
 
     // Новый геттер: только время без подписи

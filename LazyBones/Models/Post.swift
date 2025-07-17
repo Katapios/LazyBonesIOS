@@ -7,11 +7,13 @@ import UserNotifications
 struct Post: Codable, Identifiable {
     let id: UUID
     let date: Date
-    let goodItems: [String]
-    let badItems: [String]
+    var goodItems: [String]
+    var badItems: [String]
     let published: Bool
     var voiceNotes: [VoiceNote] // Массив голосовых заметок
     var type: PostType // Тип отчета: обычный, кастомный (план/теги)
+    var isEvaluated: Bool? // true, если отчет оценен (только для кастомных)
+    var evaluationResults: [Bool]? // массив булевых значений для итоговой оценки кастомного отчета
     // --- Telegram integration fields ---
     var authorUsername: String? // username автора из Telegram
     var authorFirstName: String? // имя автора из Telegram
