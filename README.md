@@ -33,3 +33,21 @@
 - Поместите View в соответствующую подпапку Views (или Forms/Widgets)
 - Для моделей используйте Models
 - Для тестов — Tests, разбивайте по функционалу
+
+# Настройка BGTaskScheduler для фоновой отправки отчета
+
+1. Откройте Xcode, выберите ваш Target.
+2. Перейдите в раздел **Signing & Capabilities** и включите:
+   - Background Modes
+   - Отметьте галочки: Background fetch, Background processing
+3. Перейдите в раздел **Info** (Target Info, не файл Info.plist):
+   - Добавьте новый ключ типа **String Array** с именем:
+     `BGTaskSchedulerPermittedIdentifiers`
+   - В массив добавьте строку:
+     `com.katapios.LazyBones.sendReport`
+   - (Если потребуется несколько задач — добавьте дополнительные идентификаторы)
+4. Сохраните изменения.
+
+---
+
+**После этого приложение сможет регистрировать и выполнять фоновые задачи через BGTaskScheduler.**

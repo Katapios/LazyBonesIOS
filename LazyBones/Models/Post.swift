@@ -2,6 +2,7 @@ import Foundation
 import AVFoundation
 import WidgetKit
 import UserNotifications
+import BackgroundTasks // Added for BGTaskScheduler
 
 /// Модель отчёта пользователя
 struct Post: Codable, Identifiable {
@@ -63,6 +64,7 @@ protocol PostStoreProtocol: ObservableObject {
 
 /// Хранилище отчётов с поддержкой App Group
 class PostStore: ObservableObject, PostStoreProtocol {
+    static let shared = PostStore()
     static let appGroup = "group.com.katapios.LazyBones"
     @Published var posts: [Post] = []
     @Published var externalPosts: [Post] = [] // Внешние отчеты из Telegram
@@ -96,7 +98,6 @@ class PostStore: ObservableObject, PostStoreProtocol {
     @Published var autoSendToTelegram: Bool = false {
         didSet {
             saveAutoSendSettings()
-            scheduleAutoSendIfNeeded()
         }
     }
     @Published var autoSendTime: Date = Calendar.current.date(bySettingHour: 21, minute: 0, second: 0, of: Date()) ?? Date() {
@@ -105,7 +106,11 @@ class PostStore: ObservableObject, PostStoreProtocol {
             scheduleAutoSendIfNeeded()
         }
     }
-    @Published var lastAutoSendStatus: String? = nil
+    @Published var lastAutoSendStatus: String? = nil {
+        didSet {
+            saveAutoSendSettings()
+        }
+    }
 
     init(localService: LocalReportService = .shared) {
         self.localService = localService
@@ -120,7 +125,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
         startTimer()
         loadGoodTags()
         loadBadTags()
-        loadAutoSendSettings()
+        loadAutoSendSettings() // autoSendTime загружается из UserDefaults
         scheduleAutoSendIfNeeded()
     }
 
@@ -609,7 +614,25 @@ class PostStore: ObservableObject, PostStoreProtocol {
                 self?.localService.saveReportStatus(ReportStatus.done)
                 self?.forceUnlock = false
                 self?.localService.saveForceUnlock(false)
-                // Сбросить временные статусы, если нужно
+                WidgetCenter.shared.reloadAllTimelines()
+                // Отправить локальное уведомление
+                if success {
+                    self?.sendLocalNotification(title: "Отчет отправлен", body: "Ваш отчет был автоматически отправлен в Telegram.")
+                } else {
+                    self?.sendLocalNotification(title: "Ошибка отправки", body: "Не удалось автоматически отправить отчет в Telegram.")
+                }
+            }
+        }
+    }
+    private func sendLocalNotification(title: String, body: String) {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("[AutoSend] Ошибка отправки локального уведомления: \(error)")
             }
         }
     }
@@ -632,6 +655,18 @@ class PostStore: ObservableObject, PostStoreProtocol {
             completion(true)
         }
         task.resume()
+    }
+}
+
+extension PostStore {
+    static func rescheduleBGTask() {
+        let request = BGAppRefreshTaskRequest(identifier: "com.katapios.LazyBones.sendReport")
+        request.earliestBeginDate = Calendar.current.date(byAdding: .day, value: 1, to: Date())
+        do {
+            try BGTaskScheduler.shared.submit(request)
+        } catch {
+            print("[BGTask] Не удалось запланировать задачу: \(error)")
+        }
     }
 }
 

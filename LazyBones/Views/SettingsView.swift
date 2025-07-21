@@ -190,6 +190,20 @@ struct SettingsView: View {
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
+            // Новое предупреждение
+            if store.autoSendToTelegram {
+                HStack(spacing: 6) {
+                    Image(systemName: "info.circle.fill")
+                        .foregroundColor(.blue)
+                    Text("Автоотправка не сработает, если приложение было полностью выгружено из памяти. После запуска приложения перепланируйте автоотправку.")
+                        .font(.caption2)
+                        .foregroundColor(.blue)
+                }
+                Button("Перепланировать автоотправку") {
+                    PostStore.rescheduleBGTask()
+                }
+                .font(.caption)
+            }
         }
     }
     
