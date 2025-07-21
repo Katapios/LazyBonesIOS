@@ -434,12 +434,12 @@ struct PostFormView: View {
     func saveAndNotify() {
         let filteredGood = goodItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
         let filteredBad = badItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        let newPost = Post(id: post?.id ?? UUID(), date: Date(), goodItems: filteredGood, badItems: filteredBad, published: false, voiceNotes: voiceNotes, type: .regular)
-        if let _ = post {
-            store.update(post: newPost)
-        } else {
-            store.add(post: newPost)
-        }
+        let today = Calendar.current.startOfDay(for: Date())
+        // Удалить все обычные отчёты за сегодня
+        store.posts.removeAll { $0.type == .regular && Calendar.current.isDate($0.date, inSameDayAs: today) }
+        // Добавить новый отчёт
+        let newPost = Post(id: UUID(), date: Date(), goodItems: filteredGood, badItems: filteredBad, published: false, voiceNotes: voiceNotes, type: .regular)
+        store.add(post: newPost)
         onSave?()
         dismiss()
     }

@@ -3,6 +3,7 @@ import WidgetKit
 
 /// Вкладка 'Настройки': имя устройства для виджета и сброс отчётов
 struct SettingsView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject var store: PostStore
     @State private var showAlert = false
     @State private var deviceName: String = ""
@@ -13,42 +14,45 @@ struct SettingsView: View {
     @State private var telegramStatus: String? = nil
     @State private var showUnlockAlert = false
     var body: some View {
-        NavigationView {
-            Form {
-                deviceNameSection
-                telegramSection
-                notificationSection
-                autoSendSection
-                dataSection
-            }
-            .navigationTitle("Настройки")
-            .alert("Вы уверены?", isPresented: $showAlert) {
-                Button("Удалить всё", role: .destructive) {
-                    store.clear()
-                    store.load()
-                    WidgetCenter.shared.reloadAllTimelines()
-                }
-                Button("Отмена", role: .cancel) {}
-                Text("Все отчёты будут удалены безвозвратно.")
-            }
-            .alert("Разблокировать отчёты?", isPresented: $showUnlockAlert) {
-                Button("Разблокировать", role: .destructive) {
-                    store.unlockReportCreation()
-                    store.updateReportStatus()
-                    WidgetCenter.shared.reloadAllTimelines()
-                }
-                Button("Отмена", role: .cancel) {}
-                Text("Будет разблокирована возможность создания отчёта. Локальные отчёты не будут удалены.")
-            }
-            .onAppear {
-                loadDeviceName()
-                telegramToken = store.telegramToken ?? ""
-                telegramChatId = store.telegramChatId ?? ""
-                telegramBotId = store.telegramBotId ?? ""
-            }
-            .hideKeyboardOnTap()
-            .scrollIndicators(.hidden)
+        Form {
+            deviceNameSection
+            telegramSection
+            notificationSection
+            autoSendSection
+            dataSection
         }
+        .navigationTitle("Настройки")
+        .onChange(of: scenePhase, initial: false) { _, newPhase in
+            if newPhase == .active {
+                WidgetCenter.shared.reloadAllTimelines()
+            }
+        }
+        .alert("Вы уверены?", isPresented: $showAlert) {
+            Button("Удалить всё", role: .destructive) {
+                store.clear()
+                store.load()
+                WidgetCenter.shared.reloadAllTimelines()
+            }
+            Button("Отмена", role: .cancel) {}
+            Text("Все отчёты будут удалены безвозвратно.")
+        }
+        .alert("Разблокировать отчёты?", isPresented: $showUnlockAlert) {
+            Button("Разблокировать", role: .destructive) {
+                store.unlockReportCreation()
+                store.updateReportStatus()
+                WidgetCenter.shared.reloadAllTimelines()
+            }
+            Button("Отмена", role: .cancel) {}
+            Text("Будет разблокирована возможность создания отчёта. Локальные отчёты не будут удалены.")
+        }
+        .onAppear {
+            loadDeviceName()
+            telegramToken = store.telegramToken ?? ""
+            telegramChatId = store.telegramChatId ?? ""
+            telegramBotId = store.telegramBotId ?? ""
+        }
+        .hideKeyboardOnTap()
+        .scrollIndicators(.hidden)
     }
     
     private var deviceNameSection: some View {
@@ -199,10 +203,22 @@ struct SettingsView: View {
                         .font(.caption2)
                         .foregroundColor(.blue)
                 }
-                Button("Перепланировать автоотправку") {
-                    PostStore.rescheduleBGTask()
+                VStack(alignment: .leading, spacing: 16) {
+                    Button("Перепланировать автоотправку") {
+                        print("[DEBUG][SettingsView] Кнопка перепланирования автоотправки нажата")
+                        PostStore.rescheduleBGTask()
+                    }
+                    .buttonStyle(.bordered)
+                    .padding(.vertical, 4)
+
+                    Button("Протестировать автоотправку") {
+                        print("[DEBUG][SettingsView] Кнопка теста автоотправки нажата")
+                        store.performAutoSendReport()
+                    }
+                    .buttonStyle(.bordered)
+                    .padding(.vertical, 4)
                 }
-                .font(.caption)
+                .padding(.vertical, 4)
             }
         }
     }

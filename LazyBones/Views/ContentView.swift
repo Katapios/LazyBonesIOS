@@ -13,33 +13,40 @@ struct ContentView: View {
     @StateObject var store = PostStore()
     @Environment(\.scenePhase) private var scenePhase
     var body: some View {
-        NavigationStack {
-            TabView {
+        TabView {
+            NavigationStack {
                 MainView()
-                    .tabItem {
-                        Label("Главная", systemImage: "house")
-                    }
+            }
+            .tabItem {
+                Label("Главная", systemImage: "house")
+            }
+            NavigationStack {
                 DailyPlanningFormView()
-                    .tabItem {
-                        Label("План", systemImage: "pencil.line")
-                    }
+            }
+            .tabItem {
+                Label("План", systemImage: "pencil.line")
+            }
+            NavigationStack {
                 ReportsView()
-                    .tabItem {
-                        Label("Отчёты", systemImage: "doc.text")
-                    }
+            }
+            .tabItem {
+                Label("Отчёты", systemImage: "doc.text")
+            }
+            NavigationStack {
                 SettingsView()
-                    .tabItem {
-                        Label("Настройки", systemImage: "gear")
-                    }
             }
-            .environmentObject(store)
-            .onAppear {
-                print("[DEBUG][ContentView] ContentView инициализирован, store: \(store)")
+            .tabItem {
+                Label("Настройки", systemImage: "gear")
             }
-            .onChange(of: scenePhase) {
-                if scenePhase == .active {
-                    WidgetCenter.shared.reloadAllTimelines()
-                }
+        }
+        .environmentObject(store)
+        .onAppear {
+            print("[DEBUG][ContentView] ContentView инициализирован, store: \(store)")
+        }
+        .onChange(of: scenePhase) {
+            _, newPhase in
+            if newPhase == .active {
+                WidgetCenter.shared.reloadAllTimelines()
             }
         }
     }

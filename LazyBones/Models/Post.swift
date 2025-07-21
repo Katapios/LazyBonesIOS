@@ -136,14 +136,18 @@ class PostStore: ObservableObject, PostStoreProtocol {
 
     /// Загрузка отчётов из LocalReportService
     func load() {
+        print("[DEBUG][PostStore] load() called")
         posts = localService.loadPosts()
+        print("[DEBUG][PostStore] loaded posts count: \(posts.count)")
     }
     /// Сохранение отчётов через LocalReportService
     func save() {
+        print("[DEBUG][PostStore] save() called, posts count: \(posts.count)")
         localService.savePosts(posts)
     }
     /// Добавление нового отчёта
     func add(post: Post) {
+        print("[DEBUG][PostStore] add(post:) called")
         posts.append(post)
         save()
         scheduleAutoSendIfNeeded()
@@ -154,10 +158,11 @@ class PostStore: ObservableObject, PostStoreProtocol {
         }
         updateReportStatus()
         WidgetCenter.shared.reloadAllTimelines()
-        print("[DEBUG] add: published=\(post.published), forceUnlock=\(forceUnlock), reportStatus=\(reportStatus)")
+        print("[DEBUG][PostStore] add: published=\(post.published), forceUnlock=\(forceUnlock), reportStatus=\(reportStatus)")
     }
     /// Очистка всех отчётов
     func clear() {
+        print("[DEBUG][PostStore] clear() called")
         posts = []
         localService.clearPosts()
         updateReportStatus()
@@ -165,6 +170,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
     }
     /// Обновление существующего отчёта по id
     func update(post: Post) {
+        print("[DEBUG][PostStore] update(post:) called")
         if let idx = posts.firstIndex(where: { $0.id == post.id }) {
             posts[idx] = post
             save()
@@ -176,7 +182,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
             }
             updateReportStatus()
             WidgetCenter.shared.reloadAllTimelines()
-            print("[DEBUG] update: published=\(post.published), forceUnlock=\(forceUnlock), reportStatus=\(reportStatus)")
+            print("[DEBUG][PostStore] update: published=\(post.published), forceUnlock=\(forceUnlock), reportStatus=\(reportStatus)")
         }
     }
     func getDeviceName() -> String {

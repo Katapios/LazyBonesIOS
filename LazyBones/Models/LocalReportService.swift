@@ -18,20 +18,25 @@ class LocalReportService {
     }
     
     func loadPosts() -> [Post] {
+        print("[DEBUG][LocalReportService] loadPosts() called")
         guard let data = userDefaults?.data(forKey: key),
               let decoded = try? JSONDecoder().decode([Post].self, from: data) else {
+            print("[DEBUG][LocalReportService] loadPosts: no data or decode error")
             return []
         }
+        print("[DEBUG][LocalReportService] loaded posts count: \(decoded.count)")
         return decoded.sorted { $0.date > $1.date }
     }
     
     func savePosts(_ posts: [Post]) {
-        guard let data = try? JSONEncoder().encode(posts) else { return }
+        print("[DEBUG][LocalReportService] savePosts() called, posts count: \(posts.count)")
+        guard let data = try? JSONEncoder().encode(posts) else { print("[DEBUG][LocalReportService] savePosts: encode error"); return }
         userDefaults?.set(data, forKey: key)
         WidgetCenter.shared.reloadAllTimelines()
     }
     
     func clearPosts() {
+        print("[DEBUG][LocalReportService] clearPosts() called")
         userDefaults?.removeObject(forKey: key)
         WidgetCenter.shared.reloadAllTimelines()
     }

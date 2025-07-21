@@ -13,10 +13,11 @@ struct ReportsView: View {
 
     // ВАЖНО: Оборачивайте ReportsView в NavigationStack на уровне ContentView или App!
     var body: some View {
-        ScrollView(.vertical, showsIndicators: true) {
+        NavigationStack {
+            ScrollView(.vertical, showsIndicators: true) {
                 VStack(spacing: 16) {
                     // --- Локальные отчёты ---
-                    if !store.posts.isEmpty {
+                    if !store.posts.filter({ $0.type == .regular }).isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("ЛОКАЛЬНЫЕ ОТЧЁТЫ")
                                 .font(.title3)
@@ -24,28 +25,30 @@ struct ReportsView: View {
                                 .padding(.horizontal, 8)
                                 .padding(.top, 8)
                             if isSelectionMode {
-                                Button(action: selectAllLocalReports) {
-                                    Text(selectedLocalReportIDs.count == store.posts.count ? "Снять все" : "Выбрать все")
-                                        .font(.caption)
-                                        .frame(maxWidth: .infinity, alignment: .center)
-                                        .foregroundColor(.primary)
+                                let regularPosts = store.posts.filter { $0.type == .regular }
+                                let selectedRegular = regularPosts.filter { selectedLocalReportIDs.contains($0.id) }
+                                if selectedRegular.count == 0 || selectedRegular.count == regularPosts.count {
+                                    Button(action: selectAllLocalReports) {
+                                        Text(selectedRegular.count == regularPosts.count ? "Снять все" : "Выбрать все")
+                                            .font(.caption)
+                                            .frame(maxWidth: .infinity, alignment: .center)
+                                            .foregroundColor(.primary)
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .padding(.vertical, 2)
                                 }
-                                .buttonStyle(.bordered)
-                                .padding(.vertical, 2)
                             }
                             ForEach(store.posts.filter { $0.type == .regular }) { post in
                                 ReportCardView(
                                     post: post,
                                     isSelectable: isSelectionMode,
-                                    isSelected: selectedLocalReportIDs.contains(post.id)
-                                ) {
-                                    toggleSelection(for: post.id)
-                                }
+                                    isSelected: selectedLocalReportIDs.contains(post.id),
+                                    onSelect: { toggleSelection(for: post.id) }
+                                )
                             }
                         }
                     }
-
-                    // --- Кастомные отчеты ---
+                    // --- Кастомные отчёты ---
                     if store.posts.contains(where: { $0.type == .custom }) {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("КАСТОМНЫЕ ОТЧЁТЫ")
@@ -54,15 +57,18 @@ struct ReportsView: View {
                                 .padding(.horizontal, 8)
                                 .padding(.top, 8)
                             if isSelectionMode {
-                                Button(action: selectAllCustomReports) {
-                                    let customPosts = store.posts.filter { $0.type == .custom }
-                                    Text(selectedLocalReportIDs.count == customPosts.count ? "Снять все" : "Выбрать все")
-                                        .font(.caption)
-                                        .frame(maxWidth: .infinity, alignment: .center)
-                                        .foregroundColor(.primary)
+                                let customPosts = store.posts.filter { $0.type == .custom }
+                                let selectedCustom = customPosts.filter { selectedLocalReportIDs.contains($0.id) }
+                                if selectedCustom.count == 0 || selectedCustom.count == customPosts.count {
+                                    Button(action: selectAllCustomReports) {
+                                        Text(selectedCustom.count == customPosts.count ? "Снять все" : "Выбрать все")
+                                            .font(.caption)
+                                            .frame(maxWidth: .infinity, alignment: .center)
+                                            .foregroundColor(.primary)
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .padding(.vertical, 2)
                                 }
-                                .buttonStyle(.bordered)
-                                .padding(.vertical, 2)
                             }
                             ForEach(store.posts.filter { $0.type == .custom }) { post in
                                 VStack(alignment: .leading, spacing: 4) {
@@ -161,21 +167,25 @@ struct ReportsView: View {
                             .padding(.vertical, 16)
                     }
                 }
-                .padding()
+                .padding(.top, 16)
+                .padding([.leading, .trailing, .bottom])
             }
             .navigationTitle("Отчёты")
+            .safeAreaInset(edge: .top) { Spacer().frame(height: 8) }
             .scrollIndicators(.hidden)
             .toolbar {
-                SwiftUI.ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(isSelectionMode ? "Отмена" : "Выбрать") {
-                        withAnimation {
-                            isSelectionMode.toggle()
-                            if !isSelectionMode { selectedLocalReportIDs.removeAll() }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    if !store.posts.isEmpty {
+                        Button(isSelectionMode ? "Отмена" : "Выбрать") {
+                            withAnimation {
+                                isSelectionMode.toggle()
+                                if !isSelectionMode { selectedLocalReportIDs.removeAll() }
+                            }
                         }
                     }
                 }
                 if isSelectionMode && !selectedLocalReportIDs.isEmpty {
-                    SwiftUI.ToolbarItem(placement: .bottomBar) {
+                    ToolbarItem(placement: .bottomBar) {
                         Button(role: .destructive, action: deleteSelectedReports) {
                             Label("Удалить (\(selectedLocalReportIDs.count))", systemImage: "trash")
                         }
@@ -192,6 +202,7 @@ struct ReportsView: View {
                             updated.isEvaluated = true
                             store.posts[idx] = updated
                             store.save()
+                        }
                     }
                 }
             }
@@ -235,10 +246,10 @@ struct ReportsView: View {
         }
     }
     private func selectAllLocalReports() {
-        if selectedLocalReportIDs.count == store.posts.count {
+        if selectedLocalReportIDs.count == store.posts.filter({ $0.type == .regular }).count {
             selectedLocalReportIDs.removeAll()
         } else {
-            selectedLocalReportIDs = Set(store.posts.map { $0.id })
+            selectedLocalReportIDs = Set(store.posts.filter({ $0.type == .regular }).map { $0.id })
         }
     }
     private func selectAllCustomReports() {

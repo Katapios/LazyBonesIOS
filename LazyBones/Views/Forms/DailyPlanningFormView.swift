@@ -38,6 +38,7 @@ struct DailyPlanningFormView: View {
             }
         }
         .navigationTitle("Планирование")
+        .hideKeyboardOnTap()
         .onAppear {
             loadPlan()
             lastPlanDate = Calendar.current.startOfDay(for: Date())
@@ -98,11 +99,13 @@ struct DailyPlanningFormView: View {
                     }
                 }
             }
-            Button("Сохранить как отчет") {
-                showSaveAlert = true
+            if !planItems.isEmpty {
+                Button("Сохранить как отчет") {
+                    showSaveAlert = true
+                }
+                .buttonStyle(.borderedProminent)
+                .padding(.top)
             }
-            .buttonStyle(.borderedProminent)
-            .padding(.top)
         }
         .padding()
     }
@@ -169,7 +172,7 @@ struct DailyPlanningFormView: View {
         guard !trimmed.isEmpty else { return }
         planItems.append(trimmed)
         newPlanItem = ""
-        savePlan() // автосохранение после добавления
+        savePlan()
     }
     func startEditPlanItem(_ idx: Int) {
         editingPlanIndex = idx
@@ -182,11 +185,13 @@ struct DailyPlanningFormView: View {
         planItems[idx] = trimmed
         editingPlanIndex = nil
         editingPlanText = ""
+        savePlan()
     }
     func deletePlanItem() {
         guard let idx = planToDeleteIndex else { return }
         planItems.remove(at: idx)
         planToDeleteIndex = nil
+        savePlan()
     }
     func loadPlan() {
         // План сбрасывается каждый день, можно хранить в UserDefaults по дате
