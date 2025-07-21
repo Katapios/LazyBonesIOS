@@ -113,6 +113,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
     }
 
     init(localService: LocalReportService = .shared) {
+        print("[DEBUG][INIT] PostStore инициализирован")
         self.localService = localService
         load()
         loadTelegramSettings()
@@ -546,16 +547,20 @@ class PostStore: ObservableObject, PostStoreProtocol {
         let userDefaults = UserDefaults(suiteName: Self.appGroup)
         autoSendToTelegram = userDefaults?.bool(forKey: "autoSendToTelegram") ?? false
         if let date = userDefaults?.object(forKey: "autoSendTime") as? Date {
+            print("[AutoSend][LOAD] Загружено время автоотправки: \(date)")
             autoSendTime = date
+        } else {
+            print("[AutoSend][LOAD] Время автоотправки не найдено, используется дефолт: \(autoSendTime)")
         }
         lastAutoSendStatus = userDefaults?.string(forKey: "lastAutoSendStatus")
-        saveAutoSendSettings() // Гарантируем, что autoSendTime всегда актуален
+        saveAutoSendSettings()
     }
     func saveAutoSendSettings() {
         let userDefaults = UserDefaults(suiteName: Self.appGroup)
         userDefaults?.set(autoSendToTelegram, forKey: "autoSendToTelegram")
         userDefaults?.set(autoSendTime, forKey: "autoSendTime")
         userDefaults?.set(lastAutoSendStatus, forKey: "lastAutoSendStatus")
+        print("[AutoSend][SAVE] Сохраняю время автоотправки: \(autoSendTime)")
     }
     func scheduleAutoSendIfNeeded() {
         // MVP: использовать Timer для планирования автоотправки (BGTaskScheduler — для продакшена)

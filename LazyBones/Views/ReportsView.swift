@@ -14,7 +14,7 @@ struct ReportsView: View {
     // ВАЖНО: Оборачивайте ReportsView в NavigationStack на уровне ContentView или App!
     var body: some View {
         ScrollView(.vertical, showsIndicators: true) {
-            VStack(spacing: 16) {
+                VStack(spacing: 16) {
                     // --- Локальные отчёты ---
                     if !store.posts.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
@@ -192,10 +192,10 @@ struct ReportsView: View {
                             updated.isEvaluated = true
                             store.posts[idx] = updated
                             store.save()
-                        }
                     }
                 }
             }
+        }
     }
 
     // MARK: - Telegram Warning Block

@@ -58,12 +58,12 @@ struct ReportCardView: View {
                             .background(isGood ? Color.green.opacity(0.12) : Color.red.opacity(0.12))
                             .cornerRadius(8)
                     } else {
-                        Text("Я молодец:")
-                            .font(.subheadline).bold()
-                            .padding(.vertical, 4)
-                            .padding(.horizontal, 8)
-                            .background(Color.green.opacity(0.12))
-                            .cornerRadius(8)
+                    Text("Я молодец:")
+                        .font(.subheadline).bold()
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 8)
+                        .background(Color.green.opacity(0.12))
+                        .cornerRadius(8)
                     }
                     VStack(alignment: .leading, spacing: 2) {
                         // --- Новое: если есть результаты оценки, показывать goodItems с галочками/крестиками ---
@@ -81,19 +81,19 @@ struct ReportCardView: View {
                                 }
                             }
                         } else {
-                            ForEach(
-                                Array(
-                                    post.goodItems.filter { !$0.isEmpty }.uniqued()
-                                        .enumerated()
-                                ),
-                                id: \.element
-                            ) { index, item in
-                                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                    Text("\(index + 1).")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    Text(item)
-                                        .font(.body)
+                        ForEach(
+                            Array(
+                                post.goodItems.filter { !$0.isEmpty }.uniqued()
+                                    .enumerated()
+                            ),
+                            id: \.element
+                        ) { index, item in
+                            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                Text("\(index + 1).")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text(item)
+                                    .font(.body)
                                 }
                             }
                         }

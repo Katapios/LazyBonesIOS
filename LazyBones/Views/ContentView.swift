@@ -21,7 +21,7 @@ struct ContentView: View {
                     }
                 DailyPlanningFormView()
                     .tabItem {
-                        Label("Планирование", systemImage: "pencil.line")
+                        Label("План", systemImage: "pencil.line")
                     }
                 ReportsView()
                     .tabItem {
@@ -33,6 +33,9 @@ struct ContentView: View {
                     }
             }
             .environmentObject(store)
+            .onAppear {
+                print("[DEBUG][ContentView] ContentView инициализирован, store: \(store)")
+            }
             .onChange(of: scenePhase) {
                 if scenePhase == .active {
                     WidgetCenter.shared.reloadAllTimelines()
@@ -40,8 +43,11 @@ struct ContentView: View {
             }
         }
     }
-}
+} // ← Закрывающая скобка для ContentView
 
-#Preview {
-    ContentView()
+// PreviewProvider должен быть вне структуры ContentView
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+    }
 }
