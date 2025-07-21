@@ -18,6 +18,7 @@ struct SettingsView: View {
                 deviceNameSection
                 telegramSection
                 notificationSection
+                autoSendSection
                 dataSection
             }
             .navigationTitle("Настройки")
@@ -132,6 +133,62 @@ struct SettingsView: View {
                             .foregroundColor(.secondary)
                     }
                 }
+            }
+        }
+    }
+    
+    private var autoSendSection: some View {
+        Section(header: Text("Автоотправка отчета в Telegram")) {
+            Toggle("Автоматически отправлять отчет", isOn: $store.autoSendToTelegram)
+                .onChange(of: store.autoSendToTelegram) { store.saveAutoSendSettings() }
+            if store.autoSendToTelegram && (store.telegramToken?.isEmpty ?? true || store.telegramChatId?.isEmpty ?? true) {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.orange)
+                    Text("Заполните токен и chat_id Telegram для автоотправки!")
+                        .font(.caption2)
+                        .foregroundColor(.orange)
+                }
+            }
+            if store.autoSendToTelegram {
+                DatePicker(
+                    "Время отправки",
+                    selection: Binding(
+                        get: {
+                            let cal = Calendar.current
+                            let min = cal.date(bySettingHour: store.notificationStartHour, minute: 0, second: 0, of: Date()) ?? Date()
+                            let max = cal.date(bySettingHour: store.notificationEndHour, minute: 0, second: 0, of: Date()) ?? Date()
+                            if store.autoSendTime < min { return min }
+                            if store.autoSendTime > max { return max }
+                            return store.autoSendTime
+                        },
+                        set: { newValue in
+                            let cal = Calendar.current
+                            let min = cal.date(bySettingHour: store.notificationStartHour, minute: 0, second: 0, of: Date()) ?? Date()
+                            let max = cal.date(bySettingHour: store.notificationEndHour, minute: 0, second: 0, of: Date()) ?? Date()
+                            var value = newValue
+                            if value < min { value = min }
+                            if value > max { value = max }
+                            store.autoSendTime = value
+                            store.saveAutoSendSettings()
+                        }
+                    ),
+                    displayedComponents: .hourAndMinute
+                )
+                .datePickerStyle(.wheel)
+                .environment(\.locale, Locale(identifier: "ru_RU"))
+                .disabled(!store.autoSendToTelegram)
+                .frame(maxHeight: 120)
+                .clipped()
+                .padding(.vertical, 4)
+                Text("Время можно выбрать только с \(store.notificationStartHour):00 до \(store.notificationEndHour):00")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            if let status = store.lastAutoSendStatus {
+                Text("Последняя отправка: \(status)")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
             }
         }
     }

@@ -92,6 +92,20 @@ class PostStore: ObservableObject, PostStoreProtocol {
     private var telegramService: TelegramService?
     @Published var goodTags: [String] = []
     @Published var badTags: [String] = []
+    // --- Новое для автоотправки ---
+    @Published var autoSendToTelegram: Bool = false {
+        didSet {
+            saveAutoSendSettings()
+            scheduleAutoSendIfNeeded()
+        }
+    }
+    @Published var autoSendTime: Date = Calendar.current.date(bySettingHour: 21, minute: 0, second: 0, of: Date()) ?? Date() {
+        didSet {
+            saveAutoSendSettings()
+            scheduleAutoSendIfNeeded()
+        }
+    }
+    @Published var lastAutoSendStatus: String? = nil
 
     init(localService: LocalReportService = .shared) {
         self.localService = localService
@@ -106,6 +120,8 @@ class PostStore: ObservableObject, PostStoreProtocol {
         startTimer()
         loadGoodTags()
         loadBadTags()
+        loadAutoSendSettings()
+        scheduleAutoSendIfNeeded()
     }
 
     deinit {
@@ -124,6 +140,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
     func add(post: Post) {
         posts.append(post)
         save()
+        scheduleAutoSendIfNeeded()
         let today = Calendar.current.startOfDay(for: Date())
         if forceUnlock && Calendar.current.isDate(post.date, inSameDayAs: today) {
             forceUnlock = false
@@ -145,6 +162,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
         if let idx = posts.firstIndex(where: { $0.id == post.id }) {
             posts[idx] = post
             save()
+            scheduleAutoSendIfNeeded()
             let today = Calendar.current.startOfDay(for: Date())
             if forceUnlock && Calendar.current.isDate(post.date, inSameDayAs: today) {
                 forceUnlock = false
@@ -516,6 +534,104 @@ class PostStore: ObservableObject, PostStoreProtocol {
     func updateBadTag(old: String, new: String) {
         localService.updateBadTag(old: old, new: new)
         loadBadTags()
+    }
+
+    // MARK: - Автоотправка в Telegram
+    func loadAutoSendSettings() {
+        let userDefaults = UserDefaults(suiteName: Self.appGroup)
+        autoSendToTelegram = userDefaults?.bool(forKey: "autoSendToTelegram") ?? false
+        if let date = userDefaults?.object(forKey: "autoSendTime") as? Date {
+            autoSendTime = date
+        }
+        lastAutoSendStatus = userDefaults?.string(forKey: "lastAutoSendStatus")
+        saveAutoSendSettings() // Гарантируем, что autoSendTime всегда актуален
+    }
+    func saveAutoSendSettings() {
+        let userDefaults = UserDefaults(suiteName: Self.appGroup)
+        userDefaults?.set(autoSendToTelegram, forKey: "autoSendToTelegram")
+        userDefaults?.set(autoSendTime, forKey: "autoSendTime")
+        userDefaults?.set(lastAutoSendStatus, forKey: "lastAutoSendStatus")
+    }
+    func scheduleAutoSendIfNeeded() {
+        // MVP: использовать Timer для планирования автоотправки (BGTaskScheduler — для продакшена)
+        autoSendTimer?.invalidate()
+        guard autoSendToTelegram else { print("[AutoSend] Disabled"); return }
+        let now = Date()
+        let cal = Calendar.current
+        let todaySend = cal.date(
+            bySettingHour: cal.component(.hour, from: autoSendTime),
+            minute: cal.component(.minute, from: autoSendTime),
+            second: 0,
+            of: now
+        ) ?? autoSendTime
+        let interval = todaySend.timeIntervalSince(now)
+        print("[AutoSend] Scheduling auto send for", todaySend, "in", interval, "seconds")
+        if interval > 0 {
+            autoSendTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] _ in
+                self?.performAutoSendReport()
+            }
+        }
+    }
+    private var autoSendTimer: Timer? {
+        get { objc_getAssociatedObject(self, &PostStore.autoSendTimerKey) as? Timer }
+        set { objc_setAssociatedObject(self, &PostStore.autoSendTimerKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
+    }
+    private static var autoSendTimerKey: UInt8 = 0
+    func performAutoSendReport() {
+        print("[AutoSend] performAutoSendReport called at", Date())
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        // Найти обычный или кастомный отчет за сегодня
+        let regular = posts.first(where: { $0.type == .regular && cal.isDate($0.date, inSameDayAs: today) })
+        let custom = posts.first(where: { $0.type == .custom && cal.isDate($0.date, inSameDayAs: today) })
+        let hasRegular = regular != nil && (!regular!.goodItems.isEmpty || !regular!.badItems.isEmpty)
+        let hasCustom = custom != nil && (!custom!.goodItems.isEmpty || (custom!.evaluationResults?.contains(true) == true))
+        var textToSend = ""
+        if hasRegular {
+            textToSend = "Обычный отчет за сегодня:\n" + (regular!.goodItems + regular!.badItems).joined(separator: "\n")
+        } else if hasCustom {
+            textToSend = "Кастомный отчет за сегодня:\n" + (custom!.goodItems).enumerated().map { idx, item in
+                let mark = (custom!.evaluationResults?[idx] ?? false) ? "✅" : "❌"
+                return "\(mark) \(item)"
+            }.joined(separator: "\n")
+        } else {
+            textToSend = "Сегодня я получил медаль истинного LABотряса, потому, что не сделал никакого отчета"
+        }
+        print("[AutoSend] Sending to Telegram: \n\(textToSend)")
+        // Отправить в Telegram (асинхронно)
+        sendToTelegram(text: textToSend) { [weak self] success in
+            DispatchQueue.main.async {
+                print("[AutoSend] Telegram send result:", success)
+                self?.lastAutoSendStatus = success ? "Отправлено в \(self?.autoSendTime.formatted(date: .omitted, time: .shortened) ?? "")" : "Ошибка отправки"
+                self?.saveAutoSendSettings()
+                // Блокировать отправку/редактирование до следующего дня
+                self?.reportStatus = ReportStatus.done
+                self?.localService.saveReportStatus(ReportStatus.done)
+                self?.forceUnlock = false
+                self?.localService.saveForceUnlock(false)
+                // Сбросить временные статусы, если нужно
+            }
+        }
+    }
+    private func sendToTelegram(text: String, completion: @escaping (Bool) -> Void) {
+        guard let token = telegramToken, let chatId = telegramChatId, !token.isEmpty, !chatId.isEmpty else {
+            print("[AutoSend] Telegram credentials missing")
+            completion(false)
+            return
+        }
+        let urlString = "https://api.telegram.org/bot\(token)/sendMessage"
+        guard let url = URL(string: urlString) else { print("[AutoSend] Invalid URL"); completion(false); return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        let params = ["chat_id": chatId, "text": text]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: params)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error { print("[AutoSend] Telegram send error: \(error)"); completion(false); return }
+            print("[AutoSend] Telegram send success")
+            completion(true)
+        }
+        task.resume()
     }
 }
 
