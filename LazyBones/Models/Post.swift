@@ -583,9 +583,12 @@ class PostStore: ObservableObject, PostStoreProtocol {
         let interval = todaySend.timeIntervalSince(now)
         print("[AutoSend] Scheduling auto send for", todaySend, "in", interval, "seconds")
         if interval > 0 {
+            // Таймер только для debug/MVP, не для BGTaskScheduler
+#if DEBUG
             autoSendTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] _ in
                 self?.performAutoSendReport()
             }
+#endif
         }
     }
     private var autoSendTimer: Timer? {
@@ -654,14 +657,16 @@ class PostStore: ObservableObject, PostStoreProtocol {
             return
         }
         let urlString = "https://api.telegram.org/bot\(token)/sendMessage"
-        guard let url = URL(string: urlString) else { print("[AutoSend] Invalid URL"); completion(false); return }
+        guard let url = URL(string: urlString) else {
+            print("[AutoSend] Invalid URL"); completion(false); return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         let params = ["chat_id": chatId, "text": text]
         request.httpBody = try? JSONSerialization.data(withJSONObject: params)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error { print("[AutoSend] Telegram send error: \(error)"); completion(false); return }
+            if let error = error {
+                print("[AutoSend] Telegram send error: \(error)"); completion(false); return }
             print("[AutoSend] Telegram send success")
             completion(true)
         }
