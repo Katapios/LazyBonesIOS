@@ -35,7 +35,20 @@ private func registerBGTask() {
 private func handleSendReportTask(task: BGAppRefreshTask) {
     logBGTaskEvent("Handling BGTask: performAutoSendReport")
     let store = PostStore.shared
-    store.performAutoSendReport()
+    // Проверяем, включён ли тест background fetch
+    let ud = UserDefaults(suiteName: "group.com.katapios.LazyBones")
+    let isBFTest = ud?.bool(forKey: "backgroundFetchTestEnabled") ?? false
+    if isBFTest {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        let now = formatter.string(from: Date())
+        let text = "Я Background Fetch! Время: \(now). Публикуюсь для теста BG."
+        store.sendToTelegram(text: text) { success in
+            logBGTaskEvent("BG Fetch Test: sent to Telegram: \(success)")
+        }
+    } else {
+        store.performAutoSendReport()
+    }
     logBGTaskEvent("Rescheduling BGTask after execution")
     scheduleSendReportBGTask()
     task.setTaskCompleted(success: true)
@@ -43,10 +56,14 @@ private func handleSendReportTask(task: BGAppRefreshTask) {
 
 private func scheduleSendReportBGTask() {
     let request = BGAppRefreshTaskRequest(identifier: "com.katapios.LazyBones.sendReport")
-    request.earliestBeginDate = Calendar.current.date(byAdding: .hour, value: 1, to: Date())
+    // Если включён тест — каждые 30 минут, иначе раз в час
+    let ud = UserDefaults(suiteName: "group.com.katapios.LazyBones")
+    let isBFTest = ud?.bool(forKey: "backgroundFetchTestEnabled") ?? false
+    let interval: TimeInterval = isBFTest ? 30 * 60 : 60 * 60
+    request.earliestBeginDate = Date().addingTimeInterval(interval)
     do {
         try BGTaskScheduler.shared.submit(request)
-        logBGTaskEvent("BGTask scheduled for +1 hour")
+        logBGTaskEvent("BGTask scheduled for +\(interval/60) min")
     } catch {
         logBGTaskEvent("Failed to schedule BGTask: \(error)")
         print("[BGTask] Не удалось запланировать задачу: \(error)")

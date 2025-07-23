@@ -650,7 +650,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
             }
         }
     }
-    private func sendToTelegram(text: String, completion: @escaping (Bool) -> Void) {
+    func sendToTelegram(text: String, completion: @escaping (Bool) -> Void) {
         guard let token = telegramToken, let chatId = telegramChatId, !token.isEmpty, !chatId.isEmpty else {
             print("[AutoSend] Telegram credentials missing")
             completion(false)

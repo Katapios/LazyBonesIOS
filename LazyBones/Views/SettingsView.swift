@@ -13,12 +13,15 @@ struct SettingsView: View {
     @State private var telegramBotId: String = ""
     @State private var telegramStatus: String? = nil
     @State private var showUnlockAlert = false
+    // Новый раздел для проверки background fetch
+    @State private var isBackgroundFetchTestEnabled: Bool = false
     var body: some View {
         Form {
             deviceNameSection
             telegramSection
             notificationSection
             autoSendSection
+            backgroundFetchTestSection // Новый раздел
             dataSection
         }
         .navigationTitle("Настройки")
@@ -50,6 +53,10 @@ struct SettingsView: View {
             telegramToken = store.telegramToken ?? ""
             telegramChatId = store.telegramChatId ?? ""
             telegramBotId = store.telegramBotId ?? ""
+            isBackgroundFetchTestEnabled = loadBackgroundFetchTestEnabled()
+        }
+        .onChange(of: isBackgroundFetchTestEnabled) { newValue in
+            saveBackgroundFetchTestEnabled(newValue)
         }
         .hideKeyboardOnTap()
         .scrollIndicators(.hidden)
@@ -223,6 +230,18 @@ struct SettingsView: View {
         }
     }
     
+    // Новый раздел для проверки background fetch
+    private var backgroundFetchTestSection: some View {
+        Section(header: Text("Проверка background fetch")) {
+            Toggle("Публиковать тестовое сообщение раз в полчаса", isOn: $isBackgroundFetchTestEnabled)
+                .disabled(false)
+            Text("Если включить этот ползунок, в Telegram-группу будет публиковаться тестовое сообщение каждые 30 минут. Функция работает только для тестирования background fetch и не влияет на обычную работу приложения.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+    
     private var dataSection: some View {
         Section(header: Text("Данные")) {
             Button(role: .destructive) {
@@ -317,6 +336,15 @@ struct SettingsView: View {
             return formatter.string(from: date)
         }
         return times.joined(separator: ", ")
+    }
+    // --- UserDefaults для background fetch test ---
+    private func saveBackgroundFetchTestEnabled(_ value: Bool) {
+        let ud = UserDefaults(suiteName: "group.com.katapios.LazyBones")
+        ud?.set(value, forKey: "backgroundFetchTestEnabled")
+    }
+    private func loadBackgroundFetchTestEnabled() -> Bool {
+        let ud = UserDefaults(suiteName: "group.com.katapios.LazyBones")
+        return ud?.bool(forKey: "backgroundFetchTestEnabled") ?? false
     }
 }
 
