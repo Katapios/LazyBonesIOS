@@ -22,6 +22,7 @@ struct DailyPlanningFormView: View {
     @State private var planToDeleteIndex: Int? = nil
     @State private var tagCategory: Int = 0 // 0 — good, 1 — bad
     @State private var lastPlanDate: Date = Calendar.current.startOfDay(for: Date())
+    @State private var publishStatus: String? = nil
     
     var body: some View {
         VStack {
@@ -100,11 +101,22 @@ struct DailyPlanningFormView: View {
                 }
             }
             if !planItems.isEmpty {
-                Button("Сохранить как отчет") {
-                    showSaveAlert = true
+                HStack(spacing: 12) {
+                    Button("Сохранить как отчет") {
+                        showSaveAlert = true
+                    }
+                    .buttonStyle(.borderedProminent)
+                    Button("Опубликовать в Telegram") {
+                        publishCustomReportToTelegram()
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.borderedProminent)
                 .padding(.top)
+                if let status = publishStatus {
+                    Text(status)
+                        .font(.caption)
+                        .foregroundColor(status.contains("успешно") ? .green : .red)
+                }
             }
         }
         .padding()
@@ -255,6 +267,60 @@ struct DailyPlanningFormView: View {
             store.add(post: post)
         }
         savePlan()
+    }
+    func publishCustomReportToTelegram() {
+        let today = Calendar.current.startOfDay(for: Date())
+        guard let custom = store.posts.first(where: { $0.type == .custom && Calendar.current.isDate($0.date, inSameDayAs: today) }) else {
+            publishStatus = "Сначала сохраните план как отчет!"
+            return
+        }
+        if custom.isEvaluated != true {
+            publishStatus = "Сначала оцените план!"
+            return
+        }
+        guard let token = store.telegramToken, let chatId = store.telegramChatId, !token.isEmpty, !chatId.isEmpty else {
+            publishStatus = "Заполните токен и chat_id в настройках"
+            return
+        }
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "ru_RU")
+        dateFormatter.dateStyle = .full
+        let dateStr = dateFormatter.string(from: custom.date)
+        let deviceName = store.getDeviceName()
+        var message = "\u{1F4C5} <b>План на день за \(dateStr)</b>\n"
+        message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
+        if !custom.goodItems.isEmpty {
+            message += "<b>✅ План:</b>\n"
+            for (index, item) in custom.goodItems.enumerated() {
+                message += "\(index + 1). \(item)\n"
+            }
+        }
+        let urlString = "https://api.telegram.org/bot\(token)/sendMessage"
+        let params = [
+            "chat_id": chatId,
+            "text": message,
+            "parse_mode": "HTML"
+        ]
+        var urlComponents = URLComponents(string: urlString)!
+        urlComponents.queryItems = params.map { URLQueryItem(name: $0.key, value: $0.value) }
+        guard let url = urlComponents.url else {
+            publishStatus = "Ошибка формирования URL"
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    publishStatus = "Ошибка отправки: \(error.localizedDescription)"
+                } else if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                    publishStatus = "План успешно опубликован!"
+                } else {
+                    publishStatus = "Ошибка отправки: неверный токен или chat_id"
+                }
+            }
+        }
+        task.resume()
     }
     // MARK: - Теги CRUD
     func addTag() {
