@@ -344,14 +344,21 @@ class PostStore: ObservableObject, PostStoreProtocol {
             return
         }
         let today = Calendar.current.startOfDay(for: Date())
-        if let todayPost = posts.first(where: { Calendar.current.isDate($0.date, inSameDayAs: today) }) {
-            if todayPost.published {
+        // Новый алгоритм:
+        // 1. Если есть опубликованный обычный отчет за сегодня — .done
+        // 2. Если есть обычный отчет за сегодня (не опубликован, но есть good/bad/voice) — .inProgress
+        // 3. Если есть только кастомный отчет за сегодня — .inProgress
+        // 4. Иначе — .notStarted
+        if let regular = posts.first(where: { $0.type == .regular && Calendar.current.isDate($0.date, inSameDayAs: today) }) {
+            if regular.published {
                 reportStatus = .done
-            } else if !todayPost.goodItems.isEmpty || !todayPost.badItems.isEmpty || !todayPost.voiceNotes.isEmpty {
+            } else if !regular.goodItems.isEmpty || !regular.badItems.isEmpty || !regular.voiceNotes.isEmpty {
                 reportStatus = .inProgress
             } else {
                 reportStatus = .notStarted
             }
+        } else if let custom = posts.first(where: { $0.type == .custom && Calendar.current.isDate($0.date, inSameDayAs: today) }) {
+            reportStatus = .inProgress
         } else {
             reportStatus = .notStarted
         }
