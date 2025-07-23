@@ -21,7 +21,6 @@ struct SettingsView: View {
             telegramSection
             notificationSection
             autoSendSection
-            backgroundFetchTestSection // Новый раздел
             dataSection
         }
         .navigationTitle("Настройки")
@@ -149,93 +148,10 @@ struct SettingsView: View {
     }
     
     private var autoSendSection: some View {
-        Section(header: Text("Автоотправка отчета в Telegram")) {
-            Toggle("Автоматически отправлять отчет", isOn: $store.autoSendToTelegram)
+        Section(header: Text("Автоотправка отчетов")) {
+            Toggle("Включить автоотправку отчетов", isOn: $store.autoSendToTelegram)
                 .onChange(of: store.autoSendToTelegram) { store.saveAutoSendSettings() }
-            if store.autoSendToTelegram && (store.telegramToken?.isEmpty ?? true || store.telegramChatId?.isEmpty ?? true) {
-                HStack(spacing: 6) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.orange)
-                    Text("Заполните токен и chat_id Telegram для автоотправки!")
-                        .font(.caption2)
-                        .foregroundColor(.orange)
-                }
-            }
-            if store.autoSendToTelegram {
-                DatePicker(
-                    "Время отправки",
-                    selection: Binding(
-                        get: {
-                            let cal = Calendar.current
-                            let min = cal.date(bySettingHour: store.notificationStartHour, minute: 0, second: 0, of: Date()) ?? Date()
-                            let max = cal.date(bySettingHour: store.notificationEndHour, minute: 0, second: 0, of: Date()) ?? Date()
-                            if store.autoSendTime < min { return min }
-                            if store.autoSendTime > max { return max }
-                            return store.autoSendTime
-                        },
-                        set: { newValue in
-                            let cal = Calendar.current
-                            let min = cal.date(bySettingHour: store.notificationStartHour, minute: 0, second: 0, of: Date()) ?? Date()
-                            let max = cal.date(bySettingHour: store.notificationEndHour, minute: 0, second: 0, of: Date()) ?? Date()
-                            var value = newValue
-                            if value < min { value = min }
-                            if value > max { value = max }
-                            store.autoSendTime = value
-                            store.saveAutoSendSettings()
-                        }
-                    ),
-                    displayedComponents: .hourAndMinute
-                )
-                .datePickerStyle(.wheel)
-                .environment(\.locale, Locale(identifier: "ru_RU"))
-                .disabled(!store.autoSendToTelegram)
-                .frame(maxHeight: 120)
-                .clipped()
-                .padding(.vertical, 4)
-                Text("Время можно выбрать только с \(store.notificationStartHour):00 до \(store.notificationEndHour):00")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
-            if let status = store.lastAutoSendStatus {
-                Text("Последняя отправка: \(status)")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
-            // Новое предупреждение
-            if store.autoSendToTelegram {
-                HStack(spacing: 6) {
-                    Image(systemName: "info.circle.fill")
-                        .foregroundColor(.blue)
-                    Text("Автоотправка не сработает, если приложение было полностью выгружено из памяти. После запуска приложения перепланируйте автоотправку.")
-                        .font(.caption2)
-                        .foregroundColor(.blue)
-                }
-                VStack(alignment: .leading, spacing: 16) {
-                    Button("Перепланировать автоотправку") {
-                        print("[DEBUG][SettingsView] Кнопка перепланирования автоотправки нажата")
-                        PostStore.rescheduleBGTask()
-                    }
-                    .buttonStyle(.bordered)
-                    .padding(.vertical, 4)
-
-                    Button("Протестировать автоотправку") {
-                        print("[DEBUG][SettingsView] Кнопка теста автоотправки нажата")
-                        store.performAutoSendReport()
-                    }
-                    .buttonStyle(.bordered)
-                    .padding(.vertical, 4)
-                }
-                .padding(.vertical, 4)
-            }
-        }
-    }
-    
-    // Новый раздел для проверки background fetch
-    private var backgroundFetchTestSection: some View {
-        Section(header: Text("Проверка background fetch")) {
-            Toggle("Публиковать тестовое сообщение раз в полчаса", isOn: $isBackgroundFetchTestEnabled)
-                .disabled(false)
-            Text("Если включить этот ползунок, в Telegram-группу будет публиковаться тестовое сообщение каждые 30 минут. Функция работает только для тестирования background fetch и не влияет на обычную работу приложения.")
+            Text("После окончания дня и блокировки отчетов, приложение автоматически отправит оба отчета (план и локальный) за текущий день в Telegram. Если какого-то отчета нет, будет отправлено соответствующее сообщение. Отправка происходит в фоне, когда система разрешит выполнение фоновой задачи.")
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

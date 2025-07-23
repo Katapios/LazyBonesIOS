@@ -645,6 +645,74 @@ class PostStore: ObservableObject, PostStoreProtocol {
             }
         }
     }
+    /// Автоматическая отправка всех отчетов за сегодня (кастомный и обычный)
+    func autoSendAllReportsForToday(completion: (() -> Void)? = nil) {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let regular = posts.first(where: { $0.type == .regular && cal.isDate($0.date, inSameDayAs: today) })
+        let custom = posts.first(where: { $0.type == .custom && cal.isDate($0.date, inSameDayAs: today) })
+        var sentCount = 0
+        var toSend = 0
+        func done() {
+            sentCount += 1
+            if sentCount == toSend { completion?() }
+        }
+        // --- Кастомный отчет ---
+        if let custom = custom, !custom.goodItems.isEmpty {
+            toSend += 1
+            let dateFormatter = DateFormatter()
+            dateFormatter.locale = Locale(identifier: "ru_RU")
+            dateFormatter.dateStyle = .full
+            let dateStr = dateFormatter.string(from: custom.date)
+            let deviceName = getDeviceName()
+            var message = "\u{1F4C5} <b>План на день за \(dateStr)</b>\n"
+            message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
+            if !custom.goodItems.isEmpty {
+                message += "<b>✅ План:</b>\n"
+                for (index, item) in custom.goodItems.enumerated() {
+                    message += "\(index + 1). \(item)\n"
+                }
+            }
+            sendToTelegram(text: message) { _ in done() }
+        } else {
+            toSend += 1
+            sendToTelegram(text: "План на сегодня отсутствует.") { _ in done() }
+        }
+        // --- Обычный отчет ---
+        if let regular = regular, (!regular.goodItems.isEmpty || !regular.badItems.isEmpty) {
+            toSend += 1
+            let dateFormatter = DateFormatter()
+            dateFormatter.locale = Locale(identifier: "ru_RU")
+            dateFormatter.dateStyle = .full
+            let dateStr = dateFormatter.string(from: regular.date)
+            let deviceName = getDeviceName()
+            var message = "\u{1F4C5} <b>Локальный отчет за \(dateStr)</b>\n"
+            message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
+            if !regular.goodItems.isEmpty {
+                message += "<b>✅ Я молодец:</b>\n"
+                for (index, item) in regular.goodItems.enumerated() {
+                    message += "\(index + 1). \(item)\n"
+                }
+                message += "\n"
+            }
+            if !regular.badItems.isEmpty {
+                message += "<b>❌ Я не молодец:</b>\n"
+                for (index, item) in regular.badItems.enumerated() {
+                    message += "\(index + 1). \(item)\n"
+                }
+            }
+            sendToTelegram(text: message) { _ in done() }
+        } else {
+            toSend += 1
+            sendToTelegram(text: "Локальный отчет за сегодня отсутствует.") { _ in done() }
+        }
+        // --- Если нет ни одного ---
+        if custom == nil && regular == nil {
+            toSend += 1
+            sendToTelegram(text: "За сегодня не найдено ни одного отчета.") { _ in done() }
+        }
+        if toSend == 0 { completion?() }
+    }
     private func sendLocalNotification(title: String, body: String) {
         let content = UNMutableNotificationContent()
         content.title = title

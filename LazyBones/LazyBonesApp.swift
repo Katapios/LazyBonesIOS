@@ -33,21 +33,16 @@ private func registerBGTask() {
 }
 
 private func handleSendReportTask(task: BGAppRefreshTask) {
-    logBGTaskEvent("Handling BGTask: performAutoSendReport")
+    logBGTaskEvent("Handling BGTask: autoSendAllReportsForToday")
     let store = PostStore.shared
-    // Проверяем, включён ли тест background fetch
     let ud = UserDefaults(suiteName: "group.com.katapios.LazyBones")
-    let isBFTest = ud?.bool(forKey: "backgroundFetchTestEnabled") ?? false
-    if isBFTest {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        let now = formatter.string(from: Date())
-        let text = "Я Background Fetch! Время: \(now). Публикуюсь для теста BG."
-        store.sendToTelegram(text: text) { success in
-            logBGTaskEvent("BG Fetch Test: sent to Telegram: \(success)")
+    let isAutoSend = ud?.bool(forKey: "autoSendToTelegram") ?? false
+    if isAutoSend {
+        store.autoSendAllReportsForToday {
+            logBGTaskEvent("AutoSend: reports sent")
         }
     } else {
-        store.performAutoSendReport()
+        logBGTaskEvent("AutoSend: disabled")
     }
     logBGTaskEvent("Rescheduling BGTask after execution")
     scheduleSendReportBGTask()
