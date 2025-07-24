@@ -674,6 +674,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
             completion?()
             return
         }
+        let today = cal.startOfDay(for: now)
         let regular = posts.first(where: { $0.type == .regular && cal.isDate($0.date, inSameDayAs: today) })
         let custom = posts.first(where: { $0.type == .custom && cal.isDate($0.date, inSameDayAs: today) })
         var sentCount = 0

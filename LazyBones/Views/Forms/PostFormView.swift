@@ -6,11 +6,11 @@ struct TagItem: Identifiable, Hashable {
     let text: String
     let icon: String
     let color: Color
-    
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
-    
+
     static func == (lhs: TagItem, rhs: TagItem) -> Bool {
         lhs.id == rhs.id
     }
@@ -20,7 +20,7 @@ struct TagItem: Identifiable, Hashable {
 struct TagBrickView: View {
     let tag: TagItem
     let onTap: () -> Void
-    
+
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 6) {
@@ -29,7 +29,7 @@ struct TagBrickView: View {
                 Text(tag.text)
                     .font(.system(size: 13, weight: .medium))
             }
-            .fixedSize() // Не растягивать тег по ширине
+            .fixedSize()  // Не растягивать тег по ширине
             .foregroundColor(.white)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
@@ -53,7 +53,7 @@ struct ChecklistSectionView: View {
     @FocusState var focusField: UUID?
     let onAdd: () -> Void
     let onRemove: (ChecklistItem) -> Void
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title).font(.subheadline)
@@ -79,7 +79,7 @@ struct ChecklistSectionView: View {
             }
         }
     }
-    
+
     private func binding(for item: ChecklistItem) -> Binding<String> {
         guard let idx = items.firstIndex(of: item) else {
             return .constant("")
@@ -109,7 +109,7 @@ struct PostFormView: View {
     enum TabType { case good, bad }
     @State private var pickerIndexGood: Int = 0
     @State private var pickerIndexBad: Int = 0
-    
+
     // MARK: - Глобальные теги
     private var goodTags: [TagItem] {
         store.goodTags.map { TagItem(text: $0, icon: "tag", color: .green) }
@@ -117,25 +117,42 @@ struct PostFormView: View {
     private var badTags: [TagItem] {
         store.badTags.map { TagItem(text: $0, icon: "tag", color: .red) }
     }
-    
-    init(title: String = "Создать отчёт", post: Post? = nil, onSave: (() -> Void)? = nil, onPublish: (() -> Void)? = nil) {
+
+    init(
+        title: String = "Создать отчёт",
+        post: Post? = nil,
+        onSave: (() -> Void)? = nil,
+        onPublish: (() -> Void)? = nil
+    ) {
         self.title = title
         self.post = post
         self.onSave = onSave
         self.onPublish = onPublish
         if let post = post {
-            _goodItems = State(initialValue: post.goodItems.map { ChecklistItem(id: UUID(), text: $0) })
-            _badItems = State(initialValue: post.badItems.map { ChecklistItem(id: UUID(), text: $0) })
+            _goodItems = State(
+                initialValue: post.goodItems.map {
+                    ChecklistItem(id: UUID(), text: $0)
+                }
+            )
+            _badItems = State(
+                initialValue: post.badItems.map {
+                    ChecklistItem(id: UUID(), text: $0)
+                }
+            )
             _voiceNotes = State(initialValue: post.voiceNotes)
             self.title = "Редактирование отчёта"
         } else {
-            _goodItems = State(initialValue: [ChecklistItem(id: UUID(), text: "")])
-            _badItems = State(initialValue: [ChecklistItem(id: UUID(), text: "")])
+            _goodItems = State(initialValue: [
+                ChecklistItem(id: UUID(), text: "")
+            ])
+            _badItems = State(initialValue: [
+                ChecklistItem(id: UUID(), text: "")
+            ])
             _voiceNotes = State(initialValue: [])
             self.title = "Создание отчёта"
         }
     }
-    
+
     var body: some View {
         NavigationView {
             ScrollView {
@@ -151,21 +168,35 @@ struct PostFormView: View {
                                 }) {
                                     HStack(spacing: 2) {
                                         Text("👍 молодец")
-                                            .font(.system(size: 14.3, weight: .bold))
-                                            .foregroundColor(selectedTab == .good ? .green : .primary)
+                                            .font(
+                                                .system(
+                                                    size: 14.3,
+                                                    weight: .bold
+                                                )
+                                            )
+                                            .foregroundColor(
+                                                selectedTab == .good
+                                                    ? .green : .primary
+                                            )
                                         Text("(")
                                             .font(.system(size: 14.3))
                                             .foregroundColor(.secondary)
-                                        Text("\(goodItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count)")
-                                            .font(.system(size: 14.3))
-                                            .foregroundColor(.secondary)
+                                        Text(
+                                            "\(goodItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count)"
+                                        )
+                                        .font(.system(size: 14.3))
+                                        .foregroundColor(.secondary)
                                         Text(")")
                                             .font(.system(size: 14.3))
                                             .foregroundColor(.secondary)
                                     }
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
-                                    .background(selectedTab == .good ? Color.green.opacity(0.12) : Color.clear)
+                                    .background(
+                                        selectedTab == .good
+                                            ? Color.green.opacity(0.12)
+                                            : Color.clear
+                                    )
                                     .cornerRadius(8)
                                 }
                                 Button(action: {
@@ -174,21 +205,35 @@ struct PostFormView: View {
                                 }) {
                                     HStack(spacing: 2) {
                                         Text("👎 лаботряс")
-                                            .font(.system(size: 14.3, weight: .bold))
-                                            .foregroundColor(selectedTab == .bad ? .red : .primary)
+                                            .font(
+                                                .system(
+                                                    size: 14.3,
+                                                    weight: .bold
+                                                )
+                                            )
+                                            .foregroundColor(
+                                                selectedTab == .bad
+                                                    ? .red : .primary
+                                            )
                                         Text("(")
                                             .font(.system(size: 14.3))
                                             .foregroundColor(.secondary)
-                                        Text("\(badItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count)")
-                                            .font(.system(size: 14.3))
-                                            .foregroundColor(.secondary)
+                                        Text(
+                                            "\(badItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count)"
+                                        )
+                                        .font(.system(size: 14.3))
+                                        .foregroundColor(.secondary)
                                         Text(")")
                                             .font(.system(size: 14.3))
                                             .foregroundColor(.secondary)
                                     }
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
-                                    .background(selectedTab == .bad ? Color.red.opacity(0.12) : Color.clear)
+                                    .background(
+                                        selectedTab == .bad
+                                            ? Color.red.opacity(0.12)
+                                            : Color.clear
+                                    )
                                     .cornerRadius(8)
                                 }
                             }
@@ -198,53 +243,103 @@ struct PostFormView: View {
                             .contentShape(Rectangle())
                         }
                     }
-                    .padding(.bottom, 32) // Ещё больший отступ
+                    .padding(.bottom, 32)  // Ещё больший отступ
                     // --- ЗОНА WHEEL + КНОПКА + ТЕГИ ---
                     VStack(spacing: 0) {
-                        let allTags: [TagItem] = selectedTab == .good ? goodTags : badTags
-                        let pickerIndex: Binding<Int> = selectedTab == .good ? $pickerIndexGood : $pickerIndexBad
+                        let allTags: [TagItem] =
+                            selectedTab == .good ? goodTags : badTags
+                        let pickerIndex: Binding<Int> =
+                            selectedTab == .good
+                            ? $pickerIndexGood : $pickerIndexBad
                         if !allTags.isEmpty {
                             VStack(spacing: 0) {
                                 // Spacer(minLength: 8) // УБРАНО!
                                 HStack(alignment: .center, spacing: 6) {
-                                    TagPickerUIKitWheel(tags: allTags, selectedIndex: pickerIndex) { _ in }
-                                        .frame(maxWidth: .infinity, minHeight: 120, maxHeight: 120)
-                                        .id(selectedTab)
-                                        .clipped() // Ограничиваем кликабельную область
-                                    let selectedTag = allTags[(selectedTab == .good ? pickerIndexGood : pickerIndexBad)]
-                                    let isTagAdded = (selectedTab == .good ? goodItems : badItems).contains(where: { $0.text == selectedTag.text })
+                                    TagPickerUIKitWheel(
+                                        tags: allTags,
+                                        selectedIndex: pickerIndex
+                                    ) { _ in }
+                                    .frame(
+                                        maxWidth: .infinity,
+                                        minHeight: 120,
+                                        maxHeight: 120
+                                    )
+                                    .id(selectedTab)
+                                    .clipped()  // Ограничиваем кликабельную область
+                                    let selectedTag = allTags[
+                                        (selectedTab == .good
+                                            ? pickerIndexGood : pickerIndexBad)
+                                    ]
+                                    let isTagAdded =
+                                        (selectedTab == .good
+                                        ? goodItems : badItems).contains(
+                                            where: {
+                                                $0.text == selectedTag.text
+                                            })
                                     Button(action: {
                                         if selectedTab == .good {
                                             if isTagAdded {
-                                                if let idx = goodItems.firstIndex(where: { $0.text == selectedTag.text }) { goodItems.remove(at: idx) }
+                                                if let idx =
+                                                    goodItems.firstIndex(
+                                                        where: {
+                                                            $0.text
+                                                                == selectedTag
+                                                                .text
+                                                        })
+                                                {
+                                                    goodItems.remove(at: idx)
+                                                }
                                             } else {
                                                 addGoodTag(selectedTag)
                                             }
                                         } else {
                                             if isTagAdded {
-                                                if let idx = badItems.firstIndex(where: { $0.text == selectedTag.text }) { badItems.remove(at: idx) }
+                                                if let idx =
+                                                    badItems.firstIndex(where: {
+                                                        $0.text
+                                                            == selectedTag.text
+                                                    })
+                                                {
+                                                    badItems.remove(at: idx)
+                                                }
                                             } else {
                                                 addBadTag(selectedTag)
                                             }
                                         }
                                     }) {
-                                        Image(systemName: isTagAdded ? "minus.circle.fill" : "plus.circle.fill")
-                                            .resizable()
-                                            .frame(width: 28, height: 28)
-                                            .foregroundColor(isTagAdded ? .red : .blue)
+                                        Image(
+                                            systemName: isTagAdded
+                                                ? "minus.circle.fill"
+                                                : "plus.circle.fill"
+                                        )
+                                        .resizable()
+                                        .frame(width: 28, height: 28)
+                                        .foregroundColor(
+                                            isTagAdded ? .red : .blue
+                                        )
                                     }
                                     .buttonStyle(PlainButtonStyle())
                                 }
                                 .padding(.horizontal, 4)
-                                .contentShape(Rectangle()) // Ограничиваем кликабельную область wheel
+                                .contentShape(Rectangle())  // Ограничиваем кликабельную область wheel
                             }
                             .padding(.bottom, 8)
                         }
                         ScrollView(.horizontal, showsIndicators: false) {
-                            let selectedItems: [ChecklistItem] = selectedTab == .good ? goodItems : badItems
+                            let selectedItems: [ChecklistItem] =
+                                selectedTab == .good ? goodItems : badItems
                             HStack(spacing: 8) {
                                 ForEach(selectedItems) { item in
-                                    let tag = (selectedTab == .good ? goodTags : badTags).first(where: { $0.text == item.text }) ?? TagItem(text: item.text, icon: "tag", color: .gray)
+                                    let tag =
+                                        (selectedTab == .good
+                                        ? goodTags : badTags).first(where: {
+                                            $0.text == item.text
+                                        })
+                                        ?? TagItem(
+                                            text: item.text,
+                                            icon: "tag",
+                                            color: .gray
+                                        )
                                     TagBrickView(tag: tag) {
                                         if selectedTab == .good {
                                             removeGoodItem(item)
@@ -294,7 +389,10 @@ struct PostFormView: View {
                         if let status = sendStatus {
                             Text(status)
                                 .font(.caption)
-                                .foregroundColor(status == "Успешно отправлено!" ? .green : .red)
+                                .foregroundColor(
+                                    status == "Успешно отправлено!"
+                                        ? .green : .red
+                                )
                         }
                     }
                     .padding(.vertical, 6)
@@ -310,7 +408,7 @@ struct PostFormView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .bottomBar) {
-                    HStack(spacing: 8) {
+                    HStack() {
                         LargeButtonView(
                             title: "Сохранить",
                             icon: "tray.and.arrow.down.fill",
@@ -337,7 +435,7 @@ struct PostFormView: View {
             }
         }
     }
-    
+
     // MARK: - Actions
     func addGoodItem() {
         let new = ChecklistItem(id: UUID(), text: "")
@@ -345,7 +443,7 @@ struct PostFormView: View {
         print("[DEBUG] goodItems после добавления:", goodItems.map { $0.text })
         goodFocus = new.id
     }
-    
+
     func addGoodTag(_ tag: TagItem) {
         // Проверяем, нет ли уже такого тега
         if !goodItems.contains(where: { $0.text == tag.text }) {
@@ -354,7 +452,7 @@ struct PostFormView: View {
             // goodFocus = new.id // убрано, чтобы не вызывать клавиатуру
         }
     }
-    
+
     func addBadTag(_ tag: TagItem) {
         // Проверяем, нет ли уже такого тега
         if !badItems.contains(where: { $0.text == tag.text }) {
@@ -363,11 +461,11 @@ struct PostFormView: View {
             // badFocus = new.id // убрано, чтобы не вызывать клавиатуру
         }
     }
-    
+
     // MARK: - Icon Mapping
     private func getIconForItem(_ item: String, isGood: Bool) -> String {
         let lowercasedItem = item.lowercased()
-        
+
         // Маппинг для "Я молодец"
         if isGood {
             if lowercasedItem.contains("не хлебил") { return "🚫" }
@@ -390,7 +488,7 @@ struct PostFormView: View {
             if lowercasedItem.contains("не читал") { return "📚" }
             if lowercasedItem.contains("не смотрел туториалы") { return "▶️" }
         }
-        
+
         // Дефолтные иконки для нераспознанных пунктов
         return isGood ? "✅" : "❌"
     }
@@ -420,59 +518,101 @@ struct PostFormView: View {
             }
         }
     }
-    
+
     var canSave: Bool {
-        goodItems.contains(where: { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }) ||
-        badItems.contains(where: { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty })
+        goodItems.contains(where: {
+            !$0.text.trimmingCharacters(in: .whitespaces).isEmpty
+        })
+            || badItems.contains(where: {
+                !$0.text.trimmingCharacters(in: .whitespaces).isEmpty
+            })
     }
-    
+
     var canPublish: Bool {
-        goodItems.contains(where: { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }) &&
-        badItems.contains(where: { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty })
+        goodItems.contains(where: {
+            !$0.text.trimmingCharacters(in: .whitespaces).isEmpty
+        })
+            && badItems.contains(where: {
+                !$0.text.trimmingCharacters(in: .whitespaces).isEmpty
+            })
     }
-    
+
     func saveAndNotify() {
-        let filteredGood = goodItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        let filteredBad = badItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        let filteredGood = goodItems.map { $0.text }.filter {
+            !$0.trimmingCharacters(in: .whitespaces).isEmpty
+        }
+        let filteredBad = badItems.map { $0.text }.filter {
+            !$0.trimmingCharacters(in: .whitespaces).isEmpty
+        }
         let today = Calendar.current.startOfDay(for: Date())
         // Удалить все обычные отчёты за сегодня
-        store.posts.removeAll { $0.type == .regular && Calendar.current.isDate($0.date, inSameDayAs: today) }
+        store.posts.removeAll {
+            $0.type == .regular
+                && Calendar.current.isDate($0.date, inSameDayAs: today)
+        }
         // Добавить новый отчёт
-        let newPost = Post(id: UUID(), date: Date(), goodItems: filteredGood, badItems: filteredBad, published: false, voiceNotes: voiceNotes, type: .regular)
+        let newPost = Post(
+            id: UUID(),
+            date: Date(),
+            goodItems: filteredGood,
+            badItems: filteredBad,
+            published: false,
+            voiceNotes: voiceNotes,
+            type: .regular
+        )
         store.add(post: newPost)
         onSave?()
         dismiss()
     }
-    
+
     func publishAndNotify() {
-        let filteredGood = goodItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        let filteredBad = badItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        let draftPost = Post(id: post?.id ?? UUID(), date: Date(), goodItems: filteredGood, badItems: filteredBad, published: false, voiceNotes: voiceNotes, type: .regular)
-        if let _ = post {
+        let filteredGood = goodItems.map { $0.text }.filter {
+            !$0.trimmingCharacters(in: .whitespaces).isEmpty
+        }
+        let filteredBad = badItems.map { $0.text }.filter {
+            !$0.trimmingCharacters(in: .whitespaces).isEmpty
+        }
+        let draftPost = Post(
+            id: post?.id ?? UUID(),
+            date: Date(),
+            goodItems: filteredGood,
+            badItems: filteredBad,
+            published: false,
+            voiceNotes: voiceNotes,
+            type: .regular
+        )
+        if post != nil {
             store.update(post: draftPost)
         } else {
             store.add(post: draftPost)
         }
-        if let token = store.telegramToken, let chatId = store.telegramChatId, !token.isEmpty, !chatId.isEmpty {
+        if let token = store.telegramToken, let chatId = store.telegramChatId,
+            !token.isEmpty, !chatId.isEmpty
+        {
             sendToTelegram(token: token, chatId: chatId, post: draftPost)
         } else {
             self.sendStatus = "Ошибка: заполните токен и chat_id в настройках"
             // Не меняем статус, не вызываем onPublish
         }
     }
-    
+
     func sendToTelegram(token: String, chatId: String, post: Post) {
         isSending = true
         sendStatus = nil
         sendTextMessage(token: token, chatId: chatId, post: post) { success in
             if success && post.voiceNotes.count > 0 {
-                self.sendAllVoiceNotes(token: token, chatId: chatId, voiceNotes: post.voiceNotes.map { $0.path }) { allSuccess in
+                self.sendAllVoiceNotes(
+                    token: token,
+                    chatId: chatId,
+                    voiceNotes: post.voiceNotes.map { $0.path }
+                ) { allSuccess in
                     DispatchQueue.main.async {
                         self.isSending = false
                         if allSuccess {
                             self.finalizePublish(post: post)
                         } else {
-                            self.sendStatus = "Ошибка отправки голосовых заметок"
+                            self.sendStatus =
+                                "Ошибка отправки голосовых заметок"
                         }
                     }
                 }
@@ -482,7 +622,8 @@ struct PostFormView: View {
                     if success {
                         self.finalizePublish(post: post)
                     } else {
-                        self.sendStatus = "Ошибка отправки: неверный токен или chat_id"
+                        self.sendStatus =
+                            "Ошибка отправки: неверный токен или chat_id"
                     }
                 }
             }
@@ -491,23 +632,36 @@ struct PostFormView: View {
 
     private func finalizePublish(post: Post) {
         // Обновляем пост как опубликованный только если отправка успешна
-        let publishedPost = Post(id: post.id, date: post.date, goodItems: post.goodItems, badItems: post.badItems, published: true, voiceNotes: post.voiceNotes, type: .regular)
+        let publishedPost = Post(
+            id: post.id,
+            date: post.date,
+            goodItems: post.goodItems,
+            badItems: post.badItems,
+            published: true,
+            voiceNotes: post.voiceNotes,
+            type: .regular
+        )
         store.update(post: publishedPost)
         self.sendStatus = "Успешно отправлено!"
         self.onPublish?()
         self.dismiss()
     }
-    
-    private func sendTextMessage(token: String, chatId: String, post: Post, completion: @escaping (Bool) -> Void) {
+
+    private func sendTextMessage(
+        token: String,
+        chatId: String,
+        post: Post,
+        completion: @escaping (Bool) -> Void
+    ) {
         let dateFormatter = DateFormatter()
         dateFormatter.locale = Locale(identifier: "ru_RU")
         dateFormatter.dateStyle = .full
         let dateStr = dateFormatter.string(from: post.date)
         let deviceName = store.getDeviceName()
-        
+
         var message = "\u{1F4C5} <b>Отчёт за \(dateStr)</b>\n"
         message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
-        
+
         if !post.goodItems.isEmpty {
             message += "<b>✅ Я молодец:</b>\n"
             for (index, item) in post.goodItems.enumerated() {
@@ -523,41 +677,54 @@ struct PostFormView: View {
                 message += "\(index + 1). \(icon) \(item)\n"
             }
         }
-        
+
         if post.voiceNotes.count > 0 {
             message += "\n\u{1F3A4} <i>Голосовая заметка прикреплена</i>"
         }
-        
+
         let urlString = "https://api.telegram.org/bot\(token)/sendMessage"
         let params = [
             "chat_id": chatId,
             "text": message,
-            "parse_mode": "HTML"
+            "parse_mode": "HTML",
         ]
         var urlComponents = URLComponents(string: urlString)!
-        urlComponents.queryItems = params.map { URLQueryItem(name: $0.key, value: $0.value) }
+        urlComponents.queryItems = params.map {
+            URLQueryItem(name: $0.key, value: $0.value)
+        }
         guard let url = urlComponents.url else {
             completion(false)
             return
         }
-        
-        let task = URLSession.shared.dataTask(with: url) { data, response, error in
+
+        let task = URLSession.shared.dataTask(with: url) {
+            data,
+            response,
+            error in
             DispatchQueue.main.async {
                 if let error = error {
                     self.sendStatus = "Ошибка: \(error.localizedDescription)"
                     completion(false)
-                } else if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                } else if let httpResponse = response as? HTTPURLResponse,
+                    httpResponse.statusCode == 200
+                {
                     completion(true)
                 } else {
-                    self.sendStatus = "Ошибка отправки: неверный токен или chat_id"
+                    self.sendStatus =
+                        "Ошибка отправки: неверный токен или chat_id"
                     completion(false)
                 }
             }
         }
         task.resume()
     }
-    
-    private func sendAllVoiceNotes(token: String, chatId: String, voiceNotes: [String], completion: @escaping (Bool) -> Void) {
+
+    private func sendAllVoiceNotes(
+        token: String,
+        chatId: String,
+        voiceNotes: [String],
+        completion: @escaping (Bool) -> Void
+    ) {
         var index = 0
         func sendNext(successSoFar: Bool) {
             if index >= voiceNotes.count {
@@ -566,7 +733,8 @@ struct PostFormView: View {
             }
             let path = voiceNotes[index]
             let url = URL(fileURLWithPath: path)
-            sendSingleVoice(token: token, chatId: chatId, voiceURL: url) { success in
+            sendSingleVoice(token: token, chatId: chatId, voiceURL: url) {
+                success in
                 index += 1
                 sendNext(successSoFar: successSoFar && success)
             }
@@ -574,7 +742,12 @@ struct PostFormView: View {
         sendNext(successSoFar: true)
     }
 
-    private func sendSingleVoice(token: String, chatId: String, voiceURL: URL, completion: @escaping (Bool) -> Void) {
+    private func sendSingleVoice(
+        token: String,
+        chatId: String,
+        voiceURL: URL,
+        completion: @escaping (Bool) -> Void
+    ) {
         let urlString = "https://api.telegram.org/bot\(token)/sendVoice"
         guard let tgURL = URL(string: urlString) else {
             completion(false)
@@ -583,17 +756,27 @@ struct PostFormView: View {
         var request = URLRequest(url: tgURL)
         request.httpMethod = "POST"
         let boundary = UUID().uuidString
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.setValue(
+            "multipart/form-data; boundary=\(boundary)",
+            forHTTPHeaderField: "Content-Type"
+        )
         var body = Data()
         // Добавляем chat_id
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"chat_id\"\r\n\r\n".data(using: .utf8)!)
+        body.append(
+            "Content-Disposition: form-data; name=\"chat_id\"\r\n\r\n".data(
+                using: .utf8
+            )!
+        )
         body.append("\(chatId)\r\n".data(using: .utf8)!)
         // Добавляем аудиофайл
         do {
             let audioData = try Data(contentsOf: voiceURL)
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"voice\"; filename=\"voice_note.m4a\"\r\n".data(using: .utf8)!)
+            body.append(
+                "Content-Disposition: form-data; name=\"voice\"; filename=\"voice_note.m4a\"\r\n"
+                    .data(using: .utf8)!
+            )
             body.append("Content-Type: audio/m4a\r\n\r\n".data(using: .utf8)!)
             body.append(audioData)
             body.append("\r\n".data(using: .utf8)!)
@@ -603,12 +786,19 @@ struct PostFormView: View {
             return
         }
         request.httpBody = body
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+        let task = URLSession.shared.dataTask(with: request) {
+            data,
+            response,
+            error in
             DispatchQueue.main.async {
                 if let error = error {
-                    print("Ошибка отправки аудио: \(error.localizedDescription)")
+                    print(
+                        "Ошибка отправки аудио: \(error.localizedDescription)"
+                    )
                     completion(false)
-                } else if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                } else if let httpResponse = response as? HTTPURLResponse,
+                    httpResponse.statusCode == 200
+                {
                     completion(true)
                 } else {
                     completion(false)
@@ -621,5 +811,4 @@ struct PostFormView: View {
 
 #Preview {
     PostFormView(title: "Создать отчёт").environmentObject(PostStore())
-} 
-
+}

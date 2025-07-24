@@ -27,6 +27,12 @@ struct ContentView: View {
                 Label("План", systemImage: "pencil.line")
             }
             NavigationStack {
+                TagManagerView()
+            }
+            .tabItem {
+                Label("Теги", systemImage: "tag")
+            }
+            NavigationStack {
                 ReportsView()
             }
             .tabItem {

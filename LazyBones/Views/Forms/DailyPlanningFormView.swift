@@ -7,36 +7,19 @@ import SwiftUI
 
 struct DailyPlanningFormView: View {
     @EnvironmentObject var store: PostStore
-    @State private var selectedTab = 0 // 0 — План, 1 — Теги
     @State private var planItems: [String] = []
     @State private var newPlanItem: String = ""
     @State private var editingPlanIndex: Int? = nil
     @State private var editingPlanText: String = ""
-    @State private var newTag: String = ""
-    @State private var editingTagIndex: Int? = nil
-    @State private var editingTagText: String = ""
     @State private var showSaveAlert = false
     @State private var showDeletePlanAlert = false
-    @State private var showDeleteTagAlert = false
-    @State private var tagToDelete: String? = nil
     @State private var planToDeleteIndex: Int? = nil
-    @State private var tagCategory: Int = 0 // 0 — good, 1 — bad
     @State private var lastPlanDate: Date = Calendar.current.startOfDay(for: Date())
     @State private var publishStatus: String? = nil
     
     var body: some View {
         VStack {
-            Picker("Раздел", selection: $selectedTab) {
-                Text("План").tag(0)
-                Text("Теги").tag(1)
-            }
-            .pickerStyle(SegmentedPickerStyle())
-            .padding(.horizontal)
-            if selectedTab == 0 {
-                planSection
-            } else {
-                tagsSection
-            }
+            planSection
         }
         .navigationTitle("Планирование")
         .hideKeyboardOnTap()
@@ -58,10 +41,6 @@ struct DailyPlanningFormView: View {
         .alert("Удалить пункт плана?", isPresented: $showDeletePlanAlert) {
             Button("Удалить", role: .destructive) { deletePlanItem() }
             Button("Отмена", role: .cancel) { planToDeleteIndex = nil }
-        }
-        .alert("Удалить тег?", isPresented: $showDeleteTagAlert) {
-            Button("Удалить", role: .destructive) { deleteTag() }
-            Button("Отмена", role: .cancel) { tagToDelete = nil }
         }
     }
     
@@ -102,16 +81,25 @@ struct DailyPlanningFormView: View {
             }
             if !planItems.isEmpty {
                 HStack(spacing: 12) {
-                    Button("Сохранить как отчет") {
-                        showSaveAlert = true
-                    }
-                    .buttonStyle(.borderedProminent)
-                    Button("Опубликовать в Telegram") {
-                        publishCustomReportToTelegram()
-                    }
-                    .buttonStyle(.bordered)
+                    LargeButtonView(
+                        title: "Сохранить",
+                        icon: "tray.and.arrow.down.fill",
+                        color: .blue,
+                        action: { showSaveAlert = true },
+                        isEnabled: true,
+                        compact: true
+                    )
+                    LargeButtonView(
+                        title: "Отправить",
+                        icon: "paperplane.fill",
+                        color: .green,
+                        action: { publishCustomReportToTelegram() },
+                        isEnabled: true,
+                        compact: true
+                    )
                 }
-                .padding(.top)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.vertical, 4)
                 if let status = publishStatus {
                     Text(status)
                         .font(.caption)
@@ -122,62 +110,6 @@ struct DailyPlanningFormView: View {
         .padding()
     }
     
-    // MARK: - Теги
-    var tagsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Picker("Категория тегов", selection: $tagCategory) {
-                Text("Хорошие").tag(0)
-                Text("Плохие").tag(1)
-            }
-            .pickerStyle(SegmentedPickerStyle())
-            .padding(.bottom, 8)
-            .onChange(of: tagCategory, initial: false) {
-                editingTagIndex = nil
-                editingTagText = ""
-            }
-            HStack {
-                TextField("Добавить тег", text: $newTag)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                Button(action: addTag) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title2)
-                }.disabled(newTag.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-            List {
-                ForEach(currentTags.indices, id: \.self) { idx in
-                    HStack {
-                        if editingTagIndex == idx {
-                            TextField("Тег", text: $editingTagText)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                            Button("OK") {
-                                finishEditTag()
-                                editingTagIndex = nil
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                        } else {
-                            Text(currentTags[idx])
-                            Spacer()
-                            Button(action: { startEditTag(idx) }) {
-                                Image(systemName: "pencil")
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                        }
-                        if editingTagIndex != idx {
-                            Button(action: { tagToDelete = currentTags[idx]; showDeleteTagAlert = true }) {
-                                Image(systemName: "trash")
-                                    .foregroundColor(.red)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                        }
-                    }
-                }
-            }
-        }
-        .padding()
-    }
-    private var currentTags: [String] {
-        tagCategory == 0 ? store.goodTags : store.badTags
-    }
     // MARK: - План CRUD
     func addPlanItem() {
         let trimmed = newPlanItem.trimmingCharacters(in: .whitespaces)
@@ -321,43 +253,6 @@ struct DailyPlanningFormView: View {
             }
         }
         task.resume()
-    }
-    // MARK: - Теги CRUD
-    func addTag() {
-        let trimmed = newTag.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
-        if tagCategory == 0 {
-            store.addGoodTag(trimmed)
-        } else {
-            store.addBadTag(trimmed)
-        }
-        newTag = ""
-    }
-    func startEditTag(_ idx: Int) {
-        editingTagIndex = idx
-        editingTagText = currentTags[idx]
-    }
-    func finishEditTag() {
-        guard let idx = editingTagIndex else { return }
-        let trimmed = editingTagText.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
-        let old = currentTags[idx]
-        if tagCategory == 0 {
-            store.updateGoodTag(old: old, new: trimmed)
-        } else {
-            store.updateBadTag(old: old, new: trimmed)
-        }
-        editingTagIndex = nil
-        editingTagText = ""
-    }
-    func deleteTag() {
-        guard let tag = tagToDelete else { return }
-        if tagCategory == 0 {
-            store.removeGoodTag(tag)
-        } else {
-            store.removeBadTag(tag)
-        }
-        tagToDelete = nil
     }
 }
 
