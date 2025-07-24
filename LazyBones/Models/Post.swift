@@ -111,6 +111,16 @@ class PostStore: ObservableObject, PostStoreProtocol {
             saveAutoSendSettings()
         }
     }
+    private var lastAutoSendDate: Date? {
+        get {
+            let ud = UserDefaults(suiteName: Self.appGroup)
+            return ud?.object(forKey: "lastAutoSendDate") as? Date
+        }
+        set {
+            let ud = UserDefaults(suiteName: Self.appGroup)
+            ud?.set(newValue, forKey: "lastAutoSendDate")
+        }
+    }
 
     init(localService: LocalReportService = .shared) {
         print("[DEBUG][INIT] PostStore инициализирован")
@@ -648,7 +658,22 @@ class PostStore: ObservableObject, PostStoreProtocol {
     /// Автоматическая отправка всех отчетов за сегодня (кастомный и обычный)
     func autoSendAllReportsForToday(completion: (() -> Void)? = nil) {
         let cal = Calendar.current
-        let today = cal.startOfDay(for: Date())
+        let now = Date()
+        // Проверка: если уже отправляли в этом "ночном окне" — не отправлять повторно
+        let today22 = cal.date(bySettingHour: 22, minute: 0, second: 0, of: now)!
+        let tomorrow8 = cal.date(byAdding: .day, value: 1, to: cal.date(bySettingHour: 8, minute: 0, second: 0, of: now)!)!
+        var windowStart: Date
+        if now < today22 {
+            windowStart = cal.date(byAdding: .day, value: -1, to: today22)!
+        } else {
+            windowStart = today22
+        }
+        let windowEnd = tomorrow8
+        if let last = lastAutoSendDate, last >= windowStart && last < windowEnd {
+            print("[AutoSend] Уже отправляли в этом ночном окне: \(last)")
+            completion?()
+            return
+        }
         let regular = posts.first(where: { $0.type == .regular && cal.isDate($0.date, inSameDayAs: today) })
         let custom = posts.first(where: { $0.type == .custom && cal.isDate($0.date, inSameDayAs: today) })
         var sentCount = 0
@@ -712,6 +737,8 @@ class PostStore: ObservableObject, PostStoreProtocol {
             sendToTelegram(text: "За сегодня не найдено ни одного отчета.") { _ in done() }
         }
         if toSend == 0 { completion?() }
+        // После успешной отправки:
+        self.lastAutoSendDate = now
     }
     private func sendLocalNotification(title: String, body: String) {
         let content = UNMutableNotificationContent()

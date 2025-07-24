@@ -51,14 +51,24 @@ private func handleSendReportTask(task: BGAppRefreshTask) {
 
 private func scheduleSendReportBGTask() {
     let request = BGAppRefreshTaskRequest(identifier: "com.katapios.LazyBones.sendReport")
-    // Если включён тест — каждые 30 минут, иначе раз в час
-    let ud = UserDefaults(suiteName: "group.com.katapios.LazyBones")
-    let isBFTest = ud?.bool(forKey: "backgroundFetchTestEnabled") ?? false
-    let interval: TimeInterval = isBFTest ? 30 * 60 : 60 * 60
-    request.earliestBeginDate = Date().addingTimeInterval(interval)
+    let calendar = Calendar.current
+    let now = Date()
+    let today22 = calendar.date(bySettingHour: 22, minute: 0, second: 0, of: now)!
+    let tomorrow8 = calendar.date(byAdding: .day, value: 1, to: calendar.date(bySettingHour: 8, minute: 0, second: 0, of: now)!)!
+    var earliest: Date
+    if now < today22 {
+        earliest = today22
+    } else if now >= today22 && now < tomorrow8 {
+        earliest = now
+    } else {
+        // после 8 утра — планируем на следующий день в 22:00
+        let next22 = calendar.date(byAdding: .day, value: 1, to: today22)!
+        earliest = next22
+    }
+    request.earliestBeginDate = earliest
     do {
         try BGTaskScheduler.shared.submit(request)
-        logBGTaskEvent("BGTask scheduled for +\(interval/60) min")
+        logBGTaskEvent("BGTask scheduled for: \(earliest)")
     } catch {
         logBGTaskEvent("Failed to schedule BGTask: \(error)")
         print("[BGTask] Не удалось запланировать задачу: \(error)")
