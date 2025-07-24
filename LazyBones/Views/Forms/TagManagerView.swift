@@ -56,6 +56,7 @@ struct TagManagerView: View {
         }
         .padding(.horizontal)
         .navigationTitle("Теги")
+        .hideKeyboardOnTap()
         .alert("Удалить тег?", isPresented: $showDeleteTagAlert) {
             Button("Удалить", role: .destructive) { deleteTag() }
             Button("Отмена", role: .cancel) { tagToDelete = nil }
