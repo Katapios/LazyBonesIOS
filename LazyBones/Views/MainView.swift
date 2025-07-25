@@ -56,31 +56,13 @@ struct MainView: View {
                 ringLineWidth: 15,
                 timeFontSize: 24
             )
-            HStack(spacing: 32) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 3)
-                        .frame(width: 100, height: 100)
-                    Text("\(goodCountToday)")
-                        .font(.custom("FrakturFont", size: 100))
-                        .foregroundColor(Color.green)
-                }
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 3)
-                        .frame(width: 100, height: 100)
-                    Text("\(badCountToday)")
-                        //.font(.system(size: 100, weight: .bold, design: .serif))
-                        .font(.custom("FrakturFont", size: 100))
-                        .foregroundColor(Color.pink)
-                }
-            }
+            MercuryThermometerView(goodCount: goodCountToday, badCount: badCountToday)
             LargeButtonView(
                 title: postForToday != nil
                     ? "Редактировать отчёт" : "Создать отчёт",
                 icon: postForToday != nil
                     ? "pencil.circle.fill" : "plus.circle.fill",
-                color: store.reportStatus == .done ? .gray : .accentColor,
+                color: store.reportStatus == .done ? .gray : .black,
                 action: { showPostForm = true },
                 isEnabled: store.reportStatus != .done
             )
@@ -289,7 +271,7 @@ struct GradientRingTimerView: View {
                 .stroke(
                     AngularGradient(
                         gradient: Gradient(colors: [
-                            Color.blue, Color.purple, Color.pink, Color.blue,
+                            Color.gray, Color.black, Color.black, Color.gray,
                         ]),
                         center: .center
                     ),
