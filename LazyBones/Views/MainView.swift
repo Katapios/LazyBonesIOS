@@ -14,48 +14,7 @@ struct MainView: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            // --- Приветственный блок теперь первым ---
-            VStack(spacing: 10) {
-                Text("Здорово,")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .font(.title2)
-                VStack {
-                    Text("𝕷𝖆𝖇: 🅞’𝖙𝖗𝟗𝖈")
-                        .foregroundColor(colorScheme == .dark ? .black : .white)
-                }
-                .font(.custom("Georgia-Bold", size: 35))
-                .kerning(1)
-                .padding()
-                .background(
-                    Capsule()
-                        .fill(
-                            colorScheme == .dark
-                                ? Color.white : Color(.black).opacity(0.85)
-                        )
-                )
-                .foregroundStyle(.white)
-
-                HStack(spacing: 8) {
-                    Text(reportStatusText)
-                        .font(.title2)
-                        .foregroundColor(reportStatusColor)
-                }
-                .font(.headline)
-                .fontWeight(.semibold)
-                .font(.title2)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            // --- Таймер, статус и кнопка теперь ниже ---
-            GradientRingTimerView(
-                progress: timerProgress,
-                timeText: timerTimeTextOnly,
-                label: timerLabel,
-                ringSize: 150,
-                ringLineWidth: 15,
-                timeFontSize: 24
-            )
+            MainStatusBarView()
             MercuryThermometerView(goodCount: goodCountToday, badCount: badCountToday)
             LargeButtonView(
                 title: postForToday != nil
@@ -67,6 +26,7 @@ struct MainView: View {
                 isEnabled: store.reportStatus != .done
             )
             .padding(.horizontal)
+            .padding(.vertical, 40)
         }
         .padding(.vertical, 16)
         .frame(maxHeight: .infinity, alignment: .center)
@@ -88,131 +48,6 @@ struct MainView: View {
             .environmentObject(store)
         }
         .padding()
-    }
-
-    var reportStatusText: String {
-        switch store.reportStatus {
-        case .notStarted: return "Отчёт не сделан"
-        case .inProgress: return "Отчёт заполняется"
-        case .done: return "Отчёт сделан"
-        }
-    }
-    var reportStatusColor: Color {
-        switch store.reportStatus {
-        case .notStarted: return .red
-        case .inProgress: return .orange
-        case .done: return .green
-        }
-    }
-
-    // MARK: - Таймер для кольца
-    var timerProgress: Double {
-        let calendar = Calendar.current
-        let now = Date()
-        let start = calendar.date(
-            bySettingHour: store.notificationStartHour,
-            minute: 0,
-            second: 0,
-            of: now
-        )!
-        let end = calendar.date(
-            bySettingHour: store.notificationEndHour,
-            minute: 0,
-            second: 0,
-            of: now
-        )!
-        if now < start { return 0 }
-        if now >= end { return 1 }
-        let total = end.timeIntervalSince(start)
-        let passed = now.timeIntervalSince(start)
-        return min(max(passed / total, 0), 1)
-    }
-    var timerTimeText: String {
-        let calendar = Calendar.current
-        let now = Date()
-        let start = calendar.date(
-            bySettingHour: store.notificationStartHour,
-            minute: 0,
-            second: 0,
-            of: now
-        )!
-        let end = calendar.date(
-            bySettingHour: store.notificationEndHour,
-            minute: 0,
-            second: 0,
-            of: now
-        )!
-        if store.reportStatus == .done {
-            let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
-            let nextStart = calendar.date(
-                bySettingHour: store.notificationStartHour,
-                minute: 0,
-                second: 0,
-                of: tomorrow
-            )!
-            let diff = calendar.dateComponents(
-                [.hour, .minute, .second],
-                from: now,
-                to: nextStart
-            )
-            return String(
-                format: "%02d:%02d:%02d",
-                diff.hour ?? 0,
-                diff.minute ?? 0,
-                diff.second ?? 0
-            )
-        } else if now < start {
-            let diff = calendar.dateComponents(
-                [.hour, .minute, .second],
-                from: now,
-                to: start
-            )
-            return String(
-                format: "%02d:%02d:%02d",
-                diff.hour ?? 0,
-                diff.minute ?? 0,
-                diff.second ?? 0
-            )
-        } else if now >= start && now < end {
-            let diff = calendar.dateComponents(
-                [.hour, .minute, .second],
-                from: now,
-                to: end
-            )
-            return String(
-                format: "%02d:%02d:%02d",
-                diff.hour ?? 0,
-                diff.minute ?? 0,
-                diff.second ?? 0
-            )
-        } else {
-            return "00:00:00"
-        }
-    }
-    var timerLabel: String {
-        let calendar = Calendar.current
-        let now = Date()
-        let start = calendar.date(
-            bySettingHour: store.notificationStartHour,
-            minute: 0,
-            second: 0,
-            of: now
-        )!
-        let end = calendar.date(
-            bySettingHour: store.notificationEndHour,
-            minute: 0,
-            second: 0,
-            of: now
-        )!
-        if store.reportStatus == .done {
-            return "До старта"
-        } else if now < start {
-            return "До старта"
-        } else if now >= start && now < end {
-            return "До конца"
-        } else {
-            return "Время истекло"
-        }
     }
 
     // Количество good и bad пунктов за сегодня
@@ -261,6 +96,7 @@ struct GradientRingTimerView: View {
     var ringSize: CGFloat = 90
     var ringLineWidth: CGFloat = 10
     var timeFontSize: CGFloat = 14
+    var labelFontSize: CGFloat? = nil
     var body: some View {
         ZStack {
             Circle()
@@ -299,7 +135,7 @@ struct GradientRingTimerView: View {
                     .frame(maxWidth: ringSize * 0.8)
                 if let label = label {
                     Text(label)
-                        .font(.caption2)
+                        .font(labelFontSize != nil ? .system(size: labelFontSize!, weight: .bold) : .caption2)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                         .frame(maxWidth: ringSize * 0.8)
