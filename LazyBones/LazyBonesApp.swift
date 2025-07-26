@@ -53,18 +53,22 @@ private func scheduleSendReportBGTask() {
     let request = BGAppRefreshTaskRequest(identifier: "com.katapios.LazyBones.sendReport")
     let calendar = Calendar.current
     let now = Date()
-    let today22 = calendar.date(bySettingHour: 22, minute: 0, second: 0, of: now)!
-    let tomorrow8 = calendar.date(byAdding: .day, value: 1, to: calendar.date(bySettingHour: 8, minute: 0, second: 0, of: now)!)!
+    let today2201 = calendar.date(bySettingHour: 22, minute: 1, second: 0, of: now)!
+    let today2359 = calendar.date(bySettingHour: 23, minute: 59, second: 0, of: now)!
+    
     var earliest: Date
-    if now < today22 {
-        earliest = today22
-    } else if now >= today22 && now < tomorrow8 {
+    if now < today2201 {
+        // Если сейчас раньше 22:01, планируем на 22:01 сегодня
+        earliest = today2201
+    } else if now >= today2201 && now <= today2359 {
+        // Если сейчас в промежутке 22:01-23:59, планируем на сейчас
         earliest = now
     } else {
-        // после 8 утра — планируем на следующий день в 22:00
-        let next22 = calendar.date(byAdding: .day, value: 1, to: today22)!
-        earliest = next22
+        // Если сейчас после 23:59, планируем на 22:01 завтра
+        let tomorrow2201 = calendar.date(byAdding: .day, value: 1, to: today2201)!
+        earliest = tomorrow2201
     }
+    
     request.earliestBeginDate = earliest
     do {
         try BGTaskScheduler.shared.submit(request)

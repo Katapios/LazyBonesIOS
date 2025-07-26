@@ -659,24 +659,42 @@ class PostStore: ObservableObject, PostStoreProtocol {
     func autoSendAllReportsForToday(completion: (() -> Void)? = nil) {
         let cal = Calendar.current
         let now = Date()
-        // Проверка: если уже отправляли в этом "ночном окне" — не отправлять повторно
-        let today22 = cal.date(bySettingHour: 22, minute: 0, second: 0, of: now)!
-        let tomorrow8 = cal.date(byAdding: .day, value: 1, to: cal.date(bySettingHour: 8, minute: 0, second: 0, of: now)!)!
-        var windowStart: Date
-        if now < today22 {
-            windowStart = cal.date(byAdding: .day, value: -1, to: today22)!
-        } else {
-            windowStart = today22
-        }
-        let windowEnd = tomorrow8
-        if let last = lastAutoSendDate, last >= windowStart && last < windowEnd {
-            print("[AutoSend] Уже отправляли в этом ночном окне: \(last)")
+        let today = cal.startOfDay(for: now)
+        
+        // Проверка: отправляем только в промежутке 22:01-23:59
+        let hour = cal.component(.hour, from: now)
+        let minute = cal.component(.minute, from: now)
+        let currentTimeInMinutes = hour * 60 + minute
+        let startTimeInMinutes = 22 * 60 + 1  // 22:01
+        let endTimeInMinutes = 23 * 60 + 59   // 23:59
+        
+        if currentTimeInMinutes < startTimeInMinutes || currentTimeInMinutes > endTimeInMinutes {
+            print("[AutoSend] Время вне диапазона 22:01-23:59. Текущее время: \(hour):\(minute)")
             completion?()
             return
         }
-        let today = cal.startOfDay(for: now)
+        
+        // Получаем отчеты за сегодня
         let regular = posts.first(where: { $0.type == .regular && cal.isDate($0.date, inSameDayAs: today) })
         let custom = posts.first(where: { $0.type == .custom && cal.isDate($0.date, inSameDayAs: today) })
+        
+        // Проверяем, отправлял ли пользователь отчеты вручную
+        let regularManuallySent = regular?.published ?? false
+        let customManuallySent = custom?.published ?? false
+        
+        // Если пользователь отправил оба отчета вручную, автоотправка не нужна
+        if regularManuallySent && customManuallySent {
+            print("[AutoSend] Пользователь отправил оба отчета вручную, автоотправка не требуется")
+            completion?()
+            return
+        }
+        
+        // Проверяем, была ли уже автоотправка сегодня
+        if let last = lastAutoSendDate, cal.isDate(last, inSameDayAs: today) {
+            print("[AutoSend] Уже отправляли сегодня: \(last)")
+            completion?()
+            return
+        }
         var sentCount = 0
         var toSend = 0
         func done() {
@@ -685,62 +703,160 @@ class PostStore: ObservableObject, PostStoreProtocol {
         }
         // --- Кастомный отчет ---
         if let custom = custom, !custom.goodItems.isEmpty {
-            toSend += 1
-            let dateFormatter = DateFormatter()
-            dateFormatter.locale = Locale(identifier: "ru_RU")
-            dateFormatter.dateStyle = .full
-            let dateStr = dateFormatter.string(from: custom.date)
-            let deviceName = getDeviceName()
-            var message = "\u{1F4C5} <b>План на день за \(dateStr)</b>\n"
-            message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
-            if !custom.goodItems.isEmpty {
-                message += "<b>✅ План:</b>\n"
-                for (index, item) in custom.goodItems.enumerated() {
-                    message += "\(index + 1). \(item)\n"
+            if !customManuallySent {
+                toSend += 1
+                let dateFormatter = DateFormatter()
+                dateFormatter.locale = Locale(identifier: "ru_RU")
+                dateFormatter.dateStyle = .full
+                let dateStr = dateFormatter.string(from: custom.date)
+                let deviceName = getDeviceName()
+                var message = "\u{1F4C5} <b>План на день за \(dateStr)</b>\n"
+                message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
+                if !custom.goodItems.isEmpty {
+                    message += "<b>✅ План:</b>\n"
+                    for (index, item) in custom.goodItems.enumerated() {
+                        message += "\(index + 1). \(item)\n"
+                    }
                 }
+                sendToTelegram(text: message) { _ in done() }
+            } else {
+                print("[AutoSend] Кастомный отчет уже отправлен пользователем")
             }
-            sendToTelegram(text: message) { _ in done() }
         } else {
             toSend += 1
             sendToTelegram(text: "План на сегодня отсутствует.") { _ in done() }
         }
+        
         // --- Обычный отчет ---
         if let regular = regular, (!regular.goodItems.isEmpty || !regular.badItems.isEmpty) {
-            toSend += 1
-            let dateFormatter = DateFormatter()
-            dateFormatter.locale = Locale(identifier: "ru_RU")
-            dateFormatter.dateStyle = .full
-            let dateStr = dateFormatter.string(from: regular.date)
-            let deviceName = getDeviceName()
-            var message = "\u{1F4C5} <b>Локальный отчет за \(dateStr)</b>\n"
-            message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
-            if !regular.goodItems.isEmpty {
-                message += "<b>✅ Я молодец:</b>\n"
-                for (index, item) in regular.goodItems.enumerated() {
-                    message += "\(index + 1). \(item)\n"
+            if !regularManuallySent {
+                toSend += 1
+                let dateFormatter = DateFormatter()
+                dateFormatter.locale = Locale(identifier: "ru_RU")
+                dateFormatter.dateStyle = .full
+                let dateStr = dateFormatter.string(from: regular.date)
+                let deviceName = getDeviceName()
+                var message = "\u{1F4C5} <b>Локальный отчет за \(dateStr)</b>\n"
+                message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
+                if !regular.goodItems.isEmpty {
+                    message += "<b>✅ Я молодец:</b>\n"
+                    for (index, item) in regular.goodItems.enumerated() {
+                        message += "\(index + 1). \(item)\n"
+                    }
+                    message += "\n"
                 }
-                message += "\n"
-            }
-            if !regular.badItems.isEmpty {
-                message += "<b>❌ Я не молодец:</b>\n"
-                for (index, item) in regular.badItems.enumerated() {
-                    message += "\(index + 1). \(item)\n"
+                if !regular.badItems.isEmpty {
+                    message += "<b>❌ Я не молодец:</b>\n"
+                    for (index, item) in regular.badItems.enumerated() {
+                        message += "\(index + 1). \(item)\n"
+                    }
                 }
+                sendToTelegram(text: message) { _ in done() }
+            } else {
+                print("[AutoSend] Обычный отчет уже отправлен пользователем")
             }
-            sendToTelegram(text: message) { _ in done() }
         } else {
             toSend += 1
             sendToTelegram(text: "Локальный отчет за сегодня отсутствует.") { _ in done() }
         }
-        // --- Если нет ни одного ---
+        
+        // --- Если нет ни одного отчета ---
         if custom == nil && regular == nil {
             toSend += 1
             sendToTelegram(text: "За сегодня не найдено ни одного отчета.") { _ in done() }
         }
-        if toSend == 0 { completion?() }
-        // После успешной отправки:
-        self.lastAutoSendDate = now
+        if toSend == 0 { 
+            // Если нечего отправлять за сегодня, проверяем предыдущие дни
+            sendUnsentReportsFromPreviousDays(completion: completion)
+        } else {
+            // После успешной отправки:
+            self.lastAutoSendDate = now
+        }
     }
+    
+    /// Отправка неотправленных отчетов за предыдущие дни
+    private func sendUnsentReportsFromPreviousDays(completion: (() -> Void)? = nil) {
+        let cal = Calendar.current
+        let now = Date()
+        let today = cal.startOfDay(for: now)
+        
+        // Проверяем отчеты за последние 7 дней (кроме сегодня)
+        var unsentReports: [(Post, String)] = []
+        
+        for dayOffset in 1...7 {
+            let targetDate = cal.date(byAdding: .day, value: -dayOffset, to: today)!
+            let regular = posts.first(where: { $0.type == .regular && cal.isDate($0.date, inSameDayAs: targetDate) })
+            let custom = posts.first(where: { $0.type == .custom && cal.isDate($0.date, inSameDayAs: targetDate) })
+            
+            // Проверяем обычный отчет
+            if let regular = regular, (!regular.goodItems.isEmpty || !regular.badItems.isEmpty), !regular.published {
+                unsentReports.append((regular, "Локальный отчет"))
+            }
+            
+            // Проверяем кастомный отчет
+            if let custom = custom, !custom.goodItems.isEmpty, !custom.published {
+                unsentReports.append((custom, "План на день"))
+            }
+        }
+        
+        if unsentReports.isEmpty {
+            print("[AutoSend] Нет неотправленных отчетов за предыдущие дни")
+            completion?()
+            return
+        }
+        
+        print("[AutoSend] Найдено \(unsentReports.count) неотправленных отчетов за предыдущие дни")
+        
+        var sentCount = 0
+        let totalToSend = unsentReports.count
+        
+        func done() {
+            sentCount += 1
+            if sentCount == totalToSend {
+                print("[AutoSend] Все неотправленные отчеты отправлены")
+                completion?()
+            }
+        }
+        
+        // Отправляем каждый неотправленный отчет
+        for (post, reportType) in unsentReports {
+            let dateFormatter = DateFormatter()
+            dateFormatter.locale = Locale(identifier: "ru_RU")
+            dateFormatter.dateStyle = .full
+            let dateStr = dateFormatter.string(from: post.date)
+            let deviceName = getDeviceName()
+            
+            var message = "\u{1F4C5} <b>\(reportType) за \(dateStr)</b>\n"
+            message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n"
+            message += "\u{26A0} <b>Отправлено автоматически с задержкой</b>\n\n"
+            
+            if post.type == .custom {
+                if !post.goodItems.isEmpty {
+                    message += "<b>✅ План:</b>\n"
+                    for (index, item) in post.goodItems.enumerated() {
+                        message += "\(index + 1). \(item)\n"
+                    }
+                }
+            } else {
+                if !post.goodItems.isEmpty {
+                    message += "<b>✅ Я молодец:</b>\n"
+                    for (index, item) in post.goodItems.enumerated() {
+                        message += "\(index + 1). \(item)\n"
+                    }
+                    message += "\n"
+                }
+                if !post.badItems.isEmpty {
+                    message += "<b>❌ Я не молодец:</b>\n"
+                    for (index, item) in post.badItems.enumerated() {
+                        message += "\(index + 1). \(item)\n"
+                    }
+                }
+            }
+            
+            sendToTelegram(text: message) { _ in done() }
+        }
+    }
+    
     private func sendLocalNotification(title: String, body: String) {
         let content = UNMutableNotificationContent()
         content.title = title

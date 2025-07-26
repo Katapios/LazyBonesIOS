@@ -7,8 +7,8 @@ struct MainStatusBarView: View {
     var reportStatusText: String {
         switch store.reportStatus {
         case .done: return "Отчёт отправлен"
-        case .inProgress: return "Заполни отчёт"
-        case .notStarted: return "День не начался"
+        case .inProgress: return "Отчет заполняется..."
+        case .notStarted: return "Заполни отчет!"
         }
     }
     var reportStatusColor: Color {
@@ -72,7 +72,7 @@ struct MainStatusBarView: View {
     }
     var body: some View {
         VStack(spacing: 30) {
-            Text("Здорово,")
+            Text("Привет,")
                 .font(.headline)
                 .fontWeight(.semibold)
                 .font(.title2)

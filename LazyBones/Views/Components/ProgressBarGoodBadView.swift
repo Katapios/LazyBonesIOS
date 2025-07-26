@@ -63,10 +63,10 @@ struct ProgressBarGoodBadView: View {
     VStack(spacing: 32) {
         ProgressBarGoodBadView(goodCount: 2, badCount: 4)
         ProgressBarGoodBadView(goodCount: 4, badCount: 2)
-        ProgressBarGoodBadView(goodCount: 0, badCount: 0)
+        ProgressBarGoodBadView(goodCount: 0, badCount: 1)
         ProgressBarGoodBadView(goodCount: 1, badCount: 12)
         ProgressBarGoodBadView(goodCount: 3, badCount: 0)
-        ProgressBarGoodBadView(goodCount: 0, badCount: 3)
+        ProgressBarGoodBadView(goodCount: 0, badCount: 0)
     }
     .padding()
     .background(Color(.systemGray6))
