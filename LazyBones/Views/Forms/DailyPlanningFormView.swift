@@ -6,6 +6,43 @@
 import SwiftUI
 
 struct DailyPlanningFormView: View {
+    @State private var selectedTab = 0 // По умолчанию открывается первый экран (локальный отчет)
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // --- Кастомный заголовок ---
+            HStack {
+                Text(selectedTab == 0 ? "Отчёт за день" : "План на день")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+            }
+            .padding(.bottom, 4)
+            // --- Индикаторы свайпа ---
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(selectedTab == 0 ? Color.accentColor : Color.gray.opacity(0.3))
+                    .frame(width: 8, height: 8)
+                Circle()
+                    .fill(selectedTab == 1 ? Color.accentColor : Color.gray.opacity(0.3))
+                    .frame(width: 8, height: 8)
+            }
+            .padding(.bottom, 4)
+            // --- TabView ---
+            TabView(selection: $selectedTab) {
+                // Первый экран — форма создания/редактирования отчета
+                PostFormView()
+                    .tag(0)
+                // Второй экран — весь старый функционал
+                PlanningContentView()
+                    .tag(1)
+            }
+            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+        }
+    }
+}
+
+// Весь старый функционал вынесен во вложенную вью
+struct PlanningContentView: View {
     @EnvironmentObject var store: PostStore
     @State private var planItems: [String] = []
     @State private var newPlanItem: String = ""
@@ -21,7 +58,6 @@ struct DailyPlanningFormView: View {
         VStack {
             planSection
         }
-        .navigationTitle("Планирование")
         .hideKeyboardOnTap()
         .onAppear {
             loadPlan()
@@ -110,7 +146,7 @@ struct DailyPlanningFormView: View {
         .padding()
     }
     
-    // MARK: - План CRUD
+    // MARK: - Functions
     func addPlanItem() {
         let trimmed = newPlanItem.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
@@ -137,8 +173,13 @@ struct DailyPlanningFormView: View {
         planToDeleteIndex = nil
         savePlan()
     }
+    func savePlan() {
+        let key = "plan_" + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
+        if let data = try? JSONEncoder().encode(planItems) {
+            UserDefaults.standard.set(data, forKey: key)
+        }
+    }
     func loadPlan() {
-        // План сбрасывается каждый день, можно хранить в UserDefaults по дате
         let key = "plan_" + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
         if let data = UserDefaults.standard.data(forKey: key),
            let decoded = try? JSONDecoder().decode([String].self, from: data) {
@@ -147,17 +188,9 @@ struct DailyPlanningFormView: View {
             planItems = []
         }
     }
-    func savePlan() {
-        let key = "plan_" + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
-        if let data = try? JSONEncoder().encode(planItems) {
-            UserDefaults.standard.set(data, forKey: key)
-        }
-    }
     func savePlanAsReport() {
-        // Найти существующий кастомный отчет за сегодня
         let today = Calendar.current.startOfDay(for: Date())
         if let idx = store.posts.firstIndex(where: { $0.type == .custom && Calendar.current.isDate($0.date, inSameDayAs: today) }) {
-            // Перезаписать существующий отчет
             let updated = Post(
                 id: store.posts[idx].id,
                 date: Date(),
@@ -178,7 +211,6 @@ struct DailyPlanningFormView: View {
             store.posts[idx] = updated
             store.save()
         } else {
-            // Создать новый отчет
             let post = Post(
                 id: UUID(),
                 date: Date(),

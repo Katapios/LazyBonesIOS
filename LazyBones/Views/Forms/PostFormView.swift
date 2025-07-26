@@ -154,283 +154,300 @@ struct PostFormView: View {
     }
 
     var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    // --- ЗОНА ЛОБ/БОЛ ---
-                    VStack(spacing: 0) {
-                        HStack {
-                            Spacer()
-                            HStack(spacing: 0) {
-                                Button(action: {
-                                    selectedTab = .good
-                                    pickerIndexGood = 0
-                                }) {
-                                    HStack(spacing: 2) {
-                                        Text("👍 молодец")
-                                            .font(
-                                                .system(
-                                                    size: 14.3,
-                                                    weight: .bold
-                                                )
-                                            )
-                                            .foregroundColor(
-                                                selectedTab == .good
-                                                    ? .green : .primary
-                                            )
-                                        Text("(")
-                                            .font(.system(size: 14.3))
-                                            .foregroundColor(.secondary)
-                                        Text(
-                                            "\(goodItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count)"
-                                        )
-                                        .font(.system(size: 14.3))
-                                        .foregroundColor(.secondary)
-                                        Text(")")
-                                            .font(.system(size: 14.3))
-                                            .foregroundColor(.secondary)
-                                    }
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(
-                                        selectedTab == .good
-                                            ? Color.green.opacity(0.12)
-                                            : Color.clear
-                                    )
-                                    .cornerRadius(8)
-                                }
-                                Button(action: {
-                                    selectedTab = .bad
-                                    pickerIndexBad = 0
-                                }) {
-                                    HStack(spacing: 2) {
-                                        Text("👎 лаботряс")
-                                            .font(
-                                                .system(
-                                                    size: 14.3,
-                                                    weight: .bold
-                                                )
-                                            )
-                                            .foregroundColor(
-                                                selectedTab == .bad
-                                                    ? .red : .primary
-                                            )
-                                        Text("(")
-                                            .font(.system(size: 14.3))
-                                            .foregroundColor(.secondary)
-                                        Text(
-                                            "\(badItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count)"
-                                        )
-                                        .font(.system(size: 14.3))
-                                        .foregroundColor(.secondary)
-                                        Text(")")
-                                            .font(.system(size: 14.3))
-                                            .foregroundColor(.secondary)
-                                    }
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(
-                                        selectedTab == .bad
-                                            ? Color.red.opacity(0.12)
-                                            : Color.clear
-                                    )
-                                    .cornerRadius(8)
-                                }
-                            }
-                            .background(Color(.systemGray6))
-                            .cornerRadius(8)
-                            .padding(.vertical, 2)
-                            .contentShape(Rectangle())
-                        }
-                    }
-                    .padding(.bottom, 32)  // Ещё больший отступ
-                    // --- ЗОНА WHEEL + КНОПКА + ТЕГИ ---
-                    VStack(spacing: 0) {
-                        let allTags: [TagItem] =
-                            selectedTab == .good ? goodTags : badTags
-                        let pickerIndex: Binding<Int> =
-                            selectedTab == .good
-                            ? $pickerIndexGood : $pickerIndexBad
-                        if !allTags.isEmpty {
-                            VStack(spacing: 0) {
-                                // Spacer(minLength: 8) // УБРАНО!
-                                HStack(alignment: .center, spacing: 6) {
-                                    TagPickerUIKitWheel(
-                                        tags: allTags,
-                                        selectedIndex: pickerIndex
-                                    ) { _ in }
-                                    .frame(
-                                        maxWidth: .infinity,
-                                        minHeight: 120,
-                                        maxHeight: 120
-                                    )
-                                    .id(selectedTab)
-                                    .clipped()  // Ограничиваем кликабельную область
-                                    let selectedTag = allTags[
-                                        (selectedTab == .good
-                                            ? pickerIndexGood : pickerIndexBad)
-                                    ]
-                                    let isTagAdded =
-                                        (selectedTab == .good
-                                        ? goodItems : badItems).contains(
-                                            where: {
-                                                $0.text == selectedTag.text
-                                            })
-                                    Button(action: {
-                                        if selectedTab == .good {
-                                            if isTagAdded {
-                                                if let idx =
-                                                    goodItems.firstIndex(
-                                                        where: {
-                                                            $0.text
-                                                                == selectedTag
-                                                                .text
-                                                        })
-                                                {
-                                                    goodItems.remove(at: idx)
-                                                }
-                                            } else {
-                                                addGoodTag(selectedTag)
-                                            }
-                                        } else {
-                                            if isTagAdded {
-                                                if let idx =
-                                                    badItems.firstIndex(where: {
-                                                        $0.text
-                                                            == selectedTag.text
-                                                    })
-                                                {
-                                                    badItems.remove(at: idx)
-                                                }
-                                            } else {
-                                                addBadTag(selectedTag)
-                                            }
-                                        }
-                                    }) {
-                                        Image(
-                                            systemName: isTagAdded
-                                                ? "minus.circle.fill"
-                                                : "plus.circle.fill"
-                                        )
-                                        .resizable()
-                                        .frame(width: 28, height: 28)
-                                        .foregroundColor(
-                                            isTagAdded ? .red : .blue
-                                        )
-                                    }
-                                    .buttonStyle(PlainButtonStyle())
-                                }
-                                .padding(.horizontal, 4)
-                                .contentShape(Rectangle())  // Ограничиваем кликабельную область wheel
-                            }
-                            .padding(.bottom, 8)
-                        }
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            let selectedItems: [ChecklistItem] =
-                                selectedTab == .good ? goodItems : badItems
-                            HStack(spacing: 8) {
-                                ForEach(selectedItems) { item in
-                                    let tag =
-                                        (selectedTab == .good
-                                        ? goodTags : badTags).first(where: {
-                                            $0.text == item.text
-                                        })
-                                        ?? TagItem(
-                                            text: item.text,
-                                            icon: "tag",
-                                            color: .gray
-                                        )
-                                    TagBrickView(tag: tag) {
-                                        if selectedTab == .good {
-                                            removeGoodItem(item)
-                                        } else {
-                                            removeBadItem(item)
-                                        }
-                                    }
-                                }
-                            }
-                            .padding(.vertical, 4)
-                        }
-                    }
-                    .padding(.vertical, 6)
-                    // --- ЗОНА ЧЕКЛИСТА ---
-                    VStack(spacing: 0) {
-                        if selectedTab == .good {
-                            ChecklistSectionView(
-                                title: "Я молодец:",
-                                items: $goodItems,
-                                focusPrefix: "good",
-                                focusField: _goodFocus,
-                                onAdd: addGoodItem,
-                                onRemove: removeGoodItem
-                            )
-                        } else {
-                            ChecklistSectionView(
-                                title: "Я не молодец:",
-                                items: $badItems,
-                                focusPrefix: "bad",
-                                focusField: _badFocus,
-                                onAdd: addBadItem,
-                                onRemove: removeBadItem
-                            )
-                        }
-                    }
-                    .padding(.vertical, 6)
-                    // --- ЗОНА VOICE ---
-                    VStack(spacing: 0) {
-                        VoiceRecorderListView(voiceNotes: $voiceNotes)
-                    }
-                    .padding(.vertical, 6)
-                    // --- ЗОНА СТАТУСА/КНОПОК ---
-                    VStack(spacing: 0) {
-                        if isSending {
-                            ProgressView("Отправка в Telegram...")
-                        }
-                        if let status = sendStatus {
-                            Text(status)
-                                .font(.caption)
-                                .foregroundColor(
-                                    status == "Успешно отправлено!"
-                                        ? .green : .red
-                                )
-                        }
-                    }
-                    .padding(.vertical, 6)
-                    Spacer()
-                }
-                .frame(maxWidth: 360)
-                .padding(.horizontal, 4)
-                .padding(.top, 4)
-                .frame(maxWidth: .infinity, alignment: .center)
+        if store.reportStatus == .done {
+            VStack(spacing: 24) {
+                Spacer()
+                Image(systemName: "clock.arrow.circlepath")
+                    .resizable()
+                    .frame(width: 60, height: 60)
+                    .foregroundColor(.gray)
+                Text("Время создания локального отчета на сегодня подошло к концу.")
+                    .font(.title3)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.secondary)
+                Text("Ждите наступления следующего дня — тогда снова появится возможность создать или редактировать отчет.")
+                    .font(.body)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.secondary)
+                Spacer()
             }
-            .hideKeyboardOnTap()
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .bottomBar) {
-                    HStack() {
-                        LargeButtonView(
-                            title: "Сохранить",
-                            icon: "tray.and.arrow.down.fill",
-                            color: .blue,
-                            action: saveAndNotify,
-                            isEnabled: canSave && !isSending,
-                            compact: true
-                        )
-                        LargeButtonView(
-                            title: "Опубликовать",
-                            icon: "paperplane.fill",
-                            color: .green,
-                            action: publishAndNotify,
-                            isEnabled: canPublish && !isSending,
-                            compact: true
-                        )
+            .padding()
+        } else {
+            NavigationView {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        // --- ЗОНА ЛОБ/БОЛ ---
+                        VStack(spacing: 0) {
+                            HStack {
+                                Spacer()
+                                HStack(spacing: 0) {
+                                    Button(action: {
+                                        selectedTab = .good
+                                        pickerIndexGood = 0
+                                    }) {
+                                        HStack(spacing: 2) {
+                                            Text("👍 молодец")
+                                                .font(
+                                                    .system(
+                                                        size: 14.3,
+                                                        weight: .bold
+                                                    )
+                                                )
+                                                .foregroundColor(
+                                                    selectedTab == .good
+                                                        ? .green : .primary
+                                                )
+                                            Text("(")
+                                                .font(.system(size: 14.3))
+                                                .foregroundColor(.secondary)
+                                            Text(
+                                                "\(goodItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count)"
+                                            )
+                                            .font(.system(size: 14.3))
+                                            .foregroundColor(.secondary)
+                                            Text(")")
+                                                .font(.system(size: 14.3))
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(
+                                            selectedTab == .good
+                                                ? Color.green.opacity(0.12)
+                                                : Color.clear
+                                        )
+                                        .cornerRadius(8)
+                                    }
+                                    Button(action: {
+                                        selectedTab = .bad
+                                        pickerIndexBad = 0
+                                    }) {
+                                        HStack(spacing: 2) {
+                                            Text("👎 лаботряс")
+                                                .font(
+                                                    .system(
+                                                        size: 14.3,
+                                                        weight: .bold
+                                                    )
+                                                )
+                                                .foregroundColor(
+                                                    selectedTab == .bad
+                                                        ? .red : .primary
+                                                )
+                                            Text("(")
+                                                .font(.system(size: 14.3))
+                                                .foregroundColor(.secondary)
+                                            Text(
+                                                "\(badItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count)"
+                                            )
+                                            .font(.system(size: 14.3))
+                                            .foregroundColor(.secondary)
+                                            Text(")")
+                                                .font(.system(size: 14.3))
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(
+                                            selectedTab == .bad
+                                                ? Color.red.opacity(0.12)
+                                                : Color.clear
+                                        )
+                                        .cornerRadius(8)
+                                    }
+                                }
+                                .background(Color(.systemGray6))
+                                .cornerRadius(8)
+                                .padding(.vertical, 2)
+                                .contentShape(Rectangle())
+                            }
+                        }
+                        .padding(.bottom, 32)  // Ещё больший отступ
+                        // --- ЗОНА WHEEL + КНОПКА + ТЕГИ ---
+                        VStack(spacing: 0) {
+                            let allTags: [TagItem] =
+                                selectedTab == .good ? goodTags : badTags
+                            let pickerIndex: Binding<Int> =
+                                selectedTab == .good
+                                ? $pickerIndexGood : $pickerIndexBad
+                            if !allTags.isEmpty {
+                                VStack(spacing: 0) {
+                                    // Spacer(minLength: 8) // УБРАНО!
+                                    HStack(alignment: .center, spacing: 6) {
+                                        TagPickerUIKitWheel(
+                                            tags: allTags,
+                                            selectedIndex: pickerIndex
+                                        ) { _ in }
+                                        .frame(
+                                            maxWidth: .infinity,
+                                            minHeight: 120,
+                                            maxHeight: 120
+                                        )
+                                        .id(selectedTab)
+                                        .clipped()  // Ограничиваем кликабельную область
+                                        let selectedTag = allTags[
+                                            (selectedTab == .good
+                                                ? pickerIndexGood : pickerIndexBad)
+                                        ]
+                                        let isTagAdded =
+                                            (selectedTab == .good
+                                            ? goodItems : badItems).contains(
+                                                where: {
+                                                    $0.text == selectedTag.text
+                                                })
+                                        Button(action: {
+                                            if selectedTab == .good {
+                                                if isTagAdded {
+                                                    if let idx =
+                                                        goodItems.firstIndex(
+                                                            where: {
+                                                                $0.text
+                                                                    == selectedTag
+                                                                    .text
+                                                            })
+                                                    {
+                                                        goodItems.remove(at: idx)
+                                                    }
+                                                } else {
+                                                    addGoodTag(selectedTag)
+                                                }
+                                            } else {
+                                                if isTagAdded {
+                                                    if let idx =
+                                                        badItems.firstIndex(where: {
+                                                            $0.text
+                                                                == selectedTag.text
+                                                    })
+                                                    {
+                                                        badItems.remove(at: idx)
+                                                    }
+                                                } else {
+                                                    addBadTag(selectedTag)
+                                                }
+                                            }
+                                        }) {
+                                            Image(
+                                                systemName: isTagAdded
+                                                    ? "minus.circle.fill"
+                                                    : "plus.circle.fill"
+                                            )
+                                            .resizable()
+                                            .frame(width: 28, height: 28)
+                                            .foregroundColor(
+                                                isTagAdded ? .red : .blue
+                                            )
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                    }
+                                    .padding(.horizontal, 4)
+                                    .contentShape(Rectangle())  // Ограничиваем кликабельную область wheel
+                                }
+                                .padding(.bottom, 8)
+                            }
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                let selectedItems: [ChecklistItem] =
+                                    selectedTab == .good ? goodItems : badItems
+                                HStack(spacing: 8) {
+                                    ForEach(selectedItems) { item in
+                                        let tag =
+                                            (selectedTab == .good
+                                            ? goodTags : badTags).first(where: {
+                                                $0.text == item.text
+                                            })
+                                            ?? TagItem(
+                                                text: item.text,
+                                                icon: "tag",
+                                                color: .gray
+                                            )
+                                        TagBrickView(tag: tag) {
+                                            if selectedTab == .good {
+                                                removeGoodItem(item)
+                                            } else {
+                                                removeBadItem(item)
+                                            }
+                                        }
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                            }
+                        }
+                        .padding(.vertical, 6)
+                        // --- ЗОНА ЧЕКЛИСТА ---
+                        VStack(spacing: 0) {
+                            if selectedTab == .good {
+                                ChecklistSectionView(
+                                    title: "Я молодец:",
+                                    items: $goodItems,
+                                    focusPrefix: "good",
+                                    focusField: _goodFocus,
+                                    onAdd: addGoodItem,
+                                    onRemove: removeGoodItem
+                                )
+                            } else {
+                                ChecklistSectionView(
+                                    title: "Я не молодец:",
+                                    items: $badItems,
+                                    focusPrefix: "bad",
+                                    focusField: _badFocus,
+                                    onAdd: addBadItem,
+                                    onRemove: removeBadItem
+                                )
+                            }
+                        }
+                        .padding(.vertical, 6)
+                        // --- ЗОНА VOICE ---
+                        VStack(spacing: 0) {
+                            VoiceRecorderListView(voiceNotes: $voiceNotes)
+                        }
+                        .padding(.vertical, 6)
+                        // --- ЗОНА СТАТУСА/КНОПОК ---
+                        VStack(spacing: 0) {
+                            if isSending {
+                                ProgressView("Отправка в Telegram...")
+                            }
+                            if let status = sendStatus {
+                                Text(status)
+                                    .font(.caption)
+                                    .foregroundColor(
+                                        status == "Успешно отправлено!"
+                                            ? .green : .red
+                                    )
+                            }
+                        }
+                        .padding(.vertical, 6)
+                        Spacer()
                     }
+                    .frame(maxWidth: 360)
+                    .padding(.horizontal, 4)
+                    .padding(.top, 4)
                     .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 4)
                 }
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Отмена") { dismiss() }
+                .hideKeyboardOnTap()
+                .navigationTitle(title)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .bottomBar) {
+                        HStack() {
+                            LargeButtonView(
+                                title: "Сохранить",
+                                icon: "tray.and.arrow.down.fill",
+                                color: .blue,
+                                action: saveAndNotify,
+                                isEnabled: canSave && !isSending,
+                                compact: true
+                            )
+                            LargeButtonView(
+                                title: "Опубликовать",
+                                icon: "paperplane.fill",
+                                color: .green,
+                                action: publishAndNotify,
+                                isEnabled: canPublish && !isSending,
+                                compact: true
+                            )
+                        }
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 4)
+                    }
                 }
             }
         }
@@ -811,4 +828,10 @@ struct PostFormView: View {
 
 #Preview {
     PostFormView(title: "Создать отчёт").environmentObject(PostStore())
+}
+
+#Preview("PostFormView - Status Done") {
+    let store = PostStore()
+    store.reportStatus = .done
+    return PostFormView().environmentObject(store)
 }

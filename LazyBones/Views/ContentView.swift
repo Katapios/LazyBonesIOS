@@ -24,7 +24,7 @@ struct ContentView: View {
                 DailyPlanningFormView()
             }
             .tabItem {
-                Label("План", systemImage: "pencil.line")
+                Label("План", systemImage: "doc.text.below.ecg")
             }
             NavigationStack {
                 TagManagerView()
