@@ -49,40 +49,28 @@ struct DailyPlanningFormView: View {
 // Весь старый функционал вынесен во вложенную вью
 struct PlanningContentView: View {
     @EnvironmentObject var store: PostStore
-    @State private var planItems: [String] = []
     @State private var newPlanItem: String = ""
     @State private var editingPlanIndex: Int? = nil
     @State private var editingPlanText: String = ""
     @State private var showSaveAlert = false
     @State private var showDeletePlanAlert = false
     @State private var planToDeleteIndex: Int? = nil
-    @State private var lastPlanDate: Date = Calendar.current.startOfDay(for: Date())
     @State private var publishStatus: String? = nil
+    
+    // Получаем/создаём пост-план на сегодня
+    var today: Date { Calendar.current.startOfDay(for: Date()) }
+    var planPostIndex: Int? {
+        store.posts.firstIndex(where: { $0.type == .custom && Calendar.current.isDate($0.date, inSameDayAs: today) })
+    }
+    var planItems: [String] {
+        planPostIndex != nil ? store.posts[planPostIndex!].goodItems : []
+    }
     
     var body: some View {
         VStack {
             planSection
         }
         .hideKeyboardOnTap()
-        .onAppear {
-            loadPlan()
-            lastPlanDate = Calendar.current.startOfDay(for: Date())
-        }
-        .onChange(of: Calendar.current.startOfDay(for: Date()), initial: false) { oldDay, newDay in
-            if newDay != lastPlanDate {
-                planItems = []
-                savePlan()
-                lastPlanDate = newDay
-            }
-        }
-        .alert("Сохранить план как отчет?", isPresented: $showSaveAlert) {
-            Button("Сохранить", role: .none) { savePlanAsReport() }
-            Button("Отмена", role: .cancel) { }
-        }
-        .alert("Удалить пункт плана?", isPresented: $showDeletePlanAlert) {
-            Button("Удалить", role: .destructive) { deletePlanItem() }
-            Button("Отмена", role: .cancel) { planToDeleteIndex = nil }
-        }
     }
     
     // MARK: - План
@@ -149,77 +137,29 @@ struct PlanningContentView: View {
             }
         }
         .padding()
+        .alert("Сохранить план как отчет?", isPresented: $showSaveAlert) {
+            Button("Сохранить", role: .none) { savePlanAsReport() }
+            Button("Отмена", role: .cancel) { }
+        }
+        .alert("Удалить пункт плана?", isPresented: $showDeletePlanAlert) {
+            Button("Удалить", role: .destructive) { deletePlanItem() }
+            Button("Отмена", role: .cancel) { planToDeleteIndex = nil }
+        }
     }
     
     // MARK: - Functions
     func addPlanItem() {
         let trimmed = newPlanItem.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
-        planItems.append(trimmed)
-        newPlanItem = ""
-        savePlan()
-    }
-    func startEditPlanItem(_ idx: Int) {
-        editingPlanIndex = idx
-        editingPlanText = planItems[idx]
-    }
-    func finishEditPlanItem() {
-        guard let idx = editingPlanIndex else { return }
-        let trimmed = editingPlanText.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
-        planItems[idx] = trimmed
-        editingPlanIndex = nil
-        editingPlanText = ""
-        savePlan()
-    }
-    func deletePlanItem() {
-        guard let idx = planToDeleteIndex else { return }
-        planItems.remove(at: idx)
-        planToDeleteIndex = nil
-        savePlan()
-    }
-    func savePlan() {
-        let key = "plan_" + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
-        if let data = try? JSONEncoder().encode(planItems) {
-            UserDefaults.standard.set(data, forKey: key)
-        }
-    }
-    func loadPlan() {
-        let key = "plan_" + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
-        if let data = UserDefaults.standard.data(forKey: key),
-           let decoded = try? JSONDecoder().decode([String].self, from: data) {
-            planItems = decoded
-        } else {
-            planItems = []
-        }
-    }
-    func savePlanAsReport() {
-        let today = Calendar.current.startOfDay(for: Date())
-        if let idx = store.posts.firstIndex(where: { $0.type == .custom && Calendar.current.isDate($0.date, inSameDayAs: today) }) {
-            let updated = Post(
-                id: store.posts[idx].id,
-                date: Date(),
-                goodItems: planItems,
-                badItems: [],
-                published: true,
-                voiceNotes: [],
-                type: .custom,
-                authorUsername: nil,
-                authorFirstName: nil,
-                authorLastName: nil,
-                isExternal: false,
-                externalVoiceNoteURLs: nil,
-                externalText: nil,
-                externalMessageId: nil,
-                authorId: nil
-            )
-            store.posts[idx] = updated
+        
+        if let idx = planPostIndex {
+            store.posts[idx].goodItems.append(trimmed)
             store.save()
         } else {
             let post = Post(
                 id: UUID(),
                 date: Date(),
-                goodItems: planItems,
+                goodItems: [trimmed],
                 badItems: [],
                 published: true,
                 voiceNotes: [],
@@ -235,8 +175,40 @@ struct PlanningContentView: View {
             )
             store.add(post: post)
         }
-        savePlan()
+        newPlanItem = ""
     }
+    
+    func startEditPlanItem(_ idx: Int) {
+        editingPlanIndex = idx
+        editingPlanText = planItems[idx]
+    }
+    
+    func finishEditPlanItem() {
+        guard let idx = editingPlanIndex,
+              let postIdx = planPostIndex else { return }
+        let trimmed = editingPlanText.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        
+        store.posts[postIdx].goodItems[idx] = trimmed
+        store.save()
+        editingPlanIndex = nil
+        editingPlanText = ""
+    }
+    
+    func deletePlanItem() {
+        guard let idx = planToDeleteIndex,
+              let postIdx = planPostIndex else { return }
+        
+        store.posts[postIdx].goodItems.remove(at: idx)
+        store.save()
+        planToDeleteIndex = nil
+    }
+    
+    func savePlanAsReport() {
+        // Теперь просто сохраняем, т.к. всё уже в PostStore
+        publishStatus = "План сохранён!"
+    }
+    
     func publishCustomReportToTelegram() {
         let today = Calendar.current.startOfDay(for: Date())
         guard let custom = store.posts.first(where: { $0.type == .custom && Calendar.current.isDate($0.date, inSameDayAs: today) }) else {
