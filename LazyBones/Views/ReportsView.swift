@@ -91,20 +91,7 @@ struct ReportsView: View {
                                             .padding(.top, 2),
                                         alignment: .bottomTrailing
                                     )
-                                    // Итоговый чеклист после оценки (только для не сегодняшних)
-                                    if let results = post.evaluationResults, results.count == post.goodItems.count, !(Calendar.current.isDateInToday(post.date) && post.isEvaluated == true) {
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            ForEach(post.goodItems.indices, id: \.self) { idx in
-                                                HStack {
-                                                    Text(post.goodItems[idx])
-                                                    Spacer()
-                                                    Image(systemName: results[idx] ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                                        .foregroundColor(results[idx] ? .green : .red)
-                                                }
-                                            }
-                                        }
-                                        .padding(.vertical, 4)
-                                    }
+                                    // Убираем дублирование - результаты оценки уже отображаются в ReportCardView
                                 }
                             }
                         }
