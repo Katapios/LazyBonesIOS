@@ -6,7 +6,12 @@
 import SwiftUI
 
 struct DailyPlanningFormView: View {
+    @EnvironmentObject var store: PostStore
     @State private var selectedTab = 0 // По умолчанию открывается первый экран (локальный отчет)
+    
+    var postForToday: Post? {
+        store.posts.first(where: { Calendar.current.isDateInToday($0.date) && !$0.published })
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -30,7 +35,7 @@ struct DailyPlanningFormView: View {
             // --- TabView ---
             TabView(selection: $selectedTab) {
                 // Первый экран — форма создания/редактирования отчета
-                PostFormView()
+                PostFormView(post: postForToday)
                     .tag(0)
                 // Второй экран — весь старый функционал
                 PlanningContentView()
