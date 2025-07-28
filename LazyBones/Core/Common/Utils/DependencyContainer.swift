@@ -112,63 +112,23 @@ extension DependencyContainer {
             BackgroundTaskService()
         })
         
-        // Report Local Data Source
-        register(ReportLocalDataSourceProtocol.self, factory: {
-            ReportLocalDataSource()
+        // Telegram Service
+        register(TelegramServiceProtocol.self, factory: {
+            let token = UserDefaultsManager.shared.string(forKey: "telegramToken") ?? ""
+            return TelegramService(token: token)
         })
         
-        // Report Repository
-        register(ReportRepository.self, factory: {
-            let localDataSource = self.resolve(ReportLocalDataSourceProtocol.self)!
-            return ReportRepository(localDataSource: localDataSource)
+        // Post-specific services
+        register(PostTelegramServiceProtocol.self, factory: {
+            let telegramService = self.resolve(TelegramServiceProtocol.self)!
+            let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
+            return PostTelegramService(telegramService: telegramService, userDefaultsManager: userDefaultsManager)
         })
         
-        // Use Cases
-        register(GetReportsUseCase.self, factory: {
-            let repository = self.resolve(ReportRepository.self)!
-            return GetReportsUseCase(repository: repository)
-        })
-        
-        register(SearchReportsUseCase.self, factory: {
-            let repository = self.resolve(ReportRepository.self)!
-            return SearchReportsUseCase(repository: repository)
-        })
-        
-        register(GetReportStatisticsUseCase.self, factory: {
-            let repository = self.resolve(ReportRepository.self)!
-            return GetReportStatisticsUseCase(repository: repository)
-        })
-        
-        register(GetReportsForDateUseCase.self, factory: {
-            let repository = self.resolve(ReportRepository.self)!
-            return GetReportsForDateUseCase(repository: repository)
-        })
-        
-        register(GetReportsByTypeUseCase.self, factory: {
-            let repository = self.resolve(ReportRepository.self)!
-            return GetReportsByTypeUseCase(repository: repository)
-        })
-        
-        // ViewModels - создаем синхронно, так как @MainActor не влияет на инициализацию
-        register(ReportsViewModel.self, factory: {
-            let getReportsUseCase = self.resolve(GetReportsUseCase.self)!
-            let searchReportsUseCase = self.resolve(SearchReportsUseCase.self)!
-            let getReportStatisticsUseCase = self.resolve(GetReportStatisticsUseCase.self)!
-            let getReportsForDateUseCase = self.resolve(GetReportsForDateUseCase.self)!
-            let getReportsByTypeUseCase = self.resolve(GetReportsByTypeUseCase.self)!
-            
-            return ReportsViewModel(
-                getReportsUseCase: getReportsUseCase,
-                searchReportsUseCase: searchReportsUseCase,
-                getReportStatisticsUseCase: getReportStatisticsUseCase,
-                getReportsForDateUseCase: getReportsForDateUseCase,
-                getReportsByTypeUseCase: getReportsByTypeUseCase
-            )
-        })
-        
-        // Coordinators
-        register(ReportsCoordinator.self, factory: {
-            ReportsCoordinator()
+        register(PostNotificationServiceProtocol.self, factory: {
+            let notificationService = self.resolve(NotificationServiceProtocol.self)!
+            let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
+            return PostNotificationService(notificationService: notificationService, userDefaultsManager: userDefaultsManager)
         })
         
         Logger.info("Core services registered successfully", log: Logger.general)

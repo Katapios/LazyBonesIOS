@@ -5,6 +5,8 @@ import UserNotifications
 import BackgroundTasks // Added for BGTaskScheduler
 import ObjectiveC
 
+
+
 // Импорт для использования ReportStatus из нового модуля
 
 /// Модель отчёта пользователя
@@ -36,7 +38,23 @@ enum PostType: String, Codable, CaseIterable {
     case external // внешний отчет из Telegram
 }
 
-// MARK: - Статус отчёта (используется из ReportModel.swift)
+// MARK: - Статус отчёта
+enum ReportStatus: String, Codable {
+    case notStarted = "notStarted"
+    case inProgress = "inProgress"
+    case done = "done"
+    
+    var displayName: String {
+        switch self {
+        case .notStarted:
+            return "Не начат"
+        case .inProgress:
+            return "В процессе"
+        case .done:
+            return "Завершен"
+        }
+    }
+}
 
 // MARK: - Notification Mode
 enum NotificationMode: String, Codable, CaseIterable {
@@ -70,10 +88,57 @@ class PostStore: ObservableObject, PostStoreProtocol {
     @Published var telegramChatId: String? = nil
     @Published var telegramBotId: String? = nil
     @Published var lastUpdateId: Int? = nil
-    @Published var reportStatus: LazyBones.ReportStatus = .notStarted
+    @Published var reportStatus: ReportStatus = .notStarted
     @Published var forceUnlock: Bool = false
     @Published var timeLeft: String = "" // Новое свойство для отображения таймера
-    private var timer: Timer? = nil
+    
+    // Сервисы
+    private let telegramService: PostTelegramServiceProtocol
+    private let notificationService: PostNotificationServiceProtocol
+    private lazy var timerService: PostTimerServiceProtocol = {
+        return PostTimerService(
+            userDefaultsManager: userDefaultsManager
+        ) { [weak self] timeLeft, progress in
+            self?.timeLeft = timeLeft
+        }
+    }()
+    private let userDefaultsManager: UserDefaultsManagerProtocol
+    private let localService: LocalReportService
+    
+    // TelegramService для получения обновлений
+    private var telegramServiceForUpdates: TelegramServiceProtocol? {
+        return DependencyContainer.shared.resolve(TelegramServiceProtocol.self)
+    }
+    
+    init() {
+        print("[DEBUG][INIT] PostStore инициализирован")
+        
+        // Получаем сервисы из DI контейнера
+        self.userDefaultsManager = DependencyContainer.shared.resolve(UserDefaultsManager.self)!
+        self.telegramService = DependencyContainer.shared.resolve(PostTelegramServiceProtocol.self)!
+        self.notificationService = DependencyContainer.shared.resolve(PostNotificationServiceProtocol.self)!
+        self.localService = LocalReportService.shared
+        
+        loadSettings()
+        loadTelegramSettings()
+        loadExternalPosts()
+        loadReportStatus()
+        loadForceUnlock()
+        updateReportStatus()
+        updateTimeLeft()
+        startTimer()
+        loadGoodTags()
+        loadBadTags()
+        loadAutoSendSettings() // autoSendTime загружается из UserDefaults
+        scheduleAutoSendIfNeeded()
+    }
+    
+    private func loadSettings() {
+        load()
+        loadNotificationSettings()
+        loadAutoSendSettings()
+        loadTags()
+    }
     // --- Notification settings ---
     @Published var notificationsEnabled: Bool = false {
         didSet { saveNotificationSettings();
@@ -88,8 +153,6 @@ class PostStore: ObservableObject, PostStoreProtocol {
     @Published var notificationMode: NotificationMode = .hourly {
         didSet { saveNotificationSettings(); if notificationsEnabled { scheduleNotifications() } }
     }
-    private let localService: LocalReportService
-    private var telegramService: TelegramService?
     @Published var goodTags: [String] = []
     @Published var badTags: [String] = []
     // --- Новое для автоотправки ---
@@ -120,23 +183,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
         }
     }
 
-    init(localService: LocalReportService = .shared) {
-        print("[DEBUG][INIT] PostStore инициализирован")
-        self.localService = localService
-        load()
-        loadTelegramSettings()
-        loadExternalPosts()
-        loadReportStatus()
-        loadForceUnlock()
-        loadNotificationSettings()
-        updateReportStatus()
-        updateTimeLeft()
-        startTimer()
-        loadGoodTags()
-        loadBadTags()
-        loadAutoSendSettings() // autoSendTime загружается из UserDefaults
-        scheduleAutoSendIfNeeded()
-    }
+
 
     deinit {
         stopTimer()
@@ -200,11 +247,9 @@ class PostStore: ObservableObject, PostStoreProtocol {
     }
     // MARK: - Telegram Integration
     func setTelegramService() {
-        guard let token = telegramToken, let chatId = telegramChatId, !token.isEmpty, !chatId.isEmpty else {
-            telegramService = nil
-            return
-        }
-        telegramService = TelegramService(token: token)
+        // Этот метод больше не нужен, так как мы используем DI контейнер
+        // TelegramService создается через DependencyContainer
+        Logger.debug("setTelegramService called - using DI container", log: Logger.general)
     }
     func saveTelegramSettings(token: String?, chatId: String?, botId: String?) {
         telegramToken = token
@@ -214,7 +259,11 @@ class PostStore: ObservableObject, PostStoreProtocol {
         userDefaults?.set(token, forKey: "telegramToken")
         userDefaults?.set(chatId, forKey: "telegramChatId")
         userDefaults?.set(botId, forKey: "telegramBotId")
-        setTelegramService()
+        
+        // Обновляем TelegramService в DI контейнере
+        if let token = token, !token.isEmpty {
+            DependencyContainer.shared.registerTelegramService(token: token)
+        }
     }
     func loadTelegramSettings() {
         let userDefaults = UserDefaults(suiteName: Self.appGroup)
@@ -222,7 +271,11 @@ class PostStore: ObservableObject, PostStoreProtocol {
         telegramChatId = userDefaults?.string(forKey: "telegramChatId")
         telegramBotId = userDefaults?.string(forKey: "telegramBotId")
         lastUpdateId = userDefaults?.integer(forKey: "lastUpdateId")
-        setTelegramService()
+        
+        // Обновляем TelegramService в DI контейнере если есть токен
+        if let token = telegramToken, !token.isEmpty {
+            DependencyContainer.shared.registerTelegramService(token: token)
+        }
     }
     func saveLastUpdateId(_ updateId: Int) {
         lastUpdateId = updateId
@@ -230,10 +283,68 @@ class PostStore: ObservableObject, PostStoreProtocol {
         userDefaults?.set(updateId, forKey: "lastUpdateId")
     }
     // Загрузка внешних отчетов из Telegram
-    // TODO: Реализовать с новым TelegramService
     func fetchExternalPosts(completion: @escaping (Bool) -> Void) {
-        // Временно отключено - нужно реализовать с новым TelegramService
-        completion(false)
+        Logger.info("Fetching external posts from Telegram", log: Logger.telegram)
+        
+        // Проверяем, есть ли настройки Telegram
+        guard let token = telegramToken, !token.isEmpty else {
+            Logger.error("Telegram token is missing", log: Logger.telegram)
+            completion(false)
+            return
+        }
+        
+        Task {
+            do {
+                // Получаем TelegramService для обновлений
+                guard let telegramServiceForUpdates = telegramServiceForUpdates else {
+                    Logger.error("TelegramService not available", log: Logger.telegram)
+                    completion(false)
+                    return
+                }
+                
+                // Получаем обновления из Telegram
+                let updates = try await telegramServiceForUpdates.getUpdates(offset: lastUpdateId)
+                
+                // Фильтруем только сообщения (не редактирования)
+                let messages = updates.compactMap { update -> TelegramMessage? in
+                    if let message = update.message {
+                        return message
+                    }
+                    return nil
+                }
+                
+                // Преобразуем сообщения в объекты Post
+                var newExternalPosts: [Post] = []
+                
+                for message in messages {
+                    if let post = convertTelegramMessageToPost(message) {
+                        newExternalPosts.append(post)
+                    }
+                }
+                
+                // Обновляем externalPosts на главном потоке
+                await MainActor.run {
+                    self.externalPosts = newExternalPosts
+                    self.saveExternalPosts()
+                    
+                    // Обновляем lastUpdateId
+                    if let lastUpdate = updates.last {
+                        self.lastUpdateId = lastUpdate.updateId + 1
+                        let userDefaults = UserDefaults(suiteName: Self.appGroup)
+                        userDefaults?.set(self.lastUpdateId, forKey: "lastUpdateId")
+                    }
+                    
+                    Logger.info("Fetched \(newExternalPosts.count) external posts", log: Logger.telegram)
+                    completion(true)
+                }
+                
+            } catch {
+                await MainActor.run {
+                    Logger.error("Failed to fetch external posts: \(error)", log: Logger.telegram)
+                    completion(false)
+                }
+            }
+        }
     }
     func saveExternalPosts() {
         guard let data = try? JSONEncoder().encode(externalPosts) else { return }
@@ -260,7 +371,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
     // MARK: - Report Status
     func updateReportStatus() {
         if forceUnlock {
-            let newStatus: LazyBones.ReportStatus = .notStarted
+            let newStatus: ReportStatus = .notStarted
             if reportStatus != newStatus {
                 reportStatus = newStatus
                 localService.saveReportStatus(newStatus)
@@ -276,7 +387,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
         // 2. Если есть обычный отчет за сегодня (не опубликован, но есть good/bad/voice) — .inProgress
         // 3. Если есть только кастомный отчет за сегодня — .inProgress
         // 4. Иначе — .notStarted
-        let newStatus: LazyBones.ReportStatus
+        let newStatus: ReportStatus
         if let regular = posts.first(where: { $0.type == .regular && Calendar.current.isDate($0.date, inSameDayAs: today) }) {
             if regular.published {
                 newStatus = .done
@@ -355,49 +466,11 @@ class PostStore: ObservableObject, PostStoreProtocol {
         }
     }
     func scheduleNotifications() {
-        cancelAllNotifications()
-        guard notificationsEnabled else { return }
-        // Не создавать уведомления, если отчёт уже отправлен
-        if reportStatus == .done {
-            return
-        }
-        let center = UNUserNotificationCenter.current()
-        let now = Date()
-        let calendar = Calendar.current
-        let startHour = notificationStartHour
-        let endHour = notificationEndHour
-        var hours: [Int] = []
-        switch notificationMode {
-        case .hourly:
-            hours = Array(stride(from: startHour, to: endHour, by: 1))
-        case .twice:
-            hours = [startHour, endHour - 1]
-        }
-        // Только оставшиеся уведомления на сегодня
-        let currentHour = calendar.component(.hour, from: now)
-        let todayHours = hours.filter { $0 >= currentHour }
-        for hour in todayHours {
-            var dateComponents = calendar.dateComponents([.year, .month, .day], from: now)
-            dateComponents.hour = hour
-            dateComponents.minute = 0
-            let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: false)
-            let content = UNMutableNotificationContent()
-            let isLast = hour == (endHour - 1)
-            content.title = isLast ? "Поторопись! До конца времени отчёта 1 час" : "Не забудь заполнить отчет Лаботрясов!"
-            content.body = isLast ? "Остался всего 1 час, чтобы отправить отчёт!" : "До блокировки отчета: \(self.timeLeftString(untilHour: endHour))\nНе облажайся, бро! верю в тебя."
-            content.sound = .default
-            let request = UNNotificationRequest(identifier: "LazyBonesNotif_\(hour)", content: content, trigger: trigger)
-            center.add(request)
-            // DEBUG LOG
-            let type = isLast ? "[ПРЕДОСТЕРЕГАЮЩЕЕ]" : "[ОБЫЧНОЕ]"
-            let scheduledDate = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: now) ?? now
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-            print("[DEBUG][NOTIF] \(type) Уведомление на: \(formatter.string(from: scheduledDate)), сейчас: \(formatter.string(from: now))")
-        }
+        notificationService.scheduleNotifications()
     }
+    
     func cancelAllNotifications() {
-        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+        notificationService.cancelAllNotifications()
     }
     func timeLeftString(untilHour: Int) -> String {
         let now = Date()
@@ -412,65 +485,31 @@ class PostStore: ObservableObject, PostStoreProtocol {
     // MARK: - Timer Logic
     /// Таймер
     func startTimer() {
-        stopTimer()
-        updateTimeLeft()
-        
-        // Умная логика обновления: чаще в критических моментах
-        let now = Date()
-        let calendar = Calendar.current
-        let start = calendar.date(bySettingHour: notificationStartHour, minute: 0, second: 0, of: now)!
-        let end = calendar.date(bySettingHour: notificationEndHour, minute: 0, second: 0, of: now)!
-        
-        // Если до начала или конца периода меньше часа - обновляем каждые 10 секунд
-        let timeToStart = start.timeIntervalSince(now)
-        let timeToEnd = end.timeIntervalSince(now)
-        let isCriticalTime = (timeToStart > 0 && timeToStart < 3600) || (timeToEnd > 0 && timeToEnd < 3600)
-        
-        let interval: TimeInterval = isCriticalTime ? 10 : 30
-        
-        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
-            self?.updateTimeLeft()
-        }
+        timerService.startTimer()
     }
+    
     func stopTimer() {
-        timer?.invalidate()
-        timer = nil
+        timerService.stopTimer()
     }
+    
     func updateTimeLeft() {
+        timerService.updateTimeLeft()
+        
+        // Обновляем статус отчета при необходимости
         let calendar = Calendar.current
         let now = Date()
-        let start = calendar.date(bySettingHour: notificationStartHour, minute: 0, second: 0, of: now)!
-        let end = calendar.date(bySettingHour: notificationEndHour, minute: 0, second: 0, of: now)!
-        // --- Новый день: если нет отчёта на сегодня или дата отчёта не совпадает с сегодняшней, обновить статус ---
         let today = calendar.startOfDay(for: now)
         let hasTodayPost = posts.contains(where: { calendar.isDate($0.date, inSameDayAs: today) })
         if !hasTodayPost || (reportStatus == .done && hasTodayPost) {
             updateReportStatus()
         }
-        
-        // Вычисляем новое значение timeLeft
-        let newTimeLeft: String
-        if reportStatus == .done {
-            let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
-            let nextStart = calendar.date(bySettingHour: notificationStartHour, minute: 0, second: 0, of: tomorrow)!
-            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: nextStart)
-            newTimeLeft = "До старта: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
-        } else if now < start {
-            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: start)
-            newTimeLeft = "До старта: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
-        } else if now >= start && now < end {
-            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: end)
-            newTimeLeft = "До конца: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
-        } else {
-            newTimeLeft = "Время отчёта истекло"
-        }
-        
-        // Обновляем только если значение изменилось
-        if timeLeft != newTimeLeft {
-            timeLeft = newTimeLeft
-        }
     }
     // MARK: - Good/Bad Tags
+    func loadTags() {
+        loadGoodTags()
+        loadBadTags()
+    }
+    
     func loadGoodTags() {
         goodTags = localService.loadGoodTags()
     }
@@ -559,282 +598,57 @@ class PostStore: ObservableObject, PostStoreProtocol {
     }
     private static var autoSendTimerKey: UInt8 = 0
     func performAutoSendReport() {
-        print("[AutoSend] performAutoSendReport called at", Date())
-        let cal = Calendar.current
-        let today = cal.startOfDay(for: Date())
-        // Найти обычный или кастомный отчет за сегодня
-        let regular = posts.first(where: { $0.type == .regular && cal.isDate($0.date, inSameDayAs: today) })
-        let custom = posts.first(where: { $0.type == .custom && cal.isDate($0.date, inSameDayAs: today) })
-        let hasRegular = regular != nil && (!regular!.goodItems.isEmpty || !regular!.badItems.isEmpty)
-        let hasCustom = custom != nil && (!custom!.goodItems.isEmpty || (custom!.evaluationResults?.contains(true) == true))
-        var textToSend = ""
-        if hasRegular {
-            textToSend = "Обычный отчет за сегодня:\n" + (regular!.goodItems + regular!.badItems).joined(separator: "\n")
-        } else if hasCustom {
-            textToSend = "Кастомный отчет за сегодня:\n" + (custom!.goodItems).enumerated().map { idx, item in
-                let mark = (custom!.evaluationResults?[idx] ?? false) ? "✅" : "❌"
-                return "\(mark) \(item)"
-            }.joined(separator: "\n")
-        } else {
-            textToSend = "Сегодня я получил медаль истинного LABотряса, потому, что не сделал никакого отчета"
-        }
-        print("[AutoSend] Sending to Telegram: \n\(textToSend)")
-        // Отправить в Telegram (асинхронно)
-        sendToTelegram(text: textToSend) { [weak self] success in
-            DispatchQueue.main.async {
-                print("[AutoSend] Telegram send result:", success)
-                self?.lastAutoSendStatus = success ? "Отправлено в \(self?.autoSendTime.formatted(date: .omitted, time: .shortened) ?? "")" : "Ошибка отправки"
-                self?.saveAutoSendSettings()
-                // Блокировать отправку/редактирование до следующего дня
-                        self?.reportStatus = LazyBones.ReportStatus.done
-        self?.localService.saveReportStatus(LazyBones.ReportStatus.done)
-                self?.forceUnlock = false
-                self?.localService.saveForceUnlock(false)
-                WidgetCenter.shared.reloadAllTimelines()
-                // Отправить локальное уведомление
-                if success {
-                    self?.sendLocalNotification(title: "Отчет отправлен", body: "Ваш отчет был автоматически отправлен в Telegram.")
-                } else {
-                    self?.sendLocalNotification(title: "Ошибка отправки", body: "Не удалось автоматически отправить отчет в Telegram.")
-                }
-            }
+        telegramService.performAutoSendReport()
+        
+        // Обновляем статус после отправки
+        DispatchQueue.main.async { [weak self] in
+            self?.reportStatus = .done
+            self?.localService.saveReportStatus(.done)
+            self?.forceUnlock = false
+            self?.localService.saveForceUnlock(false)
+            WidgetCenter.shared.reloadAllTimelines()
         }
     }
     /// Автоматическая отправка всех отчетов за сегодня (кастомный и обычный)
     func autoSendAllReportsForToday(completion: (() -> Void)? = nil) {
-        let cal = Calendar.current
-        let now = Date()
-        let today = cal.startOfDay(for: now)
-        
-        // Проверка: отправляем только в промежутке 22:01-23:59
-        let hour = cal.component(.hour, from: now)
-        let minute = cal.component(.minute, from: now)
-        let currentTimeInMinutes = hour * 60 + minute
-        let startTimeInMinutes = 22 * 60 + 1  // 22:01
-        let endTimeInMinutes = 23 * 60 + 59   // 23:59
-        
-        if currentTimeInMinutes < startTimeInMinutes || currentTimeInMinutes > endTimeInMinutes {
-            print("[AutoSend] Время вне диапазона 22:01-23:59. Текущее время: \(hour):\(minute)")
-            completion?()
-            return
-        }
-        
-        // Получаем отчеты за сегодня
-        let regular = posts.first(where: { $0.type == .regular && cal.isDate($0.date, inSameDayAs: today) })
-        let customReport = posts.first(where: { $0.type == .custom && cal.isDate($0.date, inSameDayAs: today) })
-        
-        // Проверяем, отправлял ли пользователь отчеты вручную
-        let regularManuallySent = regular?.published ?? false
-        let customManuallySent = customReport?.published ?? false
-        
-        // Если пользователь отправил оба отчета вручную, автоотправка не нужна
-        if regularManuallySent && customManuallySent {
-            print("[AutoSend] Пользователь отправил оба отчета вручную, автоотправка не требуется")
-            completion?()
-            return
-        }
-        
-        // Проверяем, была ли уже автоотправка сегодня
-        if let last = lastAutoSendDate, cal.isDate(last, inSameDayAs: today) {
-            print("[AutoSend] Уже отправляли сегодня: \(last)")
-            completion?()
-            return
-        }
-        var sentCount = 0
-        var toSend = 0
-        func done() {
-            sentCount += 1
-            if sentCount == toSend { completion?() }
-        }
-        // --- Кастомный отчет ---
-        if let custom = customReport, !custom.goodItems.isEmpty {
-            if !customManuallySent {
-                toSend += 1
-                let dateFormatter = DateFormatter()
-                dateFormatter.locale = Locale(identifier: "ru_RU")
-                dateFormatter.dateStyle = .full
-                let dateStr = dateFormatter.string(from: custom.date)
-                let deviceName = getDeviceName()
-                var message = "\u{1F4C5} <b>План на день за \(dateStr)</b>\n"
-                message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
-                if !custom.goodItems.isEmpty {
-                    message += "<b>✅ План:</b>\n"
-                    for (index, item) in custom.goodItems.enumerated() {
-                        message += "\(index + 1). \(item)\n"
-                    }
-                }
-                sendToTelegram(text: message) { _ in done() }
-            } else {
-                print("[AutoSend] Кастомный отчет уже отправлен пользователем")
-            }
-        } else {
-            toSend += 1
-            sendToTelegram(text: "План на сегодня отсутствует.") { _ in done() }
-        }
-        
-        // --- Обычный отчет ---
-        if let regular = regular, (!regular.goodItems.isEmpty || !regular.badItems.isEmpty) {
-            if !regularManuallySent {
-                toSend += 1
-                let dateFormatter = DateFormatter()
-                dateFormatter.locale = Locale(identifier: "ru_RU")
-                dateFormatter.dateStyle = .full
-                let dateStr = dateFormatter.string(from: regular.date)
-                let deviceName = getDeviceName()
-                var message = "\u{1F4C5} <b>Локальный отчет за \(dateStr)</b>\n"
-                message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
-                if !regular.goodItems.isEmpty {
-                    message += "<b>✅ Я молодец:</b>\n"
-                    for (index, item) in regular.goodItems.enumerated() {
-                        message += "\(index + 1). \(item)\n"
-                    }
-                    message += "\n"
-                }
-                if !regular.badItems.isEmpty {
-                    message += "<b>❌ Я не молодец:</b>\n"
-                    for (index, item) in regular.badItems.enumerated() {
-                        message += "\(index + 1). \(item)\n"
-                    }
-                }
-                sendToTelegram(text: message) { _ in done() }
-            } else {
-                print("[AutoSend] Обычный отчет уже отправлен пользователем")
-            }
-        } else {
-            toSend += 1
-            sendToTelegram(text: "Локальный отчет за сегодня отсутствует.") { _ in done() }
-        }
-        
-        // --- Если нет ни одного отчета ---
-        if customReport == nil && regular == nil {
-            toSend += 1
-            sendToTelegram(text: "За сегодня не найдено ни одного отчета.") { _ in done() }
-        }
-        if toSend == 0 { 
-            // Если нечего отправлять за сегодня, проверяем предыдущие дни
-            sendUnsentReportsFromPreviousDays(completion: completion)
-        } else {
-            // После успешной отправки:
-            self.lastAutoSendDate = now
-        }
-    }
-    
-    /// Отправка неотправленных отчетов за предыдущие дни
-    private func sendUnsentReportsFromPreviousDays(completion: (() -> Void)? = nil) {
-        let cal = Calendar.current
-        let now = Date()
-        let today = cal.startOfDay(for: now)
-        
-        // Проверяем отчеты за последние 7 дней (кроме сегодня)
-        var unsentReports: [(Post, String)] = []
-        
-        for dayOffset in 1...7 {
-            let targetDate = cal.date(byAdding: .day, value: -dayOffset, to: today)!
-            let regular = posts.first(where: { $0.type == .regular && cal.isDate($0.date, inSameDayAs: targetDate) })
-            let custom = posts.first(where: { $0.type == .custom && cal.isDate($0.date, inSameDayAs: targetDate) })
-            
-            // Проверяем обычный отчет
-            if let regular = regular, (!regular.goodItems.isEmpty || !regular.badItems.isEmpty), !regular.published {
-                unsentReports.append((regular, "Локальный отчет"))
-            }
-            
-            // Проверяем кастомный отчет
-            if let custom = custom, !custom.goodItems.isEmpty, !custom.published {
-                unsentReports.append((custom, "План на день"))
-            }
-        }
-        
-        if unsentReports.isEmpty {
-            print("[AutoSend] Нет неотправленных отчетов за предыдущие дни")
-            completion?()
-            return
-        }
-        
-        print("[AutoSend] Найдено \(unsentReports.count) неотправленных отчетов за предыдущие дни")
-        
-        var sentCount = 0
-        let totalToSend = unsentReports.count
-        
-        func done() {
-            sentCount += 1
-            if sentCount == totalToSend {
-                print("[AutoSend] Все неотправленные отчеты отправлены")
-                completion?()
-            }
-        }
-        
-        // Отправляем каждый неотправленный отчет
-        for (post, reportType) in unsentReports {
-            let dateFormatter = DateFormatter()
-            dateFormatter.locale = Locale(identifier: "ru_RU")
-            dateFormatter.dateStyle = .full
-            let dateStr = dateFormatter.string(from: post.date)
-            let deviceName = getDeviceName()
-            
-            var message = "\u{1F4C5} <b>\(reportType) за \(dateStr)</b>\n"
-            message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n"
-            message += "\u{26A0} <b>Отправлено автоматически с задержкой</b>\n\n"
-            
-            if post.type == .custom {
-                if !post.goodItems.isEmpty {
-                    message += "<b>✅ План:</b>\n"
-                    for (index, item) in post.goodItems.enumerated() {
-                        message += "\(index + 1). \(item)\n"
-                    }
-                }
-            } else {
-                if !post.goodItems.isEmpty {
-                    message += "<b>✅ Я молодец:</b>\n"
-                    for (index, item) in post.goodItems.enumerated() {
-                        message += "\(index + 1). \(item)\n"
-                    }
-                    message += "\n"
-                }
-                if !post.badItems.isEmpty {
-                    message += "<b>❌ Я не молодец:</b>\n"
-                    for (index, item) in post.badItems.enumerated() {
-                        message += "\(index + 1). \(item)\n"
-                    }
-                }
-            }
-            
-            sendToTelegram(text: message) { _ in done() }
-        }
-    }
-    
-    private func sendLocalNotification(title: String, body: String) {
-        let content = UNMutableNotificationContent()
-        content.title = title
-        content.body = body
-        content.sound = .default
-        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error = error {
-                print("[AutoSend] Ошибка отправки локального уведомления: \(error)")
-            }
-        }
+        telegramService.autoSendAllReportsForToday()
+        completion?()
     }
     func sendToTelegram(text: String, completion: @escaping (Bool) -> Void) {
-        guard let token = telegramToken, let chatId = telegramChatId, !token.isEmpty, !chatId.isEmpty else {
-            print("[AutoSend] Telegram credentials missing")
-            completion(false)
-            return
+        telegramService.sendToTelegram(text: text, completion: completion)
+    }
+    
+    // MARK: - Telegram Message Conversion
+    
+    /// Преобразует сообщение Telegram в объект Post
+    private func convertTelegramMessageToPost(_ message: TelegramMessage) -> Post? {
+        // Проверяем, что это текстовое сообщение
+        guard let text = message.text, !text.isEmpty else {
+            return nil
         }
-        let urlString = "https://api.telegram.org/bot\(token)/sendMessage"
-        guard let url = URL(string: urlString) else {
-            print("[AutoSend] Invalid URL"); completion(false); return }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        let params = ["chat_id": chatId, "text": text]
-        request.httpBody = try? JSONSerialization.data(withJSONObject: params)
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                print("[AutoSend] Telegram send error: \(error)"); completion(false); return }
-            print("[AutoSend] Telegram send success")
-            completion(true)
-        }
-        task.resume()
+        
+        // Создаем объект Post
+        let post = Post(
+            id: UUID(),
+            date: Date(timeIntervalSince1970: TimeInterval(message.date)),
+            goodItems: [],
+            badItems: [],
+            published: false,
+            voiceNotes: [],
+            type: .external,
+            isEvaluated: nil,
+            evaluationResults: nil,
+            authorUsername: message.from?.username,
+            authorFirstName: message.from?.firstName,
+            authorLastName: message.from?.lastName,
+            isExternal: true,
+            externalVoiceNoteURLs: nil,
+            externalText: text,
+            externalMessageId: message.messageId,
+            authorId: message.from?.id
+        )
+        
+        return post
     }
 }
 

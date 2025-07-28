@@ -1,8 +1,22 @@
 import Foundation
 import UIKit
 
+/// Протокол для работы с UserDefaults
+protocol UserDefaultsManagerProtocol {
+    func set<T>(_ value: T, forKey key: String)
+    func get<T>(_ type: T.Type, forKey key: String) -> T?
+    func get<T>(_ type: T.Type, forKey key: String, defaultValue: T) -> T
+    func remove(forKey key: String)
+    func hasValue(forKey key: String) -> Bool
+    func bool(forKey key: String) -> Bool
+    func string(forKey key: String) -> String?
+    func integer(forKey key: String) -> Int
+    func loadPosts() -> [Post]
+    func savePosts(_ posts: [Post])
+}
+
 /// Менеджер для работы с UserDefaults
-class UserDefaultsManager {
+class UserDefaultsManager: UserDefaultsManagerProtocol {
     
     static let shared = UserDefaultsManager()
     
@@ -22,12 +36,30 @@ class UserDefaultsManager {
     
     /// Получить значение
     func get<T>(_ type: T.Type, forKey key: String) -> T? {
-        return userDefaults.object(forKey: key) as? T
+        if let value = userDefaults.object(forKey: key) {
+            if let typedValue = value as? T {
+                return typedValue
+            }
+            // Специальная обработка для Int
+            if T.self == Int.self, let intValue = value as? Int {
+                return intValue as? T
+            }
+        }
+        return nil
     }
     
     /// Получить значение с дефолтным значением
     func get<T>(_ type: T.Type, forKey key: String, defaultValue: T) -> T {
-        return userDefaults.object(forKey: key) as? T ?? defaultValue
+        if let value = userDefaults.object(forKey: key) {
+            if let typedValue = value as? T {
+                return typedValue
+            }
+            // Специальная обработка для Int
+            if T.self == Int.self, let intValue = value as? Int {
+                return intValue as! T
+            }
+        }
+        return defaultValue
     }
     
     /// Удалить значение
@@ -140,5 +172,43 @@ class UserDefaultsManager {
     /// Загрузить последний статус автоотправки
     func loadLastAutoSendStatus() -> String? {
         return get(String.self, forKey: "lastAutoSendStatus")
+    }
+    
+    // MARK: - Protocol Methods
+    
+    func bool(forKey key: String) -> Bool {
+        return get(Bool.self, forKey: key, defaultValue: false)
+    }
+    
+    func string(forKey key: String) -> String? {
+        return get(String.self, forKey: key)
+    }
+    
+    func integer(forKey key: String) -> Int {
+        return get(Int.self, forKey: key, defaultValue: 0)
+    }
+    
+    func integer(forKey key: String, defaultValue: Int) -> Int {
+        return get(Int.self, forKey: key, defaultValue: defaultValue)
+    }
+    
+    func loadPosts() -> [Post] {
+        guard let data = userDefaults.data(forKey: "posts") else { return [] }
+        do {
+            let posts = try JSONDecoder().decode([Post].self, from: data)
+            return posts
+        } catch {
+            print("Error loading posts: \(error)")
+            return []
+        }
+    }
+    
+    func savePosts(_ posts: [Post]) {
+        do {
+            let data = try JSONEncoder().encode(posts)
+            userDefaults.set(data, forKey: "posts")
+        } catch {
+            print("Error saving posts: \(error)")
+        }
     }
 } 

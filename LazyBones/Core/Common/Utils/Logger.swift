@@ -21,6 +21,15 @@ struct Logger {
     /// Логгер для фоновых задач
     static let background = OSLog(subsystem: subsystem, category: "background")
     
+    /// Логгер для уведомлений
+    static let notifications = OSLog(subsystem: subsystem, category: "notifications")
+    
+    /// Логгер для Telegram
+    static let telegram = OSLog(subsystem: subsystem, category: "telegram")
+    
+    /// Логгер для таймеров
+    static let timer = OSLog(subsystem: subsystem, category: "timer")
+    
     /// Логгер для ошибок
     static let error = OSLog(subsystem: subsystem, category: "error")
     

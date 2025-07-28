@@ -1,5 +1,7 @@
 import Foundation
 
+// Импорты для работы с моделями
+
 /// Протокол сервиса Telegram
 protocol TelegramServiceProtocol {
     func sendMessage(_ text: String, to chatId: String) async throws
@@ -214,9 +216,9 @@ class TelegramService: TelegramServiceProtocol {
     
     // MARK: - Helper Methods
     
-    /// Форматировать отчет для отправки в Telegram
-    func formatReportForTelegram(_ report: Report, deviceName: String) -> String {
-        var message = "📊 <b>Отчет за \(DateUtils.formatDate(report.date))</b>\n"
+    /// Форматировать обычный отчет для отправки в Telegram
+    func formatRegularReportForTelegram(_ report: Post, deviceName: String) -> String {
+        var message = "📊 <b>Обычный отчет за \(DateUtils.formatDate(report.date))</b>\n"
         message += "📱 <i>Устройство: \(deviceName)</i>\n\n"
         
         if !report.goodItems.isEmpty {
@@ -239,11 +241,40 @@ class TelegramService: TelegramServiceProtocol {
             message += "🎤 <b>Голосовые заметки:</b> \(report.voiceNotes.count)\n"
         }
         
-        if report.type == .custom {
-            message += "📝 <b>Тип:</b> Кастомный отчет\n"
+        return message
+    }
+    
+    /// Форматировать кастомный отчет для отправки в Telegram
+    func formatCustomReportForTelegram(_ report: Post, deviceName: String) -> String {
+        var message = "📝 <b>Кастомный отчет за \(DateUtils.formatDate(report.date))</b>\n"
+        message += "📱 <i>Устройство: \(deviceName)</i>\n\n"
+        
+        if !report.goodItems.isEmpty {
+            message += "✅ <b>Хорошее:</b>\n"
+            for item in report.goodItems {
+                message += "• \(item)\n"
+            }
+            message += "\n"
+        }
+        
+        if !report.badItems.isEmpty {
+            message += "❌ <b>Плохое:</b>\n"
+            for item in report.badItems {
+                message += "• \(item)\n"
+            }
+            message += "\n"
+        }
+        
+        if !report.voiceNotes.isEmpty {
+            message += "🎤 <b>Голосовые заметки:</b> \(report.voiceNotes.count)\n"
         }
         
         return message
+    }
+    
+    /// Форматировать отчет для отправки в Telegram (устаревший метод)
+    func formatReportForTelegram(_ report: Post, deviceName: String) -> String {
+        return formatRegularReportForTelegram(report, deviceName: deviceName)
     }
     
     /// Проверить валидность токена
