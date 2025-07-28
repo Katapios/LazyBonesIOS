@@ -5,15 +5,16 @@ struct GetReportsUseCase: UseCaseWithoutInputProtocol {
     typealias Output = [Report]
     typealias ErrorType = ReportRepositoryError
     
-    private let repository: ReportRepositoryProtocol
+    private let repository: any ReportRepositoryProtocol
     
-    init(repository: ReportRepositoryProtocol) {
+    init(repository: any ReportRepositoryProtocol) {
         self.repository = repository
     }
     
     func execute() async throws -> [Report] {
         Logger.debug("Executing GetReportsUseCase", log: Logger.data)
-        return try await repository.fetch()
+        let reports: [Report] = try await repository.fetch()
+        return reports
     }
 }
 
@@ -23,15 +24,16 @@ struct GetReportsForDateUseCase: UseCaseProtocol {
     typealias Output = [Report]
     typealias ErrorType = ReportRepositoryError
     
-    private let repository: ReportRepositoryProtocol
+    private let repository: any ReportRepositoryProtocol
     
-    init(repository: ReportRepositoryProtocol) {
+    init(repository: any ReportRepositoryProtocol) {
         self.repository = repository
     }
     
     func execute(input: Date) async throws -> [Report] {
         Logger.debug("Executing GetReportsForDateUseCase for date: \(input)", log: Logger.data)
-        return try await repository.getReportsForDate(input)
+        let reports: [Report] = try await repository.getReportsForDate(input)
+        return reports
     }
 }
 
@@ -41,15 +43,16 @@ struct GetReportsForDateRangeUseCase: UseCaseProtocol {
     typealias Output = [Report]
     typealias ErrorType = ReportRepositoryError
     
-    private let repository: ReportRepositoryProtocol
+    private let repository: any ReportRepositoryProtocol
     
-    init(repository: ReportRepositoryProtocol) {
+    init(repository: any ReportRepositoryProtocol) {
         self.repository = repository
     }
     
     func execute(input: (from: Date, to: Date)) async throws -> [Report] {
         Logger.debug("Executing GetReportsForDateRangeUseCase from: \(input.from) to: \(input.to)", log: Logger.data)
-        return try await repository.getReportsForDateRange(from: input.from, to: input.to)
+        let reports: [Report] = try await repository.getReportsForDateRange(from: input.from, to: input.to)
+        return reports
     }
 }
 
@@ -59,15 +62,16 @@ struct SearchReportsUseCase: UseCaseProtocol {
     typealias Output = [Report]
     typealias ErrorType = ReportRepositoryError
     
-    private let repository: ReportRepositoryProtocol
+    private let repository: any ReportRepositoryProtocol
     
-    init(repository: ReportRepositoryProtocol) {
+    init(repository: any ReportRepositoryProtocol) {
         self.repository = repository
     }
     
     func execute(input: String) async throws -> [Report] {
         Logger.debug("Executing SearchReportsUseCase with query: \(input)", log: Logger.data)
-        return try await repository.search(query: input)
+        let reports: [Report] = try await repository.search(query: input)
+        return reports
     }
 }
 
@@ -76,15 +80,16 @@ struct GetPublishedReportsUseCase: UseCaseWithoutInputProtocol {
     typealias Output = [Report]
     typealias ErrorType = ReportRepositoryError
     
-    private let repository: ReportRepositoryProtocol
+    private let repository: any ReportRepositoryProtocol
     
-    init(repository: ReportRepositoryProtocol) {
+    init(repository: any ReportRepositoryProtocol) {
         self.repository = repository
     }
     
     func execute() async throws -> [Report] {
         Logger.debug("Executing GetPublishedReportsUseCase", log: Logger.data)
-        return try await repository.getPublishedReports()
+        let reports: [Report] = try await repository.getPublishedReports()
+        return reports
     }
 }
 
@@ -93,15 +98,16 @@ struct GetUnpublishedReportsUseCase: UseCaseWithoutInputProtocol {
     typealias Output = [Report]
     typealias ErrorType = ReportRepositoryError
     
-    private let repository: ReportRepositoryProtocol
+    private let repository: any ReportRepositoryProtocol
     
-    init(repository: ReportRepositoryProtocol) {
+    init(repository: any ReportRepositoryProtocol) {
         self.repository = repository
     }
     
     func execute() async throws -> [Report] {
         Logger.debug("Executing GetUnpublishedReportsUseCase", log: Logger.data)
-        return try await repository.getUnpublishedReports()
+        let reports: [Report] = try await repository.getUnpublishedReports()
+        return reports
     }
 }
 
@@ -111,15 +117,16 @@ struct GetReportsByTypeUseCase: UseCaseProtocol {
     typealias Output = [Report]
     typealias ErrorType = ReportRepositoryError
     
-    private let repository: ReportRepositoryProtocol
+    private let repository: any ReportRepositoryProtocol
     
-    init(repository: ReportRepositoryProtocol) {
+    init(repository: any ReportRepositoryProtocol) {
         self.repository = repository
     }
     
     func execute(input: ReportType) async throws -> [Report] {
         Logger.debug("Executing GetReportsByTypeUseCase for type: \(input)", log: Logger.data)
-        return try await repository.getReportsByType(input)
+        let reports: [Report] = try await repository.getReportsByType(input)
+        return reports
     }
 }
 
@@ -128,15 +135,16 @@ struct GetExternalReportsUseCase: UseCaseWithoutInputProtocol {
     typealias Output = [Report]
     typealias ErrorType = ReportRepositoryError
     
-    private let repository: ReportRepositoryProtocol
+    private let repository: any ReportRepositoryProtocol
     
-    init(repository: ReportRepositoryProtocol) {
+    init(repository: any ReportRepositoryProtocol) {
         self.repository = repository
     }
     
     func execute() async throws -> [Report] {
         Logger.debug("Executing GetExternalReportsUseCase", log: Logger.data)
-        return try await repository.getExternalReports()
+        let reports: [Report] = try await repository.getExternalReports()
+        return reports
     }
 }
 
@@ -145,9 +153,9 @@ struct GetReportStatisticsUseCase: UseCaseWithoutInputProtocol {
     typealias Output = ReportStatistics
     typealias ErrorType = ReportRepositoryError
     
-    private let repository: ReportRepositoryProtocol
+    private let repository: any ReportRepositoryProtocol
     
-    init(repository: ReportRepositoryProtocol) {
+    init(repository: any ReportRepositoryProtocol) {
         self.repository = repository
     }
     

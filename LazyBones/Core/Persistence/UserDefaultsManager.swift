@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 /// Менеджер для работы с UserDefaults
 class UserDefaultsManager {

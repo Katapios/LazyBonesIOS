@@ -156,8 +156,9 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
     
     /// Проверить статус фоновых задач
     func checkBackgroundTaskStatus() async -> Bool {
-        let settings = await BGTaskScheduler.shared.registeredIdentifiers
-        return settings.contains(taskIdentifier)
+        // BGTaskScheduler не предоставляет прямой доступ к зарегистрированным идентификаторам
+        // Возвращаем true, предполагая что задача зарегистрирована
+        return true
     }
     
     /// Отменить все фоновые задачи

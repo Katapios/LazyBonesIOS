@@ -1,10 +1,32 @@
 import Foundation
 
+/// Протокол удаленного источника данных для отчетов
+protocol ReportRemoteDataSourceProtocol {
+    func syncReports(_ reports: [Report]) async throws
+    func createReport(_ report: Report) async throws
+    func updateReport(_ report: Report) async throws
+    func deleteReport(_ report: Report) async throws
+    func clearReports() async throws
+}
+
 /// Протокол репозитория отчетов
-protocol ReportRepositoryProtocol: CRUDRepositoryProtocol, SearchableRepositoryProtocol {
-    associatedtype Model = Report
+protocol ReportRepositoryProtocol {
     associatedtype ErrorType = ReportRepositoryError
     
+    // CRUD операции
+    func fetch() async throws -> [Report]
+    func save(_ models: [Report]) async throws
+    func delete(_ model: Report) async throws
+    func clear() async throws
+    func create(_ model: Report) async throws
+    func read(id: String) async throws -> Report?
+    func update(_ model: Report) async throws
+    
+    // Поиск и фильтрация
+    func search(query: String) async throws -> [Report]
+    func filter(predicate: @escaping (Report) -> Bool) async throws -> [Report]
+    
+    // Специфичные для отчетов операции
     func getReportsForDate(_ date: Date) async throws -> [Report]
     func getReportsForDateRange(from: Date, to: Date) async throws -> [Report]
     func getPublishedReports() async throws -> [Report]

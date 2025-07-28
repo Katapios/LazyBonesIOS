@@ -2,7 +2,6 @@ import Foundation
 import SwiftUI
 
 /// ViewModel для модуля Reports
-@MainActor
 class ReportsViewModel: ObservableObject {
     
     // MARK: - Published Properties
@@ -42,6 +41,7 @@ class ReportsViewModel: ObservableObject {
     // MARK: - Public Methods
     
     /// Загрузить все отчеты
+    @MainActor
     func loadReports() async {
         isLoading = true
         errorMessage = nil
@@ -59,6 +59,7 @@ class ReportsViewModel: ObservableObject {
     }
     
     /// Загрузить отчеты для конкретной даты
+    @MainActor
     func loadReportsForDate(_ date: Date) async {
         isLoading = true
         errorMessage = nil
@@ -76,6 +77,7 @@ class ReportsViewModel: ObservableObject {
     }
     
     /// Поиск отчетов
+    @MainActor
     func searchReports() async {
         guard !searchText.isEmpty else {
             await loadReports()
@@ -98,6 +100,7 @@ class ReportsViewModel: ObservableObject {
     }
     
     /// Загрузить статистику
+    @MainActor
     func loadStatistics() async {
         do {
             statistics = try await getReportStatisticsUseCase.execute()
@@ -120,12 +123,14 @@ class ReportsViewModel: ObservableObject {
     }
     
     /// Обновить отчеты
+    @MainActor
     func refreshReports() async {
         await loadReports()
         await loadStatistics()
     }
     
     /// Получить отчеты по типу
+    @MainActor
     func loadReportsByType(_ type: ReportType) async {
         isLoading = true
         errorMessage = nil

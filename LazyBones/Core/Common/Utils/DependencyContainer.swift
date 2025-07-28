@@ -149,7 +149,7 @@ extension DependencyContainer {
             return GetReportsByTypeUseCase(repository: repository)
         })
         
-        // ViewModels
+        // ViewModels - создаем синхронно, так как @MainActor не влияет на инициализацию
         register(ReportsViewModel.self, factory: {
             let getReportsUseCase = self.resolve(GetReportsUseCase.self)!
             let searchReportsUseCase = self.resolve(SearchReportsUseCase.self)!

@@ -4,6 +4,8 @@ import WidgetKit
 import UserNotifications
 import BackgroundTasks // Added for BGTaskScheduler
 
+// Импорт для использования ReportStatus из нового модуля
+
 /// Модель отчёта пользователя
 struct Post: Codable, Identifiable {
     let id: UUID
@@ -33,12 +35,7 @@ enum PostType: String, Codable, CaseIterable {
     case external // внешний отчет из Telegram
 }
 
-// MARK: - Статус отчёта
-enum ReportStatus: String, Codable {
-    case notStarted
-    case inProgress
-    case done
-}
+// MARK: - Статус отчёта (используется из ReportModel.swift)
 
 // MARK: - Notification Mode
 enum NotificationMode: String, Codable, CaseIterable {
@@ -72,7 +69,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
     @Published var telegramChatId: String? = nil
     @Published var telegramBotId: String? = nil
     @Published var lastUpdateId: Int? = nil
-    @Published var reportStatus: ReportStatus = .notStarted
+    @Published var reportStatus: LazyBones.ReportStatus = .notStarted
     @Published var forceUnlock: Bool = false
     @Published var timeLeft: String = "" // Новое свойство для отображения таймера
     private var timer: Timer? = nil
@@ -206,7 +203,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
             telegramService = nil
             return
         }
-        telegramService = TelegramService(token: token, chatId: chatId)
+        telegramService = TelegramService(token: token)
     }
     func saveTelegramSettings(token: String?, chatId: String?, botId: String?) {
         telegramToken = token
@@ -232,46 +229,10 @@ class PostStore: ObservableObject, PostStoreProtocol {
         userDefaults?.set(updateId, forKey: "lastUpdateId")
     }
     // Загрузка внешних отчетов из Telegram
+    // TODO: Реализовать с новым TelegramService
     func fetchExternalPosts(completion: @escaping (Bool) -> Void) {
-        guard let telegramService = telegramService else { completion(false); return }
-        let offset = lastUpdateId != nil ? lastUpdateId! + 1 : nil
-        telegramService.fetchMessages(offset: offset, limit: 20, botId: telegramBotId) { result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let messages):
-                    if !messages.isEmpty {
-                        if let lastMessage = messages.last {
-                            self.saveLastUpdateId(lastMessage.updateId)
-                        }
-                        let posts = messages.map { msg in
-                            Post(
-                                id: UUID(),
-                                date: msg.date,
-                                goodItems: [],
-                                badItems: [],
-                                published: true,
-                                voiceNotes: [],
-                                type: .external,
-                                authorUsername: msg.authorUsername,
-                                authorFirstName: msg.authorFirstName,
-                                authorLastName: msg.authorLastName,
-                                isExternal: true,
-                                externalVoiceNoteURLs: nil,
-                                externalText: msg.caption ?? msg.text,
-                                externalMessageId: msg.id,
-                                authorId: msg.authorId
-                            )
-                        }
-                        self.externalPosts.append(contentsOf: posts)
-                        self.externalPosts.sort { $0.date > $1.date }
-                        self.saveExternalPosts()
-                    }
-                    completion(true)
-                case .failure:
-                    completion(false)
-                }
-            }
-        }
+        // Временно отключено - нужно реализовать с новым TelegramService
+        completion(false)
     }
     func saveExternalPosts() {
         guard let data = try? JSONEncoder().encode(externalPosts) else { return }
@@ -288,60 +249,12 @@ class PostStore: ObservableObject, PostStoreProtocol {
         externalPosts = decoded
     }
     func deleteBotMessages(completion: @escaping (Bool) -> Void) {
-        guard let telegramService = telegramService else { completion(false); return }
-        let botMessageIds = externalPosts.compactMap { post -> Int? in
-            if let botId = telegramBotId, let authorId = post.authorId, String(authorId) == botId {
-                return post.externalMessageId
-            }
-            return post.externalMessageId
-        }
-        if botMessageIds.isEmpty {
-            completion(true)
-            return
-        }
-        telegramService.deleteMessages(messageIds: botMessageIds) { success in
-            DispatchQueue.main.async {
-                if success {
-                    self.externalPosts.removeAll { post in
-                        botMessageIds.contains(post.externalMessageId ?? 0)
-                    }
-                    self.saveExternalPosts()
-                }
-                completion(success)
-            }
-        }
+        // TODO: Реализовать с новым TelegramService
+        completion(false)
     }
     func deleteAllBotMessages(completion: @escaping (Bool) -> Void) {
-        guard let telegramService = telegramService else { completion(false); return }
-        telegramService.fetchMessages(offset: nil, limit: 100, botId: telegramBotId) { result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let messages):
-                    let botMessageIds = messages.compactMap { message -> Int? in
-                        if message.isFromBot {
-                            return message.id
-                        }
-                        return nil
-                    }
-                    if botMessageIds.isEmpty {
-                        completion(true)
-                        return
-                    }
-                    telegramService.deleteMessages(messageIds: botMessageIds) { success in
-                        DispatchQueue.main.async {
-                            if success {
-                                self.lastUpdateId = nil
-                                let userDefaults = UserDefaults(suiteName: Self.appGroup)
-                                userDefaults?.removeObject(forKey: "lastUpdateId")
-                            }
-                            completion(success)
-                        }
-                    }
-                case .failure:
-                    completion(false)
-                }
-            }
-        }
+        // TODO: Реализовать с новым TelegramService
+        completion(false)
     }
     // MARK: - Report Status
     func updateReportStatus() {
@@ -641,8 +554,8 @@ class PostStore: ObservableObject, PostStoreProtocol {
                 self?.lastAutoSendStatus = success ? "Отправлено в \(self?.autoSendTime.formatted(date: .omitted, time: .shortened) ?? "")" : "Ошибка отправки"
                 self?.saveAutoSendSettings()
                 // Блокировать отправку/редактирование до следующего дня
-                self?.reportStatus = ReportStatus.done
-                self?.localService.saveReportStatus(ReportStatus.done)
+                        self?.reportStatus = LazyBones.ReportStatus.done
+        self?.localService.saveReportStatus(LazyBones.ReportStatus.done)
                 self?.forceUnlock = false
                 self?.localService.saveForceUnlock(false)
                 WidgetCenter.shared.reloadAllTimelines()

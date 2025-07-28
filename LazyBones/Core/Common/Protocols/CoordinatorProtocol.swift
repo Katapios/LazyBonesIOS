@@ -26,8 +26,8 @@ protocol ModalCoordinatorProtocol: CoordinatorProtocol {
 
 /// Протокол для координаторов с поддержкой вложенных координаторов
 protocol ParentCoordinatorProtocol: CoordinatorProtocol {
-    var childCoordinators: [CoordinatorProtocol] { get set }
+    var childCoordinators: [any CoordinatorProtocol] { get set }
     
-    func addChild(_ coordinator: CoordinatorProtocol)
-    func removeChild(_ coordinator: CoordinatorProtocol)
+    func addChild(_ coordinator: any CoordinatorProtocol)
+    func removeChild(_ coordinator: any CoordinatorProtocol)
 } 

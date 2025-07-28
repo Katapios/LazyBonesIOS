@@ -831,7 +831,11 @@ struct PostFormView: View {
 }
 
 #Preview("PostFormView - Status Done") {
+    PostFormView().environmentObject(createStoreWithDoneStatus())
+}
+
+private func createStoreWithDoneStatus() -> PostStore {
     let store = PostStore()
     store.reportStatus = .done
-    return PostFormView().environmentObject(store)
+    return store
 }
