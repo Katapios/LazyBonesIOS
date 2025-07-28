@@ -152,7 +152,7 @@ class TelegramService: TelegramServiceProtocol {
             )
             
             if response.ok {
-                let updates = response.result ?? []
+                let updates = response.result // result теперь не опциональный
                 Logger.info("Received \(updates.count) updates", log: Logger.networking)
                 return updates
             } else {
@@ -170,7 +170,8 @@ class TelegramService: TelegramServiceProtocol {
         do {
             let response: TelegramResponse<TelegramUser> = try await apiClient.get("getMe")
             
-            if response.ok, let user = response.result {
+            if response.ok {
+                let user = response.result // result теперь не опциональный
                 Logger.info("Bot info received: \(user.firstName)", log: Logger.networking)
                 return user
             } else {
@@ -191,7 +192,7 @@ class TelegramService: TelegramServiceProtocol {
             parameters: ["file_id": fileId]
         )
         
-        guard fileInfo.ok, let file = fileInfo.result, let filePath = file.filePath else {
+        guard fileInfo.ok, let filePath = fileInfo.result.filePath else {
             throw TelegramServiceError.fileNotFound
         }
         

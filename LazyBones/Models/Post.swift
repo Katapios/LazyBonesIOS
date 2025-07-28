@@ -312,7 +312,10 @@ class PostStore: ObservableObject, PostStoreProtocol {
                     }
                     return nil
                 }
-                
+                print("[DEBUG] Получено сообщений из Telegram: \(messages.count)")
+                for msg in messages {
+                    print("[DEBUG] message: \(msg)")
+                }
                 // Преобразуем сообщения в объекты Post
                 var newExternalPosts: [Post] = []
                 
@@ -329,7 +332,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
                     
                     // Обновляем lastUpdateId
                     if let lastUpdate = updates.last {
-                        self.lastUpdateId = lastUpdate.updateId + 1
+                        self.lastUpdateId = (lastUpdate.updateId ?? 0) + 1
                         let userDefaults = UserDefaults(suiteName: Self.appGroup)
                         userDefaults?.set(self.lastUpdateId, forKey: "lastUpdateId")
                     }
@@ -622,33 +625,104 @@ class PostStore: ObservableObject, PostStoreProtocol {
     
     /// Преобразует сообщение Telegram в объект Post
     private func convertTelegramMessageToPost(_ message: TelegramMessage) -> Post? {
-        // Проверяем, что это текстовое сообщение
-        guard let text = message.text, !text.isEmpty else {
-            return nil
+        // Если есть текст — обычный текстовый отчет
+        if let text = message.text, !text.isEmpty {
+            let post = Post(
+                id: UUID(),
+                date: Date(timeIntervalSince1970: TimeInterval(message.date ?? 0)),
+                goodItems: [],
+                badItems: [],
+                published: false,
+                voiceNotes: [],
+                type: .external,
+                isEvaluated: nil,
+                evaluationResults: nil,
+                authorUsername: message.from?.username,
+                authorFirstName: message.from?.firstName,
+                authorLastName: message.from?.lastName,
+                isExternal: true,
+                externalVoiceNoteURLs: nil,
+                externalText: text,
+                externalMessageId: message.messageId,
+                authorId: message.from?.id
+            )
+            return post
         }
-        
-        // Создаем объект Post
-        let post = Post(
-            id: UUID(),
-            date: Date(timeIntervalSince1970: TimeInterval(message.date)),
-            goodItems: [],
-            badItems: [],
-            published: false,
-            voiceNotes: [],
-            type: .external,
-            isEvaluated: nil,
-            evaluationResults: nil,
-            authorUsername: message.from?.username,
-            authorFirstName: message.from?.firstName,
-            authorLastName: message.from?.lastName,
-            isExternal: true,
-            externalVoiceNoteURLs: nil,
-            externalText: text,
-            externalMessageId: message.messageId,
-            authorId: message.from?.id
-        )
-        
-        return post
+        // Если есть голосовое сообщение
+        if let voice = message.voice {
+            // Формируем ссылку на файл Telegram (file_id)
+            let fileURL = URL(string: "https://api.telegram.org/file/bot\(telegramToken ?? "")/\(voice.fileId)")
+            let post = Post(
+                id: UUID(),
+                date: Date(timeIntervalSince1970: TimeInterval(message.date ?? 0)),
+                goodItems: [],
+                badItems: [],
+                published: false,
+                voiceNotes: [],
+                type: .external,
+                isEvaluated: nil,
+                evaluationResults: nil,
+                authorUsername: message.from?.username,
+                authorFirstName: message.from?.firstName,
+                authorLastName: message.from?.lastName,
+                isExternal: true,
+                externalVoiceNoteURLs: fileURL != nil ? [fileURL!] : nil,
+                externalText: message.caption ?? "[Голосовое сообщение]",
+                externalMessageId: message.messageId,
+                authorId: message.from?.id
+            )
+            return post
+        }
+        // Если есть аудио
+        if let audio = message.audio {
+            let fileURL = URL(string: "https://api.telegram.org/file/bot\(telegramToken ?? "")/\(audio.fileId)")
+            let post = Post(
+                id: UUID(),
+                date: Date(timeIntervalSince1970: TimeInterval(message.date ?? 0)),
+                goodItems: [],
+                badItems: [],
+                published: false,
+                voiceNotes: [],
+                type: .external,
+                isEvaluated: nil,
+                evaluationResults: nil,
+                authorUsername: message.from?.username,
+                authorFirstName: message.from?.firstName,
+                authorLastName: message.from?.lastName,
+                isExternal: true,
+                externalVoiceNoteURLs: fileURL != nil ? [fileURL!] : nil,
+                externalText: message.caption ?? "[Аудио сообщение]",
+                externalMessageId: message.messageId,
+                authorId: message.from?.id
+            )
+            return post
+        }
+        // Если есть документ
+        if let document = message.document {
+            let fileURL = URL(string: "https://api.telegram.org/file/bot\(telegramToken ?? "")/\(document.fileId)")
+            let post = Post(
+                id: UUID(),
+                date: Date(timeIntervalSince1970: TimeInterval(message.date ?? 0)),
+                goodItems: [],
+                badItems: [],
+                published: false,
+                voiceNotes: [],
+                type: .external,
+                isEvaluated: nil,
+                evaluationResults: nil,
+                authorUsername: message.from?.username,
+                authorFirstName: message.from?.firstName,
+                authorLastName: message.from?.lastName,
+                isExternal: true,
+                externalVoiceNoteURLs: fileURL != nil ? [fileURL!] : nil,
+                externalText: document.fileName ?? "[Документ]",
+                externalMessageId: message.messageId,
+                authorId: message.from?.id
+            )
+            return post
+        }
+        // Если ничего не подошло — не создаём Post
+        return nil
     }
 }
 

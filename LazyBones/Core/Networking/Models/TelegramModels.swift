@@ -5,7 +5,7 @@ import Foundation
 /// Модель ответа Telegram API
 struct TelegramResponse<T: Codable>: Codable {
     let ok: Bool
-    let result: T?
+    let result: T
     let description: String?
     let errorCode: Int?
     
@@ -19,32 +19,36 @@ struct TelegramResponse<T: Codable>: Codable {
 
 /// Модель сообщения Telegram
 struct TelegramMessage: Codable {
-    let messageId: Int
+    let messageId: Int?
     let from: TelegramUser?
-    let chat: TelegramChat
-    let date: Int
+    let senderChat: TelegramChat?
+    let chat: TelegramChat?
+    let date: Int?
     let text: String?
     let voice: TelegramVoice?
     let audio: TelegramAudio?
     let document: TelegramDocument?
+    let caption: String?
     
     enum CodingKeys: String, CodingKey {
         case messageId = "message_id"
         case from
+        case senderChat = "sender_chat"
         case chat
         case date
         case text
         case voice
         case audio
         case document
+        case caption
     }
 }
 
 /// Модель пользователя Telegram
 struct TelegramUser: Codable {
-    let id: Int
-    let isBot: Bool
-    let firstName: String
+    let id: Int?
+    let isBot: Bool?
+    let firstName: String?
     let lastName: String?
     let username: String?
     
@@ -59,8 +63,8 @@ struct TelegramUser: Codable {
 
 /// Модель чата Telegram
 struct TelegramChat: Codable {
-    let id: Int
-    let type: String
+    let id: Int?
+    let type: String?
     let title: String?
     let username: String?
     let firstName: String?
@@ -78,9 +82,9 @@ struct TelegramChat: Codable {
 
 /// Модель голосового сообщения Telegram
 struct TelegramVoice: Codable {
-    let fileId: String
-    let fileUniqueId: String
-    let duration: Int
+    let fileId: String?
+    let fileUniqueId: String?
+    let duration: Int?
     let mimeType: String?
     let fileSize: Int?
     
@@ -95,9 +99,9 @@ struct TelegramVoice: Codable {
 
 /// Модель аудио файла Telegram
 struct TelegramAudio: Codable {
-    let fileId: String
-    let fileUniqueId: String
-    let duration: Int
+    let fileId: String?
+    let fileUniqueId: String?
+    let duration: Int?
     let performer: String?
     let title: String?
     let mimeType: String?
@@ -116,8 +120,8 @@ struct TelegramAudio: Codable {
 
 /// Модель документа Telegram
 struct TelegramDocument: Codable {
-    let fileId: String
-    let fileUniqueId: String
+    let fileId: String?
+    let fileUniqueId: String?
     let fileName: String?
     let mimeType: String?
     let fileSize: Int?
@@ -133,8 +137,8 @@ struct TelegramDocument: Codable {
 
 /// Модель файла Telegram
 struct TelegramFile: Codable {
-    let fileId: String
-    let fileUniqueId: String
+    let fileId: String?
+    let fileUniqueId: String?
     let fileSize: Int?
     let filePath: String?
     
@@ -148,7 +152,7 @@ struct TelegramFile: Codable {
 
 /// Модель обновления Telegram
 struct TelegramUpdate: Codable {
-    let updateId: Int
+    let updateId: Int?
     let message: TelegramMessage?
     let editedMessage: TelegramMessage?
     let channelPost: TelegramMessage?
