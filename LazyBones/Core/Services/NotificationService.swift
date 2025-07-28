@@ -6,6 +6,7 @@ protocol NotificationServiceProtocol {
     func requestPermission() async throws -> Bool
     func scheduleNotification(title: String, body: String, date: Date, identifier: String) async throws
     func scheduleRepeatingNotification(title: String, body: String, hour: Int, minute: Int, identifier: String) async throws
+    func scheduleReportNotifications(enabled: Bool, intervalHours: Int, startHour: Int, endHour: Int, mode: String) async throws
     func cancelNotification(identifier: String) async throws
     func cancelAllNotifications() async throws
     func getPendingNotifications() async throws -> [UNNotificationRequest]
@@ -176,7 +177,7 @@ class NotificationService: NotificationServiceProtocol {
     
     private func scheduleTwiceDailyNotifications(title: String, body: String, startHour: Int, endHour: Int) async throws {
         let morningHour = startHour
-        let eveningHour = endHour - 2 // За 2 часа до конца дня
+        let eveningHour = 21 // Фиксированное время для вечернего уведомления
         
         // Утреннее уведомление
         let morningIdentifier = "report_reminder_morning"
@@ -188,7 +189,7 @@ class NotificationService: NotificationServiceProtocol {
             identifier: morningIdentifier
         )
         
-        // Вечернее уведомление
+        // Вечернее уведомление (предостерегающее)
         let eveningIdentifier = "report_reminder_evening"
         try await scheduleRepeatingNotification(
             title: title,
