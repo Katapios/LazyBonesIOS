@@ -8,59 +8,76 @@
 import SwiftUI
 import WidgetKit
 
-/// Корневой TabView приложения
+/// Корневой TabView приложения с новой архитектурой
 struct ContentView: View {
+    @EnvironmentObject var appCoordinator: AppCoordinator
     @StateObject var store = PostStore()
     @Environment(\.scenePhase) private var scenePhase
+    
     var body: some View {
-        TabView {
-            NavigationStack {
+        TabView(selection: $appCoordinator.currentTab) {
+            NavigationStack(path: $appCoordinator.navigationPath) {
                 MainView()
             }
             .tabItem {
-                Label("Главная", systemImage: "house")
+                Label(AppCoordinator.Tab.main.title, systemImage: AppCoordinator.Tab.main.icon)
             }
-            NavigationStack {
+            .tag(AppCoordinator.Tab.main)
+            
+            NavigationStack(path: $appCoordinator.navigationPath) {
                 DailyPlanningFormView()
             }
             .tabItem {
-                Label("План", systemImage: "doc.text.below.ecg")
+                Label(AppCoordinator.Tab.planning.title, systemImage: AppCoordinator.Tab.planning.icon)
             }
-            NavigationStack {
+            .tag(AppCoordinator.Tab.planning)
+            
+            NavigationStack(path: $appCoordinator.navigationPath) {
                 TagManagerView()
             }
             .tabItem {
-                Label("Теги", systemImage: "tag")
+                Label(AppCoordinator.Tab.tags.title, systemImage: AppCoordinator.Tab.tags.icon)
             }
-            NavigationStack {
+            .tag(AppCoordinator.Tab.tags)
+            
+            NavigationStack(path: $appCoordinator.navigationPath) {
                 ReportsView()
             }
             .tabItem {
-                Label("Отчёты", systemImage: "doc.text")
+                Label(AppCoordinator.Tab.reports.title, systemImage: AppCoordinator.Tab.reports.icon)
             }
-            NavigationStack {
+            .tag(AppCoordinator.Tab.reports)
+            
+            NavigationStack(path: $appCoordinator.navigationPath) {
                 SettingsView()
             }
             .tabItem {
-                Label("Настройки", systemImage: "gear")
+                Label(AppCoordinator.Tab.settings.title, systemImage: AppCoordinator.Tab.settings.icon)
             }
+            .tag(AppCoordinator.Tab.settings)
         }
         .environmentObject(store)
         .onAppear {
-            print("[DEBUG][ContentView] ContentView инициализирован, store: \(store)")
+            Logger.info("ContentView initialized", log: Logger.ui)
         }
-        .onChange(of: scenePhase) {
-            _, newPhase in
+        .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
+                Logger.debug("App became active, updating widgets", log: Logger.ui)
                 WidgetCenter.shared.reloadAllTimelines()
+                appCoordinator.updateWidgets()
             }
         }
+        .onChange(of: appCoordinator.currentTab) { _, newTab in
+            Logger.debug("Tab changed to: \(newTab.title)", log: Logger.ui)
+        }
     }
-} // ← Закрывающая скобка для ContentView
+}
 
-// PreviewProvider должен быть вне структуры ContentView
+// MARK: - Preview
+
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
+            .environmentObject(AppCoordinator())
     }
 }

@@ -10,71 +10,60 @@ import BackgroundTasks
 
 @main
 struct LazyBonesApp: App {
+    @StateObject private var appCoordinator = AppCoordinator()
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(appCoordinator)
         }
     }
 
     init() {
-        logBGTaskEvent("App init: Registering BGTask")
-        registerBGTask()
-        logBGTaskEvent("App init: Scheduling BGTask")
-        scheduleSendReportBGTask()
+        Logger.info("App initializing", log: Logger.general)
+        
+        // Инициализация DI контейнера
+        setupDependencyInjection()
+        
+        // Регистрация фоновых задач
+        setupBackgroundTasks()
+        
+        // Запуск координатора
+        appCoordinator.start()
+        
+        Logger.info("App initialization completed", log: Logger.general)
     }
 }
 
-private func registerBGTask() {
-    logBGTaskEvent("Registering BGTaskScheduler for com.katapios.LazyBones.sendReport")
-    BGTaskScheduler.shared.register(forTaskWithIdentifier: "com.katapios.LazyBones.sendReport", using: nil) { task in
-        logBGTaskEvent("BGTask triggered: com.katapios.LazyBones.sendReport")
-        handleSendReportTask(task: task as! BGAppRefreshTask)
-    }
-}
+// MARK: - Setup Methods
 
-private func handleSendReportTask(task: BGAppRefreshTask) {
-    logBGTaskEvent("Handling BGTask: autoSendAllReportsForToday")
-    let store = PostStore.shared
-    let ud = UserDefaults(suiteName: "group.com.katapios.LazyBones")
-    let isAutoSend = ud?.bool(forKey: "autoSendToTelegram") ?? false
-    if isAutoSend {
-        store.autoSendAllReportsForToday {
-            logBGTaskEvent("AutoSend: reports sent")
-        }
-    } else {
-        logBGTaskEvent("AutoSend: disabled")
-    }
-    logBGTaskEvent("Rescheduling BGTask after execution")
-    scheduleSendReportBGTask()
-    task.setTaskCompleted(success: true)
-}
-
-private func scheduleSendReportBGTask() {
-    let request = BGAppRefreshTaskRequest(identifier: "com.katapios.LazyBones.sendReport")
-    let calendar = Calendar.current
-    let now = Date()
-    let today2201 = calendar.date(bySettingHour: 22, minute: 1, second: 0, of: now)!
-    let today2359 = calendar.date(bySettingHour: 23, minute: 59, second: 0, of: now)!
+private func setupDependencyInjection() {
+    Logger.info("Setting up dependency injection", log: Logger.general)
     
-    var earliest: Date
-    if now < today2201 {
-        // Если сейчас раньше 22:01, планируем на 22:01 сегодня
-        earliest = today2201
-    } else if now >= today2201 && now <= today2359 {
-        // Если сейчас в промежутке 22:01-23:59, планируем на сейчас
-        earliest = now
-    } else {
-        // Если сейчас после 23:59, планируем на 22:01 завтра
-        let tomorrow2201 = calendar.date(byAdding: .day, value: 1, to: today2201)!
-        earliest = tomorrow2201
+    let container = DependencyContainer.shared
+    
+    // Регистрация основных сервисов
+    container.registerCoreServices()
+    
+    // Регистрация Telegram сервиса (если есть токен)
+    let userDefaultsManager = UserDefaultsManager.shared
+    let (token, _, _) = userDefaultsManager.loadTelegramSettings()
+    if let token = token {
+        container.registerTelegramService(token: token)
     }
     
-    request.earliestBeginDate = earliest
+    Logger.info("Dependency injection setup completed", log: Logger.general)
+}
+
+private func setupBackgroundTasks() {
+    Logger.info("Setting up background tasks", log: Logger.general)
+    
     do {
-        try BGTaskScheduler.shared.submit(request)
-        logBGTaskEvent("BGTask scheduled for: \(earliest)")
+        let backgroundTaskService = DependencyContainer.shared.resolve(BackgroundTaskServiceProtocol.self)!
+        try backgroundTaskService.registerBackgroundTasks()
+        try backgroundTaskService.scheduleSendReportTask()
+        Logger.info("Background tasks setup completed", log: Logger.general)
     } catch {
-        logBGTaskEvent("Failed to schedule BGTask: \(error)")
-        print("[BGTask] Не удалось запланировать задачу: \(error)")
+        Logger.error("Failed to setup background tasks: \(error)", log: Logger.background)
     }
 }
