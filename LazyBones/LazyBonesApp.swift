@@ -10,12 +10,10 @@ import BackgroundTasks
 
 @main
 struct LazyBonesApp: App {
-    @StateObject private var appCoordinator = AppCoordinator()
     
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(appCoordinator)
         }
     }
 
@@ -27,9 +25,6 @@ struct LazyBonesApp: App {
         
         // Регистрация фоновых задач
         setupBackgroundTasks()
-        
-        // Запуск координатора
-        appCoordinator.start()
         
         Logger.info("App initialization completed", log: Logger.general)
     }

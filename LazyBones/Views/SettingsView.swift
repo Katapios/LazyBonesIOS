@@ -24,7 +24,7 @@ struct SettingsView: View {
             dataSection
         }
         .navigationTitle("Настройки")
-        .onChange(of: scenePhase, initial: false) { _, newPhase in
+        .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 WidgetCenter.shared.reloadAllTimelines()
             }
@@ -54,7 +54,7 @@ struct SettingsView: View {
             telegramBotId = store.telegramBotId ?? ""
             isBackgroundFetchTestEnabled = loadBackgroundFetchTestEnabled()
         }
-        .onChange(of: isBackgroundFetchTestEnabled) { newValue in
+        .onChange(of: isBackgroundFetchTestEnabled) { _, newValue in
             saveBackgroundFetchTestEnabled(newValue)
         }
         .hideKeyboardOnTap()

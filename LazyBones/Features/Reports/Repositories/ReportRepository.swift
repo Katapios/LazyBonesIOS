@@ -191,14 +191,14 @@ class ReportRepository: ReportRepositoryProtocol {
     
     func publishReport(_ report: Report) async throws {
         Logger.debug("Publishing report with id: \(report.id)", log: Logger.data)
-        var updatedReport = report
+        let updatedReport = report
         // Здесь должна быть логика публикации
         try await update(updatedReport)
     }
     
     func unpublishReport(_ report: Report) async throws {
         Logger.debug("Unpublishing report with id: \(report.id)", log: Logger.data)
-        var updatedReport = report
+        let updatedReport = report
         // Здесь должна быть логика отмены публикации
         try await update(updatedReport)
     }

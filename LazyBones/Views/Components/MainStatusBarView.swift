@@ -3,6 +3,8 @@ import SwiftUI
 struct MainStatusBarView: View {
     @EnvironmentObject var store: PostStore
     @Environment(\.colorScheme) var colorScheme
+    @State private var currentTime = Date()
+    @State private var timer: Timer?
     
     var reportStatusText: String {
         switch store.reportStatus {
@@ -20,7 +22,7 @@ struct MainStatusBarView: View {
     }
     var timerLabel: String {
         let calendar = Calendar.current
-        let now = Date()
+        let now = currentTime
         let start = calendar.date(
             bySettingHour: store.notificationStartHour,
             minute: 0,
@@ -44,16 +46,40 @@ struct MainStatusBarView: View {
         }
     }
     var timerTimeTextOnly: String {
-        let value = store.timeLeft
-        if let range = value.range(of: ": ") {
-            return String(value[range.upperBound...])
+        let calendar = Calendar.current
+        let now = currentTime
+        let start = calendar.date(
+            bySettingHour: store.notificationStartHour,
+            minute: 0,
+            second: 0,
+            of: now
+        )!
+        let end = calendar.date(
+            bySettingHour: store.notificationEndHour,
+            minute: 0,
+            second: 0,
+            of: now
+        )!
+        
+        if store.reportStatus == .done {
+            let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
+            let nextStart = calendar.date(bySettingHour: store.notificationStartHour, minute: 0, second: 0, of: tomorrow)!
+            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: nextStart)
+            return String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+        } else if now < start {
+            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: start)
+            return String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+        } else if now >= start && now < end {
+            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: end)
+            return String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+        } else {
+            return "00:00:00"
         }
-        return value
     }
     var timerProgress: Double {
         // Логика из MainView
         let calendar = Calendar.current
-        let now = Date()
+        let now = currentTime
         let start = calendar.date(
             bySettingHour: store.notificationStartHour,
             minute: 0,
@@ -77,7 +103,7 @@ struct MainStatusBarView: View {
                 .fontWeight(.semibold)
                 .font(.title2)
             VStack {
-                Text("𝕷𝖆𝖇: 🅞’𝖙𝖗𝟗𝖈")
+                Text("𝕷𝖆𝖇: 🅞'𝖙𝖗𝟗𝖈")
                     .foregroundColor(colorScheme == .dark ? .black : .white)
             }
             .font(.custom("Georgia-Bold", size: 35))
@@ -111,6 +137,25 @@ struct MainStatusBarView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
+        .onAppear {
+            startTimer()
+        }
+        .onDisappear {
+            stopTimer()
+        }
+    }
+    
+    private func startTimer() {
+        stopTimer()
+        currentTime = Date()
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+            currentTime = Date()
+        }
+    }
+    
+    private func stopTimer() {
+        timer?.invalidate()
+        timer = nil
     }
 }
 

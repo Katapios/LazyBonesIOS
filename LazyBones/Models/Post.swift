@@ -3,6 +3,7 @@ import AVFoundation
 import WidgetKit
 import UserNotifications
 import BackgroundTasks // Added for BGTaskScheduler
+import ObjectiveC
 
 // Импорт для использования ReportStatus из нового модуля
 
@@ -259,10 +260,13 @@ class PostStore: ObservableObject, PostStoreProtocol {
     // MARK: - Report Status
     func updateReportStatus() {
         if forceUnlock {
-            reportStatus = .notStarted
-            localService.saveReportStatus(.notStarted)
-            WidgetCenter.shared.reloadAllTimelines()
-            if notificationsEnabled { scheduleNotifications() }
+            let newStatus: LazyBones.ReportStatus = .notStarted
+            if reportStatus != newStatus {
+                reportStatus = newStatus
+                localService.saveReportStatus(newStatus)
+                WidgetCenter.shared.reloadAllTimelines()
+                if notificationsEnabled { scheduleNotifications() }
+            }
             print("[DEBUG] updateReportStatus (forceUnlock): forceUnlock=\(forceUnlock), reportStatus=\(reportStatus)")
             return
         }
@@ -272,22 +276,28 @@ class PostStore: ObservableObject, PostStoreProtocol {
         // 2. Если есть обычный отчет за сегодня (не опубликован, но есть good/bad/voice) — .inProgress
         // 3. Если есть только кастомный отчет за сегодня — .inProgress
         // 4. Иначе — .notStarted
+        let newStatus: LazyBones.ReportStatus
         if let regular = posts.first(where: { $0.type == .regular && Calendar.current.isDate($0.date, inSameDayAs: today) }) {
             if regular.published {
-                reportStatus = .done
+                newStatus = .done
             } else if !regular.goodItems.isEmpty || !regular.badItems.isEmpty || !regular.voiceNotes.isEmpty {
-                reportStatus = .inProgress
+                newStatus = .inProgress
             } else {
-                reportStatus = .notStarted
+                newStatus = .notStarted
             }
-        } else if let custom = posts.first(where: { $0.type == .custom && Calendar.current.isDate($0.date, inSameDayAs: today) }) {
-            reportStatus = .inProgress
+        } else if posts.contains(where: { $0.type == .custom && Calendar.current.isDate($0.date, inSameDayAs: today) }) {
+            newStatus = .inProgress
         } else {
-            reportStatus = .notStarted
+            newStatus = .notStarted
         }
-        localService.saveReportStatus(reportStatus)
-        WidgetCenter.shared.reloadAllTimelines()
-        if notificationsEnabled { scheduleNotifications() }
+        
+        // Обновляем только если статус изменился
+        if reportStatus != newStatus {
+            reportStatus = newStatus
+            localService.saveReportStatus(newStatus)
+            WidgetCenter.shared.reloadAllTimelines()
+            if notificationsEnabled { scheduleNotifications() }
+        }
         print("[DEBUG] updateReportStatus: forceUnlock=\(forceUnlock), reportStatus=\(reportStatus)")
     }
     func loadReportStatus() {
@@ -404,7 +414,21 @@ class PostStore: ObservableObject, PostStoreProtocol {
     func startTimer() {
         stopTimer()
         updateTimeLeft()
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+        
+        // Умная логика обновления: чаще в критических моментах
+        let now = Date()
+        let calendar = Calendar.current
+        let start = calendar.date(bySettingHour: notificationStartHour, minute: 0, second: 0, of: now)!
+        let end = calendar.date(bySettingHour: notificationEndHour, minute: 0, second: 0, of: now)!
+        
+        // Если до начала или конца периода меньше часа - обновляем каждые 10 секунд
+        let timeToStart = start.timeIntervalSince(now)
+        let timeToEnd = end.timeIntervalSince(now)
+        let isCriticalTime = (timeToStart > 0 && timeToStart < 3600) || (timeToEnd > 0 && timeToEnd < 3600)
+        
+        let interval: TimeInterval = isCriticalTime ? 10 : 30
+        
+        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             self?.updateTimeLeft()
         }
     }
@@ -423,19 +447,27 @@ class PostStore: ObservableObject, PostStoreProtocol {
         if !hasTodayPost || (reportStatus == .done && hasTodayPost) {
             updateReportStatus()
         }
+        
+        // Вычисляем новое значение timeLeft
+        let newTimeLeft: String
         if reportStatus == .done {
             let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
             let nextStart = calendar.date(bySettingHour: notificationStartHour, minute: 0, second: 0, of: tomorrow)!
             let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: nextStart)
-            timeLeft = "До старта: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+            newTimeLeft = "До старта: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
         } else if now < start {
             let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: start)
-            timeLeft = "До старта: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+            newTimeLeft = "До старта: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
         } else if now >= start && now < end {
             let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: end)
-            timeLeft = "До конца: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+            newTimeLeft = "До конца: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
         } else {
-            timeLeft = "Время отчёта истекло"
+            newTimeLeft = "Время отчёта истекло"
+        }
+        
+        // Обновляем только если значение изменилось
+        if timeLeft != newTimeLeft {
+            timeLeft = newTimeLeft
         }
     }
     // MARK: - Good/Bad Tags
@@ -589,11 +621,11 @@ class PostStore: ObservableObject, PostStoreProtocol {
         
         // Получаем отчеты за сегодня
         let regular = posts.first(where: { $0.type == .regular && cal.isDate($0.date, inSameDayAs: today) })
-        let custom = posts.first(where: { $0.type == .custom && cal.isDate($0.date, inSameDayAs: today) })
+        let customReport = posts.first(where: { $0.type == .custom && cal.isDate($0.date, inSameDayAs: today) })
         
         // Проверяем, отправлял ли пользователь отчеты вручную
         let regularManuallySent = regular?.published ?? false
-        let customManuallySent = custom?.published ?? false
+        let customManuallySent = customReport?.published ?? false
         
         // Если пользователь отправил оба отчета вручную, автоотправка не нужна
         if regularManuallySent && customManuallySent {
@@ -615,7 +647,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
             if sentCount == toSend { completion?() }
         }
         // --- Кастомный отчет ---
-        if let custom = custom, !custom.goodItems.isEmpty {
+        if let custom = customReport, !custom.goodItems.isEmpty {
             if !customManuallySent {
                 toSend += 1
                 let dateFormatter = DateFormatter()
@@ -674,7 +706,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
         }
         
         // --- Если нет ни одного отчета ---
-        if custom == nil && regular == nil {
+        if customReport == nil && regular == nil {
             toSend += 1
             sendToTelegram(text: "За сегодня не найдено ни одного отчета.") { _ in done() }
         }

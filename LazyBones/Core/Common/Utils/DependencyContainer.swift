@@ -118,34 +118,34 @@ extension DependencyContainer {
         })
         
         // Report Repository
-        register(ReportRepositoryProtocol.self, factory: {
+        register(ReportRepository.self, factory: {
             let localDataSource = self.resolve(ReportLocalDataSourceProtocol.self)!
             return ReportRepository(localDataSource: localDataSource)
         })
         
         // Use Cases
         register(GetReportsUseCase.self, factory: {
-            let repository = self.resolve(ReportRepositoryProtocol.self)!
+            let repository = self.resolve(ReportRepository.self)!
             return GetReportsUseCase(repository: repository)
         })
         
         register(SearchReportsUseCase.self, factory: {
-            let repository = self.resolve(ReportRepositoryProtocol.self)!
+            let repository = self.resolve(ReportRepository.self)!
             return SearchReportsUseCase(repository: repository)
         })
         
         register(GetReportStatisticsUseCase.self, factory: {
-            let repository = self.resolve(ReportRepositoryProtocol.self)!
+            let repository = self.resolve(ReportRepository.self)!
             return GetReportStatisticsUseCase(repository: repository)
         })
         
         register(GetReportsForDateUseCase.self, factory: {
-            let repository = self.resolve(ReportRepositoryProtocol.self)!
+            let repository = self.resolve(ReportRepository.self)!
             return GetReportsForDateUseCase(repository: repository)
         })
         
         register(GetReportsByTypeUseCase.self, factory: {
-            let repository = self.resolve(ReportRepositoryProtocol.self)!
+            let repository = self.resolve(ReportRepository.self)!
             return GetReportsByTypeUseCase(repository: repository)
         })
         

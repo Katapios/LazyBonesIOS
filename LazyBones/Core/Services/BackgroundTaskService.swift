@@ -41,21 +41,16 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
     func registerBackgroundTasks() throws {
         Logger.info("Registering background tasks", log: Logger.background)
         
-        do {
-            BGTaskScheduler.shared.register(
-                forTaskWithIdentifier: taskIdentifier,
-                using: nil
-            ) { task in
-                Logger.info("Background task triggered: \(self.taskIdentifier)", log: Logger.background)
-                Task {
-                    await self.handleSendReportTask(task as! BGAppRefreshTask)
-                }
+        BGTaskScheduler.shared.register(
+            forTaskWithIdentifier: taskIdentifier,
+            using: nil
+        ) { task in
+            Logger.info("Background task triggered: \(self.taskIdentifier)", log: Logger.background)
+            Task {
+                await self.handleSendReportTask(task as! BGAppRefreshTask)
             }
-            Logger.info("Background tasks registered successfully", log: Logger.background)
-        } catch {
-            Logger.error("Failed to register background tasks: \(error)", log: Logger.background)
-            throw BackgroundTaskServiceError.registrationFailed
         }
+        Logger.info("Background tasks registered successfully", log: Logger.background)
     }
     
     func scheduleSendReportTask() throws {

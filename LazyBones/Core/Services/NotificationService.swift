@@ -106,52 +106,32 @@ class NotificationService: NotificationServiceProtocol {
     func cancelNotification(identifier: String) async throws {
         Logger.debug("Cancelling notification: \(identifier)", log: Logger.ui)
         
-        do {
-            await notificationCenter.removePendingNotificationRequests(withIdentifiers: [identifier])
-            Logger.info("Notification cancelled successfully: \(identifier)", log: Logger.ui)
-        } catch {
-            Logger.error("Failed to cancel notification: \(error)", log: Logger.ui)
-            throw NotificationServiceError.cancellationFailed
-        }
+        notificationCenter.removePendingNotificationRequests(withIdentifiers: [identifier])
+        Logger.info("Notification cancelled successfully: \(identifier)", log: Logger.ui)
     }
     
     func cancelAllNotifications() async throws {
         Logger.debug("Cancelling all notifications", log: Logger.ui)
         
-        do {
-            await notificationCenter.removeAllPendingNotificationRequests()
-            await notificationCenter.removeAllDeliveredNotifications()
-            Logger.info("All notifications cancelled successfully", log: Logger.ui)
-        } catch {
-            Logger.error("Failed to cancel all notifications: \(error)", log: Logger.ui)
-            throw NotificationServiceError.cancellationFailed
-        }
+        notificationCenter.removeAllPendingNotificationRequests()
+        notificationCenter.removeAllDeliveredNotifications()
+        Logger.info("All notifications cancelled successfully", log: Logger.ui)
     }
     
     func getPendingNotifications() async throws -> [UNNotificationRequest] {
         Logger.debug("Getting pending notifications", log: Logger.ui)
         
-        do {
-            let requests = await notificationCenter.pendingNotificationRequests()
-            Logger.info("Found \(requests.count) pending notifications", log: Logger.ui)
-            return requests
-        } catch {
-            Logger.error("Failed to get pending notifications: \(error)", log: Logger.ui)
-            throw NotificationServiceError.unknown
-        }
+        let requests = await notificationCenter.pendingNotificationRequests()
+        Logger.info("Found \(requests.count) pending notifications", log: Logger.ui)
+        return requests
     }
     
     func getDeliveredNotifications() async throws -> [UNNotification] {
         Logger.debug("Getting delivered notifications", log: Logger.ui)
         
-        do {
-            let notifications = await notificationCenter.deliveredNotifications()
-            Logger.info("Found \(notifications.count) delivered notifications", log: Logger.ui)
-            return notifications
-        } catch {
-            Logger.error("Failed to get delivered notifications: \(error)", log: Logger.ui)
-            throw NotificationServiceError.unknown
-        }
+        let notifications = await notificationCenter.deliveredNotifications()
+        Logger.info("Found \(notifications.count) delivered notifications", log: Logger.ui)
+        return notifications
     }
     
     // MARK: - Helper Methods

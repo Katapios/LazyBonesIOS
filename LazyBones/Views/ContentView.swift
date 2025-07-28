@@ -7,10 +7,11 @@
 
 import SwiftUI
 import WidgetKit
+import Foundation
 
 /// Корневой TabView приложения с новой архитектурой
 struct ContentView: View {
-    @EnvironmentObject var appCoordinator: AppCoordinator
+    @StateObject var appCoordinator = AppCoordinator()
     @StateObject var store = PostStore()
     @Environment(\.scenePhase) private var scenePhase
     
@@ -59,6 +60,7 @@ struct ContentView: View {
         .environmentObject(store)
         .onAppear {
             Logger.info("ContentView initialized", log: Logger.ui)
+            appCoordinator.start()
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
