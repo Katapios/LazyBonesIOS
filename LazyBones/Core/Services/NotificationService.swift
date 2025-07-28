@@ -165,9 +165,13 @@ class NotificationService: NotificationServiceProtocol {
     private func scheduleHourlyNotifications(title: String, body: String, startHour: Int, endHour: Int) async throws {
         for hour in startHour...endHour {
             let identifier = "report_reminder_hourly_\(hour)"
+            
+            // Специальный текст для предостерегающего уведомления в 21:00
+            let notificationBody = hour == 21 ? "Последний шанс отчитаться! Период отчетов скоро закончится." : body
+            
             try await scheduleRepeatingNotification(
                 title: title,
-                body: body,
+                body: notificationBody,
                 hour: hour,
                 minute: 0,
                 identifier: identifier
@@ -191,9 +195,10 @@ class NotificationService: NotificationServiceProtocol {
         
         // Вечернее уведомление (предостерегающее)
         let eveningIdentifier = "report_reminder_evening"
+        let warningBody = "Последний шанс отчитаться! Период отчетов скоро закончится."
         try await scheduleRepeatingNotification(
             title: title,
-            body: body,
+            body: warningBody,
             hour: eveningHour,
             minute: 0,
             identifier: eveningIdentifier
