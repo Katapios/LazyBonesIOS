@@ -1,71 +1,14 @@
-// DailyPlanningFormView.swift
-// LazyBones
-//
-// Created by Денис Рюмин on 2025-07-10.
-
 import SwiftUI
 
-struct DailyPlanningFormView: View {
+struct ThirdScreenView: View {
     @EnvironmentObject var store: PostStore
-    @State private var selectedTab = 0 // По умолчанию открывается первый экран (локальный отчет)
-    
-    var postForToday: Post? {
-        store.posts.first(where: { Calendar.current.isDateInToday($0.date) && !$0.published })
-    }
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            // --- Кастомный заголовок ---
-            HStack {
-                Text(getTitleForTab(selectedTab))
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-            }
-            .padding(.bottom, 4)
-            // --- Индикаторы свайпа ---
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(selectedTab == 0 ? Color.accentColor : Color.gray.opacity(0.3))
-                    .frame(width: 8, height: 8)
-                Circle()
-                    .fill(selectedTab == 1 ? Color.accentColor : Color.gray.opacity(0.3))
-                    .frame(width: 8, height: 8)
-                Circle()
-                    .fill(selectedTab == 2 ? Color.accentColor : Color.gray.opacity(0.3))
-                    .frame(width: 8, height: 8)
-            }
-            .padding(.bottom, 4)
-            // --- TabView ---
-            TabView(selection: $selectedTab) {
-                // Первый экран — форма создания/редактирования отчета
-                PostFormView(post: postForToday)
-                    .tag(0)
-                    .id(postForToday?.id ?? UUID()) // Пересоздаём при изменении поста
-                // Второй экран — весь старый функционал
-                PlanningContentView()
-                    .tag(1)
-                // Третий экран — отдельная вьюшка
-                ThirdScreenView()
-                    .tag(2)
-            }
-            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-        }
-    }
-    
-    private func getTitleForTab(_ tab: Int) -> String {
-        switch tab {
-        case 0: return "Отчёт за день"
-        case 1: return "План на день"
-        case 2: return "Третий экран"
-        default: return "Отчёт за день"
-        }
-    }
-}
-
-// Весь старый функционал вынесен во вложенную вью
-struct PlanningContentView: View {
-    @EnvironmentObject var store: PostStore
-    @State private var planItems: [String] = []
+    @State private var planItems: [String] = [
+        "Моковый пункт 1",
+        "Моковый пункт 2", 
+        "Моковый пункт 3",
+        "Еще один моковый пункт",
+        "И еще один для полноты"
+    ]
     @State private var newPlanItem: String = ""
     @State private var editingPlanIndex: Int? = nil
     @State private var editingPlanText: String = ""
@@ -77,9 +20,29 @@ struct PlanningContentView: View {
     @State private var pickerIndex: Int = 0
     @State private var showTagPicker: Bool = false
     @State private var tagPickerOffset: CGFloat = 0
+    @State private var selectedTab: TabType = .good
+    @State private var voiceNotes: [VoiceNote] = []
+    
+    enum TabType { case good, bad }
+    
+    var goodTags: [TagItem] {
+        [
+            TagItem(text: "Моковый хороший тег 1", icon: "tag", color: .green),
+            TagItem(text: "Моковый хороший тег 2", icon: "tag", color: .green),
+            TagItem(text: "Моковый хороший тег 3", icon: "tag", color: .green)
+        ]
+    }
+    
+    var badTags: [TagItem] {
+        [
+            TagItem(text: "Моковый плохой тег 1", icon: "tag", color: .red),
+            TagItem(text: "Моковый плохой тег 2", icon: "tag", color: .red),
+            TagItem(text: "Моковый плохой тег 3", icon: "tag", color: .red)
+        ]
+    }
     
     var planTags: [TagItem] {
-        store.goodTags.map { TagItem(text: $0, icon: "tag", color: .green) }
+        selectedTab == .good ? goodTags : badTags
     }
     
     var body: some View {
@@ -88,7 +51,8 @@ struct PlanningContentView: View {
         }
         .hideKeyboardOnTap()
         .onAppear {
-            loadPlan()
+            // Загружаем моковые данные при появлении
+            loadMockData()
             lastPlanDate = Calendar.current.startOfDay(for: Date())
         }
         .onChange(of: Calendar.current.startOfDay(for: Date()), initial: false) { oldDay, newDay in
@@ -127,6 +91,11 @@ struct PlanningContentView: View {
                         .buttonStyle(PlainButtonStyle())
                     }
                 }
+                
+                // --- ЗОНА VOICE внутри List ---
+                Section {
+                    VoiceRecorderListView(voiceNotes: $voiceNotes)
+                }
             }
             
             // Поле ввода с TagPicker
@@ -145,6 +114,64 @@ struct PlanningContentView: View {
                     }.disabled(newPlanItem.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
                 
+                // --- Переключатель good/bad тегов ---
+                HStack {
+                    Spacer()
+                    HStack(spacing: 0) {
+                        Button(action: {
+                            selectedTab = .good
+                            pickerIndex = 0
+                        }) {
+                            HStack(spacing: 2) {
+                                Text("👍 молодец")
+                                    .font(.system(size: 14.3, weight: .bold))
+                                    .foregroundColor(selectedTab == .good ? .green : .primary)
+                                Text("(")
+                                    .font(.system(size: 14.3))
+                                    .foregroundColor(.secondary)
+                                Text("\(goodTags.count)")
+                                    .font(.system(size: 14.3))
+                                    .foregroundColor(.secondary)
+                                Text(")")
+                                    .font(.system(size: 14.3))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(selectedTab == .good ? Color.green.opacity(0.12) : Color.clear)
+                            .cornerRadius(8)
+                        }
+                        Button(action: {
+                            selectedTab = .bad
+                            pickerIndex = 0
+                        }) {
+                            HStack(spacing: 2) {
+                                Text("👎 лаботряс")
+                                    .font(.system(size: 14.3, weight: .bold))
+                                    .foregroundColor(selectedTab == .bad ? .red : .primary)
+                                Text("(")
+                                    .font(.system(size: 14.3))
+                                    .foregroundColor(.secondary)
+                                Text("\(badTags.count)")
+                                    .font(.system(size: 14.3))
+                                    .foregroundColor(.secondary)
+                                Text(")")
+                                    .font(.system(size: 14.3))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(selectedTab == .bad ? Color.red.opacity(0.12) : Color.clear)
+                            .cornerRadius(8)
+                        }
+                    }
+                    .background(Color(.systemGray6))
+                    .cornerRadius(8)
+                    .padding(.vertical, 2)
+                    .contentShape(Rectangle())
+                }
+                .padding(.vertical, 6)
+                
                 // TagPicker выезжает справа
                 if showTagPicker, !planTags.isEmpty {
                     HStack(alignment: .center, spacing: 6) {
@@ -158,6 +185,7 @@ struct PlanningContentView: View {
                             maxHeight: 160
                         )
                         .clipped()
+                        .id(selectedTab) // Пересоздаем при смене вкладки
                         
                         let selectedTag = planTags[pickerIndex]
                         let isTagAdded = planItems.contains(where: { $0 == selectedTag.text })
@@ -184,15 +212,16 @@ struct PlanningContentView: View {
                 }
                 
                 // Показываем prompt для сохранения тега
-                if !newPlanItem.isEmpty && !store.goodTags.contains(newPlanItem) {
+                if !newPlanItem.isEmpty && !planTags.contains(where: { $0.text == newPlanItem }) {
                     HStack {
                         Text("Сохранить тег?")
                             .font(.caption)
                             .foregroundColor(.secondary)
                         Spacer()
                         Button("Сохранить") {
-                            store.goodTags.append(newPlanItem)
-                            store.saveGoodTags(store.goodTags)
+                            // В моковом экране просто добавляем в локальный массив
+                            planItems.append(newPlanItem)
+                            savePlan()
                         }
                         .font(.caption)
                         .foregroundColor(.blue)
@@ -221,7 +250,7 @@ struct PlanningContentView: View {
                         title: "Отправить",
                         icon: "paperplane.fill",
                         color: .green,
-                        action: { publishCustomReportToTelegram() },
+                        action: { publishMockReportToTelegram() },
                         isEnabled: true,
                         compact: true
                     )
@@ -247,6 +276,17 @@ struct PlanningContentView: View {
     }
     
     // MARK: - Functions
+    func loadMockData() {
+        // Загружаем моковые данные
+        planItems = [
+            "Моковый пункт 1",
+            "Моковый пункт 2", 
+            "Моковый пункт 3",
+            "Еще один моковый пункт",
+            "И еще один для полноты"
+        ]
+    }
+    
     func addPlanItem() {
         let trimmed = newPlanItem.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
@@ -278,19 +318,9 @@ struct PlanningContentView: View {
     }
     
     func savePlan() {
-        let key = "plan_" + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
+        let key = "third_screen_plan_" + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
         if let data = try? JSONEncoder().encode(planItems) {
             UserDefaults.standard.set(data, forKey: key)
-        }
-    }
-    
-    func loadPlan() {
-        let key = "plan_" + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
-        if let data = UserDefaults.standard.data(forKey: key),
-           let decoded = try? JSONDecoder().decode([String].self, from: data) {
-            planItems = decoded
-        } else {
-            planItems = []
         }
     }
     
@@ -303,7 +333,7 @@ struct PlanningContentView: View {
                 goodItems: planItems,
                 badItems: [],
                 published: true,
-                voiceNotes: [],
+                voiceNotes: voiceNotes,
                 type: .custom,
                 authorUsername: nil,
                 authorFirstName: nil,
@@ -323,7 +353,7 @@ struct PlanningContentView: View {
                 goodItems: planItems,
                 badItems: [],
                 published: true,
-                voiceNotes: [],
+                voiceNotes: voiceNotes,
                 type: .custom,
                 authorUsername: nil,
                 authorFirstName: nil,
@@ -339,7 +369,7 @@ struct PlanningContentView: View {
         savePlan()
     }
     
-    func publishCustomReportToTelegram() {
+    func publishMockReportToTelegram() {
         let today = Calendar.current.startOfDay(for: Date())
         guard let custom = store.posts.first(where: { $0.type == .custom && Calendar.current.isDate($0.date, inSameDayAs: today) }) else {
             publishStatus = "Сначала сохраните план как отчет!"
@@ -358,13 +388,17 @@ struct PlanningContentView: View {
         dateFormatter.dateStyle = .full
         let dateStr = dateFormatter.string(from: custom.date)
         let deviceName = store.getDeviceName()
-        var message = "\u{1F4C5} <b>План на день за \(dateStr)</b>\n"
+        var message = "\u{1F4C5} <b>Третий экран - план на день за \(dateStr)</b>\n"
         message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
         if !custom.goodItems.isEmpty {
             message += "<b>✅ План:</b>\n"
             for (index, item) in custom.goodItems.enumerated() {
                 message += "\(index + 1). \(item)\n"
             }
+        }
+        
+        if custom.voiceNotes.count > 0 {
+            message += "\n\u{1F3A4} <i>Голосовая заметка прикреплена</i>"
         }
         let urlString = "https://api.telegram.org/bot\(token)/sendMessage"
         let params = [
@@ -396,6 +430,6 @@ struct PlanningContentView: View {
 }
 
 #Preview {
-    DailyPlanningFormView()
+    ThirdScreenView()
         .environmentObject(PostStore())
-}
+} 
