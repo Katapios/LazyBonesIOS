@@ -31,7 +31,7 @@ struct MainView: View {
         .padding(.vertical, 16)
         .frame(maxHeight: .infinity, alignment: .center)
         .sheet(isPresented: $showPostForm) {
-            PostFormView(
+            RegularReportFormView(
                 title: postForToday != nil
                     ? "Редактировать отчёт" : "Создать отчёт",
                 post: postForToday,

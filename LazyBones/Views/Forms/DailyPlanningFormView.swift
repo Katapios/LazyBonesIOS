@@ -38,7 +38,7 @@ struct DailyPlanningFormView: View {
             // --- TabView ---
             TabView(selection: $selectedTab) {
                 // Первый экран — форма создания/редактирования отчета
-                PostFormView(post: postForToday)
+                RegularReportFormView(post: postForToday)
                     .tag(0)
                     .id(postForToday?.id ?? UUID()) // Пересоздаём при изменении поста
                 // Второй экран — весь старый функционал

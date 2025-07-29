@@ -1,13 +1,20 @@
 import SwiftUI
 
+struct ThirdScreenPlanData: Codable {
+    let goodItems: [String]
+    let badItems: [String]
+}
+
 struct ThirdScreenView: View {
     @EnvironmentObject var store: PostStore
-    @State private var planItems: [String] = [
-        "Моковый пункт 1",
-        "Моковый пункт 2", 
-        "Моковый пункт 3",
-        "Еще один моковый пункт",
-        "И еще один для полноты"
+    @State private var goodItems: [ChecklistItem] = [
+        ChecklistItem(id: UUID(), text: "Моковый хороший пункт 1"),
+        ChecklistItem(id: UUID(), text: "Моковый хороший пункт 2"),
+        ChecklistItem(id: UUID(), text: "Моковый хороший пункт 3")
+    ]
+    @State private var badItems: [ChecklistItem] = [
+        ChecklistItem(id: UUID(), text: "Моковый плохой пункт 1"),
+        ChecklistItem(id: UUID(), text: "Моковый плохой пункт 2")
     ]
     @State private var newPlanItem: String = ""
     @State private var editingPlanIndex: Int? = nil
@@ -26,19 +33,11 @@ struct ThirdScreenView: View {
     enum TabType { case good, bad }
     
     var goodTags: [TagItem] {
-        [
-            TagItem(text: "Моковый хороший тег 1", icon: "tag", color: .green),
-            TagItem(text: "Моковый хороший тег 2", icon: "tag", color: .green),
-            TagItem(text: "Моковый хороший тег 3", icon: "tag", color: .green)
-        ]
+        store.goodTags.map { TagItem(text: $0, icon: "tag", color: .green) }
     }
     
     var badTags: [TagItem] {
-        [
-            TagItem(text: "Моковый плохой тег 1", icon: "tag", color: .red),
-            TagItem(text: "Моковый плохой тег 2", icon: "tag", color: .red),
-            TagItem(text: "Моковый плохой тег 3", icon: "tag", color: .red)
-        ]
+        store.badTags.map { TagItem(text: $0, icon: "tag", color: .red) }
     }
     
     var planTags: [TagItem] {
@@ -57,7 +56,8 @@ struct ThirdScreenView: View {
         }
         .onChange(of: Calendar.current.startOfDay(for: Date()), initial: false) { oldDay, newDay in
             if newDay != lastPlanDate {
-                planItems = []
+                goodItems = []
+                badItems = []
                 savePlan()
                 lastPlanDate = newDay
             }
@@ -69,26 +69,51 @@ struct ThirdScreenView: View {
         VStack(spacing: 16) {
             // --- Список пунктов плана ---
             List {
-                ForEach(planItems.indices, id: \.self) { idx in
-                    HStack {
-                        if editingPlanIndex == idx {
-                            TextField("Пункт", text: $editingPlanText)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                            Button("OK") { finishEditPlanItem() }
-                            .buttonStyle(PlainButtonStyle())
-                        } else {
-                            Text(planItems[idx])
-                            Spacer()
-                            Button(action: { startEditPlanItem(idx) }) {
-                                Image(systemName: "pencil")
+                if selectedTab == .good {
+                    ForEach(goodItems.indices, id: \.self) { idx in
+                        HStack {
+                            if editingPlanIndex == idx {
+                                TextField("Пункт", text: $editingPlanText)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                Button("OK") { finishEditPlanItem() }
+                                .buttonStyle(PlainButtonStyle())
+                            } else {
+                                Text(goodItems[idx].text)
+                                Spacer()
+                                Button(action: { startEditPlanItem(idx) }) {
+                                    Image(systemName: "pencil")
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                            Button(action: { planToDeleteIndex = idx; showDeletePlanAlert = true }) {
+                                Image(systemName: "trash")
+                                    .foregroundColor(.red)
                             }
                             .buttonStyle(PlainButtonStyle())
                         }
-                        Button(action: { planToDeleteIndex = idx; showDeletePlanAlert = true }) {
-                            Image(systemName: "trash")
-                                .foregroundColor(.red)
+                    }
+                } else {
+                    ForEach(badItems.indices, id: \.self) { idx in
+                        HStack {
+                            if editingPlanIndex == idx {
+                                TextField("Пункт", text: $editingPlanText)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                Button("OK") { finishEditPlanItem() }
+                                .buttonStyle(PlainButtonStyle())
+                            } else {
+                                Text(badItems[idx].text)
+                                Spacer()
+                                Button(action: { startEditPlanItem(idx) }) {
+                                    Image(systemName: "pencil")
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                            Button(action: { planToDeleteIndex = idx; showDeletePlanAlert = true }) {
+                                Image(systemName: "trash")
+                                    .foregroundColor(.red)
+                            }
+                            .buttonStyle(PlainButtonStyle())
                         }
-                        .buttonStyle(PlainButtonStyle())
                     }
                 }
                 
@@ -188,10 +213,14 @@ struct ThirdScreenView: View {
                         .id(selectedTab) // Пересоздаем при смене вкладки
                         
                         let selectedTag = planTags[pickerIndex]
-                        let isTagAdded = planItems.contains(where: { $0 == selectedTag.text })
+                        let isTagAdded = (selectedTab == .good ? goodItems : badItems).contains(where: { $0.text == selectedTag.text })
                         Button(action: {
                             if (!isTagAdded) {
-                                planItems.append(selectedTag.text)
+                                if selectedTab == .good {
+                                    goodItems.append(ChecklistItem(id: UUID(), text: selectedTag.text))
+                                } else {
+                                    badItems.append(ChecklistItem(id: UUID(), text: selectedTag.text))
+                                }
                                 savePlan()
                             }
                         }) {
@@ -212,16 +241,19 @@ struct ThirdScreenView: View {
                 }
                 
                 // Показываем prompt для сохранения тега
-                if !newPlanItem.isEmpty && !planTags.contains(where: { $0.text == newPlanItem }) {
+                if !newPlanItem.isEmpty && !(selectedTab == .good ? store.goodTags : store.badTags).contains(newPlanItem) {
                     HStack {
                         Text("Сохранить тег?")
                             .font(.caption)
                             .foregroundColor(.secondary)
                         Spacer()
                         Button("Сохранить") {
-                            // В моковом экране просто добавляем в локальный массив
-                            planItems.append(newPlanItem)
-                            savePlan()
+                            if selectedTab == .good {
+                                store.addGoodTag(newPlanItem)
+                            } else {
+                                store.addBadTag(newPlanItem)
+                            }
+                            addPlanItem()
                         }
                         .font(.caption)
                         .foregroundColor(.blue)
@@ -236,7 +268,7 @@ struct ThirdScreenView: View {
             }
             
             // Кнопки действий
-            if !planItems.isEmpty {
+            if !goodItems.isEmpty || !badItems.isEmpty {
                 HStack(spacing: 12) {
                     LargeButtonView(
                         title: "Сохранить",
@@ -278,33 +310,49 @@ struct ThirdScreenView: View {
     // MARK: - Functions
     func loadMockData() {
         // Загружаем моковые данные
-        planItems = [
-            "Моковый пункт 1",
-            "Моковый пункт 2", 
-            "Моковый пункт 3",
-            "Еще один моковый пункт",
-            "И еще один для полноты"
+        goodItems = [
+            ChecklistItem(id: UUID(), text: "Моковый хороший пункт 1"),
+            ChecklistItem(id: UUID(), text: "Моковый хороший пункт 2"),
+            ChecklistItem(id: UUID(), text: "Моковый хороший пункт 3")
+        ]
+        badItems = [
+            ChecklistItem(id: UUID(), text: "Моковый плохой пункт 1"),
+            ChecklistItem(id: UUID(), text: "Моковый плохой пункт 2")
         ]
     }
     
     func addPlanItem() {
         let trimmed = newPlanItem.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
-        planItems.append(trimmed)
+        
+        if selectedTab == .good {
+            goodItems.append(ChecklistItem(id: UUID(), text: trimmed))
+        } else {
+            badItems.append(ChecklistItem(id: UUID(), text: trimmed))
+        }
         newPlanItem = ""
         savePlan()
     }
     
     func startEditPlanItem(_ idx: Int) {
         editingPlanIndex = idx
-        editingPlanText = planItems[idx]
+        if selectedTab == .good {
+            editingPlanText = goodItems[idx].text
+        } else {
+            editingPlanText = badItems[idx].text
+        }
     }
     
     func finishEditPlanItem() {
         guard let idx = editingPlanIndex else { return }
         let trimmed = editingPlanText.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
-        planItems[idx] = trimmed
+        
+        if selectedTab == .good {
+            goodItems[idx].text = trimmed
+        } else {
+            badItems[idx].text = trimmed
+        }
         editingPlanIndex = nil
         editingPlanText = ""
         savePlan()
@@ -312,29 +360,40 @@ struct ThirdScreenView: View {
     
     func deletePlanItem() {
         guard let idx = planToDeleteIndex else { return }
-        planItems.remove(at: idx)
+        if selectedTab == .good {
+            goodItems.remove(at: idx)
+        } else {
+            badItems.remove(at: idx)
+        }
         planToDeleteIndex = nil
         savePlan()
     }
     
     func savePlan() {
         let key = "third_screen_plan_" + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
-        if let data = try? JSONEncoder().encode(planItems) {
+        let planData = ThirdScreenPlanData(
+            goodItems: goodItems.map { $0.text },
+            badItems: badItems.map { $0.text }
+        )
+        if let data = try? JSONEncoder().encode(planData) {
             UserDefaults.standard.set(data, forKey: key)
         }
     }
     
     func savePlanAsReport() {
         let today = Calendar.current.startOfDay(for: Date())
-        if let idx = store.posts.firstIndex(where: { $0.type == .custom && Calendar.current.isDate($0.date, inSameDayAs: today) }) {
+        let filteredGood = goodItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        let filteredBad = badItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        
+        if let idx = store.posts.firstIndex(where: { $0.type == .regular && Calendar.current.isDate($0.date, inSameDayAs: today) }) {
             let updated = Post(
                 id: store.posts[idx].id,
                 date: Date(),
-                goodItems: planItems,
-                badItems: [],
+                goodItems: filteredGood,
+                badItems: filteredBad,
                 published: true,
                 voiceNotes: voiceNotes,
-                type: .custom,
+                type: .regular,
                 authorUsername: nil,
                 authorFirstName: nil,
                 authorLastName: nil,
@@ -350,11 +409,11 @@ struct ThirdScreenView: View {
             let post = Post(
                 id: UUID(),
                 date: Date(),
-                goodItems: planItems,
-                badItems: [],
+                goodItems: filteredGood,
+                badItems: filteredBad,
                 published: true,
                 voiceNotes: voiceNotes,
-                type: .custom,
+                type: .regular,
                 authorUsername: nil,
                 authorFirstName: nil,
                 authorLastName: nil,
@@ -371,12 +430,8 @@ struct ThirdScreenView: View {
     
     func publishMockReportToTelegram() {
         let today = Calendar.current.startOfDay(for: Date())
-        guard let custom = store.posts.first(where: { $0.type == .custom && Calendar.current.isDate($0.date, inSameDayAs: today) }) else {
+        guard let regular = store.posts.first(where: { $0.type == .regular && Calendar.current.isDate($0.date, inSameDayAs: today) }) else {
             publishStatus = "Сначала сохраните план как отчет!"
-            return
-        }
-        if custom.isEvaluated != true {
-            publishStatus = "Сначала оцените план!"
             return
         }
         guard let token = store.telegramToken, let chatId = store.telegramChatId, !token.isEmpty, !chatId.isEmpty else {
@@ -386,18 +441,25 @@ struct ThirdScreenView: View {
         let dateFormatter = DateFormatter()
         dateFormatter.locale = Locale(identifier: "ru_RU")
         dateFormatter.dateStyle = .full
-        let dateStr = dateFormatter.string(from: custom.date)
+        let dateStr = dateFormatter.string(from: regular.date)
         let deviceName = store.getDeviceName()
-        var message = "\u{1F4C5} <b>Третий экран - план на день за \(dateStr)</b>\n"
+        var message = "\u{1F4C5} <b>Третий экран - отчет за \(dateStr)</b>\n"
         message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
-        if !custom.goodItems.isEmpty {
-            message += "<b>✅ План:</b>\n"
-            for (index, item) in custom.goodItems.enumerated() {
+        if !regular.goodItems.isEmpty {
+            message += "<b>✅ Я молодец:</b>\n"
+            for (index, item) in regular.goodItems.enumerated() {
+                message += "\(index + 1). \(item)\n"
+            }
+            message += "\n"
+        }
+        if !regular.badItems.isEmpty {
+            message += "<b>❌ Я не молодец:</b>\n"
+            for (index, item) in regular.badItems.enumerated() {
                 message += "\(index + 1). \(item)\n"
             }
         }
         
-        if custom.voiceNotes.count > 0 {
+        if regular.voiceNotes.count > 0 {
             message += "\n\u{1F3A4} <i>Голосовая заметка прикреплена</i>"
         }
         let urlString = "https://api.telegram.org/bot\(token)/sendMessage"
