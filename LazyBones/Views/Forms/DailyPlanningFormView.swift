@@ -59,6 +59,13 @@ struct PlanningContentView: View {
     @State private var planToDeleteIndex: Int? = nil
     @State private var lastPlanDate: Date = Calendar.current.startOfDay(for: Date())
     @State private var publishStatus: String? = nil
+    @State private var pickerIndex: Int = 0
+    @State private var showTagPicker: Bool = false
+    @State private var tagPickerOffset: CGFloat = 0
+    
+    var planTags: [TagItem] {
+        store.goodTags.map { TagItem(text: $0, icon: "tag", color: .green) }
+    }
     
     var body: some View {
         VStack {
@@ -80,15 +87,8 @@ struct PlanningContentView: View {
     
     // MARK: - План
     var planSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                TextField("Добавить пункт плана", text: $newPlanItem)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                Button(action: addPlanItem) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title2)
-                }.disabled(newPlanItem.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
+        VStack(spacing: 16) {
+            // --- Список пунктов плана ---
             List {
                 ForEach(planItems.indices, id: \.self) { idx in
                     HStack {
@@ -113,6 +113,85 @@ struct PlanningContentView: View {
                     }
                 }
             }
+            
+            // Поле ввода с TagPicker
+            VStack(spacing: 8) {
+                HStack {
+                    TextField("Добавить пункт плана", text: $newPlanItem)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                    Button(action: { withAnimation(.easeInOut(duration: 0.3)) { showTagPicker.toggle() } }) {
+                        Image(systemName: "tag")
+                            .font(.title2)
+                            .foregroundColor(.accentColor)
+                    }
+                    Button(action: addPlanItem) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title2)
+                    }.disabled(newPlanItem.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+                
+                // TagPicker выезжает справа
+                if showTagPicker, !planTags.isEmpty {
+                    HStack(alignment: .center, spacing: 6) {
+                        TagPickerUIKitWheel(
+                            tags: planTags,
+                            selectedIndex: $pickerIndex
+                        ) { _ in }
+                        .frame(
+                            maxWidth: .infinity,
+                            minHeight: 120,
+                            maxHeight: 160
+                        )
+                        .clipped()
+                        
+                        let selectedTag = planTags[pickerIndex]
+                        let isTagAdded = planItems.contains(where: { $0 == selectedTag.text })
+                        Button(action: {
+                            if (!isTagAdded) {
+                                planItems.append(selectedTag.text)
+                                savePlan()
+                            }
+                        }) {
+                            Image(systemName: isTagAdded ? "checkmark.circle.fill" : "plus.circle.fill")
+                                .resizable()
+                                .frame(width: 28, height: 28)
+                                .foregroundColor(isTagAdded ? .green : .blue)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(.systemGray6))
+                    )
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
+                
+                // Показываем prompt для сохранения тега
+                if !newPlanItem.isEmpty && !store.goodTags.contains(newPlanItem) {
+                    HStack {
+                        Text("Сохранить тег?")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Button("Сохранить") {
+                            store.goodTags.append(newPlanItem)
+                            store.saveGoodTags(store.goodTags)
+                        }
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color(.systemGray6))
+                    )
+                }
+            }
+            
+            // Кнопки действий
             if !planItems.isEmpty {
                 HStack(spacing: 12) {
                     LargeButtonView(

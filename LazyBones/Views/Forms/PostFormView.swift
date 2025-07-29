@@ -272,7 +272,6 @@ struct PostFormView: View {
                                 ? $pickerIndexGood : $pickerIndexBad
                             if !allTags.isEmpty {
                                 VStack(spacing: 0) {
-                                    // Spacer(minLength: 8) // УБРАНО!
                                     HStack(alignment: .center, spacing: 6) {
                                         TagPickerUIKitWheel(
                                             tags: allTags,
@@ -284,7 +283,7 @@ struct PostFormView: View {
                                             maxHeight: 120
                                         )
                                         .id(selectedTab)
-                                        .clipped()  // Ограничиваем кликабельную область
+                                        .clipped()
                                         let selectedTag = allTags[
                                             (selectedTab == .good
                                                 ? pickerIndexGood : pickerIndexBad)
@@ -297,79 +296,44 @@ struct PostFormView: View {
                                                 })
                                         Button(action: {
                                             if selectedTab == .good {
-                                                if isTagAdded {
-                                                    if let idx =
-                                                        goodItems.firstIndex(
-                                                            where: {
-                                                                $0.text
-                                                                    == selectedTag
-                                                                    .text
-                                                            })
-                                                    {
-                                                        goodItems.remove(at: idx)
-                                                    }
-                                                } else {
+                                                if !isTagAdded {
                                                     addGoodTag(selectedTag)
                                                 }
                                             } else {
-                                                if isTagAdded {
-                                                    if let idx =
-                                                        badItems.firstIndex(where: {
-                                                            $0.text
-                                                                == selectedTag.text
-                                                    })
-                                                    {
-                                                        badItems.remove(at: idx)
-                                                    }
-                                                } else {
+                                                if !isTagAdded {
                                                     addBadTag(selectedTag)
                                                 }
                                             }
                                         }) {
                                             Image(
                                                 systemName: isTagAdded
-                                                    ? "minus.circle.fill"
+                                                    ? "checkmark.circle.fill"
                                                     : "plus.circle.fill"
                                             )
                                             .resizable()
                                             .frame(width: 28, height: 28)
                                             .foregroundColor(
-                                                isTagAdded ? .red : .blue
+                                                isTagAdded ? .green : .blue
                                             )
                                         }
                                         .buttonStyle(PlainButtonStyle())
                                     }
                                     .padding(.horizontal, 4)
-                                    .contentShape(Rectangle())  // Ограничиваем кликабельную область wheel
+                                    .contentShape(Rectangle())
                                 }
                                 .padding(.bottom, 8)
                             }
+                            /*
+                            // --- Показываем все теги кирпичиками выше поля ввода ---
                             ScrollView(.horizontal, showsIndicators: false) {
-                                let selectedItems: [ChecklistItem] =
-                                    selectedTab == .good ? goodItems : badItems
                                 HStack(spacing: 8) {
-                                    ForEach(selectedItems) { item in
-                                        let tag =
-                                            (selectedTab == .good
-                                            ? goodTags : badTags).first(where: {
-                                                $0.text == item.text
-                                            })
-                                            ?? TagItem(
-                                                text: item.text,
-                                                icon: "tag",
-                                                color: .gray
-                                            )
-                                        TagBrickView(tag: tag) {
-                                            if selectedTab == .good {
-                                                removeGoodItem(item)
-                                            } else {
-                                                removeBadItem(item)
-                                            }
-                                        }
+                                    ForEach(allTags) { tag in
+                                        TagBrickView(tag: tag) { }
                                     }
                                 }
                                 .padding(.vertical, 4)
                             }
+                            */
                         }
                         .padding(.vertical, 6)
                         // --- ЗОНА ЧЕКЛИСТА ---
@@ -392,6 +356,48 @@ struct PostFormView: View {
                                     onAdd: addBadItem,
                                     onRemove: removeBadItem
                                 )
+                            }
+                            // Восстанавливаем старую логику: добавление/удаление good/bad пункта по + и - через TagPicker и кнопки, без отдельного поля ввода
+                            // --- Логика предложения сохранить тег ---
+                            if let newText = (selectedTab == .good ? goodItems.last?.text : badItems.last?.text),
+                               !newText.trimmingCharacters(in: .whitespaces).isEmpty,
+                               !(selectedTab == .good ? store.goodTags : store.badTags).contains(newText) {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    HStack {
+                                        Image(systemName: "plus")
+                                        Text("Сохранить тег?")
+                                            .font(.headline)
+                                        Text("\"\(newText)\"")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    HStack {
+                                        Button("Отмена") {
+                                            if selectedTab == .good {
+                                                goodItems[goodItems.count-1].text = ""
+                                            } else {
+                                                badItems[badItems.count-1].text = ""
+                                            }
+                                        }
+                                        Button("Сохранить") {
+                                            if selectedTab == .good {
+                                                store.addGoodTag(newText)
+                                            } else {
+                                                store.addBadTag(newText)
+                                            }
+                                            if selectedTab == .good {
+                                                addGoodItem()
+                                            } else {
+                                                addBadItem()
+                                            }
+                                        }
+                                        .buttonStyle(.borderedProminent)
+                                    }
+                                }
+                                .padding()
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(12)
+                                .padding(.vertical, 4)
                             }
                         }
                         .padding(.vertical, 6)
