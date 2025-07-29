@@ -3,19 +3,13 @@ import SwiftUI
 struct ThirdScreenPlanData: Codable {
     let goodItems: [String]
     let badItems: [String]
+    let voiceNotes: [VoiceNote]
 }
 
 struct ThirdScreenView: View {
     @EnvironmentObject var store: PostStore
-    @State private var goodItems: [ChecklistItem] = [
-        ChecklistItem(id: UUID(), text: "Моковый хороший пункт 1"),
-        ChecklistItem(id: UUID(), text: "Моковый хороший пункт 2"),
-        ChecklistItem(id: UUID(), text: "Моковый хороший пункт 3")
-    ]
-    @State private var badItems: [ChecklistItem] = [
-        ChecklistItem(id: UUID(), text: "Моковый плохой пункт 1"),
-        ChecklistItem(id: UUID(), text: "Моковый плохой пункт 2")
-    ]
+    @State private var goodItems: [ChecklistItem] = []
+    @State private var badItems: [ChecklistItem] = []
     @State private var newPlanItem: String = ""
     @State private var editingPlanIndex: Int? = nil
     @State private var editingPlanText: String = ""
@@ -50,14 +44,15 @@ struct ThirdScreenView: View {
         }
         .hideKeyboardOnTap()
         .onAppear {
-            // Загружаем моковые данные при появлении
-            loadMockData()
+            // Загружаем сохраненные данные при появлении
+            loadSavedData()
             lastPlanDate = Calendar.current.startOfDay(for: Date())
         }
         .onChange(of: Calendar.current.startOfDay(for: Date()), initial: false) { oldDay, newDay in
             if newDay != lastPlanDate {
                 goodItems = []
                 badItems = []
+                voiceNotes = []
                 savePlan()
                 lastPlanDate = newDay
             }
@@ -116,12 +111,13 @@ struct ThirdScreenView: View {
                         }
                     }
                 }
-                
-                // --- ЗОНА VOICE внутри List ---
-                Section {
-                    VoiceRecorderListView(voiceNotes: $voiceNotes)
-                }
             }
+            
+            // --- ЗОНА VOICE ---
+            VStack(spacing: 0) {
+                VoiceRecorderListView(voiceNotes: $voiceNotes)
+            }
+            .padding(.vertical, 6)
             
             // Поле ввода с TagPicker
             VStack(spacing: 8) {
@@ -154,7 +150,7 @@ struct ThirdScreenView: View {
                                 Text("(")
                                     .font(.system(size: 14.3))
                                     .foregroundColor(.secondary)
-                                Text("\(goodTags.count)")
+                                Text("\(goodItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count)")
                                     .font(.system(size: 14.3))
                                     .foregroundColor(.secondary)
                                 Text(")")
@@ -177,7 +173,7 @@ struct ThirdScreenView: View {
                                 Text("(")
                                     .font(.system(size: 14.3))
                                     .foregroundColor(.secondary)
-                                Text("\(badTags.count)")
+                                Text("\(badItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count)")
                                     .font(.system(size: 14.3))
                                     .foregroundColor(.secondary)
                                 Text(")")
@@ -282,7 +278,7 @@ struct ThirdScreenView: View {
                         title: "Отправить",
                         icon: "paperplane.fill",
                         color: .green,
-                        action: { publishMockReportToTelegram() },
+                        action: { publishReportToTelegram() },
                         isEnabled: true,
                         compact: true
                     )
@@ -298,7 +294,7 @@ struct ThirdScreenView: View {
         }
         .padding()
         .alert("Сохранить план как отчет?", isPresented: $showSaveAlert) {
-            Button("Сохранить", role: .none) { savePlanAsReport() }
+                                    Button("Сохранить", role: .none) { saveAsReport() }
             Button("Отмена", role: .cancel) { }
         }
         .alert("Удалить пункт плана?", isPresented: $showDeletePlanAlert) {
@@ -308,17 +304,22 @@ struct ThirdScreenView: View {
     }
     
     // MARK: - Functions
-    func loadMockData() {
-        // Загружаем моковые данные
-        goodItems = [
-            ChecklistItem(id: UUID(), text: "Моковый хороший пункт 1"),
-            ChecklistItem(id: UUID(), text: "Моковый хороший пункт 2"),
-            ChecklistItem(id: UUID(), text: "Моковый хороший пункт 3")
-        ]
-        badItems = [
-            ChecklistItem(id: UUID(), text: "Моковый плохой пункт 1"),
-            ChecklistItem(id: UUID(), text: "Моковый плохой пункт 2")
-        ]
+    func loadSavedData() {
+        let key = "third_screen_plan_" + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
+        
+        // Пытаемся загрузить сохраненные данные
+        if let data = UserDefaults.standard.data(forKey: key),
+           let planData = try? JSONDecoder().decode(ThirdScreenPlanData.self, from: data) {
+            // Загружаем сохраненные данные
+            goodItems = planData.goodItems.map { ChecklistItem(id: UUID(), text: $0) }
+            badItems = planData.badItems.map { ChecklistItem(id: UUID(), text: $0) }
+            voiceNotes = planData.voiceNotes
+        } else {
+            // Инициализируем пустые данные
+            goodItems = []
+            badItems = []
+            voiceNotes = []
+        }
     }
     
     func addPlanItem() {
@@ -373,17 +374,20 @@ struct ThirdScreenView: View {
         let key = "third_screen_plan_" + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
         let planData = ThirdScreenPlanData(
             goodItems: goodItems.map { $0.text },
-            badItems: badItems.map { $0.text }
+            badItems: badItems.map { $0.text },
+            voiceNotes: voiceNotes
         )
         if let data = try? JSONEncoder().encode(planData) {
             UserDefaults.standard.set(data, forKey: key)
         }
     }
     
-    func savePlanAsReport() {
+    func saveAsReport() {
         let today = Calendar.current.startOfDay(for: Date())
         let filteredGood = goodItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
         let filteredBad = badItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        
+
         
         if let idx = store.posts.firstIndex(where: { $0.type == .regular && Calendar.current.isDate($0.date, inSameDayAs: today) }) {
             let updated = Post(
@@ -428,7 +432,7 @@ struct ThirdScreenView: View {
         savePlan()
     }
     
-    func publishMockReportToTelegram() {
+    func publishReportToTelegram() {
         let today = Calendar.current.startOfDay(for: Date())
         guard let regular = store.posts.first(where: { $0.type == .regular && Calendar.current.isDate($0.date, inSameDayAs: today) }) else {
             publishStatus = "Сначала сохраните план как отчет!"
@@ -438,30 +442,67 @@ struct ThirdScreenView: View {
             publishStatus = "Заполните токен и chat_id в настройках"
             return
         }
+        
+        // Отправляем текстовое сообщение
+        sendTextMessage(token: token, chatId: chatId, post: regular) { success in
+            if success && regular.voiceNotes.count > 0 {
+                // Отправляем голосовые заметки
+                self.sendAllVoiceNotes(
+                    token: token,
+                    chatId: chatId,
+                    voiceNotes: regular.voiceNotes.map { $0.path }
+                ) { allSuccess in
+                    DispatchQueue.main.async {
+                        if allSuccess {
+                            self.publishStatus = "Отчет успешно опубликован с голосовыми заметками!"
+                        } else {
+                            self.publishStatus = "Ошибка отправки голосовых заметок"
+                        }
+                    }
+                }
+            } else {
+                DispatchQueue.main.async {
+                    if success {
+                        self.publishStatus = "Отчет успешно опубликован!"
+                    } else {
+                        self.publishStatus = "Ошибка отправки: неверный токен или chat_id"
+                    }
+                }
+            }
+        }
+    }
+    
+    private func sendTextMessage(
+        token: String,
+        chatId: String,
+        post: Post,
+        completion: @escaping (Bool) -> Void
+    ) {
         let dateFormatter = DateFormatter()
         dateFormatter.locale = Locale(identifier: "ru_RU")
         dateFormatter.dateStyle = .full
-        let dateStr = dateFormatter.string(from: regular.date)
+        let dateStr = dateFormatter.string(from: post.date)
         let deviceName = store.getDeviceName()
         var message = "\u{1F4C5} <b>Третий экран - отчет за \(dateStr)</b>\n"
         message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
-        if !regular.goodItems.isEmpty {
+        if !post.goodItems.isEmpty {
             message += "<b>✅ Я молодец:</b>\n"
-            for (index, item) in regular.goodItems.enumerated() {
+            for (index, item) in post.goodItems.enumerated() {
                 message += "\(index + 1). \(item)\n"
             }
             message += "\n"
         }
-        if !regular.badItems.isEmpty {
+        if !post.badItems.isEmpty {
             message += "<b>❌ Я не молодец:</b>\n"
-            for (index, item) in regular.badItems.enumerated() {
+            for (index, item) in post.badItems.enumerated() {
                 message += "\(index + 1). \(item)\n"
             }
         }
         
-        if regular.voiceNotes.count > 0 {
+        if post.voiceNotes.count > 0 {
             message += "\n\u{1F3A4} <i>Голосовая заметка прикреплена</i>"
         }
+        
         let urlString = "https://api.telegram.org/bot\(token)/sendMessage"
         let params = [
             "chat_id": chatId,
@@ -471,7 +512,7 @@ struct ThirdScreenView: View {
         var urlComponents = URLComponents(string: urlString)!
         urlComponents.queryItems = params.map { URLQueryItem(name: $0.key, value: $0.value) }
         guard let url = urlComponents.url else {
-            publishStatus = "Ошибка формирования URL"
+            completion(false)
             return
         }
         var request = URLRequest(url: url)
@@ -479,11 +520,89 @@ struct ThirdScreenView: View {
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    publishStatus = "Ошибка отправки: \(error.localizedDescription)"
+                    completion(false)
                 } else if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
-                    publishStatus = "План успешно опубликован!"
+                    completion(true)
                 } else {
-                    publishStatus = "Ошибка отправки: неверный токен или chat_id"
+                    completion(false)
+                }
+            }
+        }
+        task.resume()
+    }
+    
+    private func sendAllVoiceNotes(
+        token: String,
+        chatId: String,
+        voiceNotes: [String],
+        completion: @escaping (Bool) -> Void
+    ) {
+        var index = 0
+        func sendNext(successSoFar: Bool) {
+            if index >= voiceNotes.count {
+                completion(successSoFar)
+                return
+            }
+            let path = voiceNotes[index]
+            let url = URL(fileURLWithPath: path)
+            sendSingleVoice(token: token, chatId: chatId, voiceURL: url) { success in
+                index += 1
+                sendNext(successSoFar: successSoFar && success)
+            }
+        }
+        sendNext(successSoFar: true)
+    }
+    
+    private func sendSingleVoice(
+        token: String,
+        chatId: String,
+        voiceURL: URL,
+        completion: @escaping (Bool) -> Void
+    ) {
+        let urlString = "https://api.telegram.org/bot\(token)/sendVoice"
+        guard let tgURL = URL(string: urlString) else {
+            completion(false)
+            return
+        }
+        var request = URLRequest(url: tgURL)
+        request.httpMethod = "POST"
+        let boundary = UUID().uuidString
+        request.setValue(
+            "multipart/form-data; boundary=\(boundary)",
+            forHTTPHeaderField: "Content-Type"
+        )
+        var body = Data()
+        
+        // Добавляем chat_id
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"chat_id\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(chatId)\r\n".data(using: .utf8)!)
+        
+        // Добавляем аудиофайл
+        do {
+            let audioData = try Data(contentsOf: voiceURL)
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"voice\"; filename=\"voice_note.m4a\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: audio/m4a\r\n\r\n".data(using: .utf8)!)
+            body.append(audioData)
+            body.append("\r\n".data(using: .utf8)!)
+            body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        } catch {
+            completion(false)
+            return
+        }
+        
+        request.httpBody = body
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("Ошибка отправки аудио: \(error.localizedDescription)")
+                    completion(false)
+                } else if let httpResponse = response as? HTTPURLResponse,
+                          httpResponse.statusCode == 200 {
+                    completion(true)
+                } else {
+                    completion(false)
                 }
             }
         }

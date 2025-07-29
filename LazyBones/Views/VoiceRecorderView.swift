@@ -16,6 +16,19 @@ struct VoiceRecorderRowView: View {
     let onVoiceNoteChanged: (String?) -> Void
     let isFirst: Bool
     
+    private var hasValidRecording: Bool {
+        guard let url = recordingURL else { return false }
+        guard FileManager.default.fileExists(atPath: url.path) else { return false }
+        
+        do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+            let fileSize = attributes[.size] as? Int64 ?? 0
+            return fileSize > 0
+        } catch {
+            return false
+        }
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 16) {
@@ -28,7 +41,7 @@ struct VoiceRecorderRowView: View {
                 .disabled(isPlaying)
                 
                 // Кнопка воспроизведения
-                if recordingURL != nil {
+                if hasValidRecording {
                     Button(action: togglePlayback) {
                         Image(systemName: isPlaying ? "stop.circle.fill" : "play.circle.fill")
                             .font(.system(size: 36))
@@ -37,7 +50,7 @@ struct VoiceRecorderRowView: View {
                     .disabled(isRecording)
                 }
                 // Кнопка удаления
-                if recordingURL != nil {
+                if hasValidRecording {
                     Button(action: { showDeleteConfirm = true }) {
                         Image(systemName: "trash.circle.fill")
                             .font(.system(size: 36))
@@ -54,7 +67,7 @@ struct VoiceRecorderRowView: View {
                 Text("Воспроизведение...")
                     .foregroundColor(.green)
                     .font(.caption)
-            } else if recordingURL != nil {
+            } else if hasValidRecording {
                 Text("Голосовая заметка готова")
                     .foregroundColor(.green)
                     .font(.caption)
@@ -130,7 +143,28 @@ struct VoiceRecorderRowView: View {
     private func stopRecording() {
         audioRecorder?.stop()
         isRecording = false
-        onVoiceNoteChanged(recordingURL?.path)
+        
+        // Проверяем, что запись действительно существует и имеет размер
+        if let url = recordingURL {
+            do {
+                let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+                let fileSize = attributes[.size] as? Int64 ?? 0
+                
+                if fileSize > 0 {
+                    onVoiceNoteChanged(url.path)
+                } else {
+                    // Удаляем пустой файл
+                    try? FileManager.default.removeItem(at: url)
+                    recordingURL = nil
+                    onVoiceNoteChanged(nil)
+                }
+            } catch {
+                // Если не удалось проверить файл, удаляем его
+                try? FileManager.default.removeItem(at: url)
+                recordingURL = nil
+                onVoiceNoteChanged(nil)
+            }
+        }
     }
     
     // MARK: - Playback
