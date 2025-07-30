@@ -18,6 +18,7 @@ struct VoiceRecorderRowView: View {
     
     private var hasValidRecording: Bool {
         guard let url = recordingURL else { return false }
+        guard !url.path.isEmpty else { return false }
         guard FileManager.default.fileExists(atPath: url.path) else { return false }
         
         do {
@@ -67,11 +68,7 @@ struct VoiceRecorderRowView: View {
                 Text("Воспроизведение...")
                     .foregroundColor(.green)
                     .font(.caption)
-            } else if hasValidRecording {
-                Text("Голосовая заметка готова")
-                    .foregroundColor(.green)
-                    .font(.caption)
-            } else {
+            } else if !hasValidRecording {
                 Text("Нет записи")
                     .font(.caption)
                     .foregroundColor(.gray)
@@ -91,10 +88,19 @@ struct VoiceRecorderRowView: View {
         }
         .onAppear {
             setupAudioSession()
-            if let path = initialPath {
+            if let path = initialPath, !path.isEmpty {
                 let url = URL(fileURLWithPath: path)
                 if FileManager.default.fileExists(atPath: url.path) {
-                    recordingURL = url
+                    do {
+                        let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+                        let fileSize = attributes[.size] as? Int64 ?? 0
+                        if fileSize > 0 {
+                            recordingURL = url
+                        }
+                    } catch {
+                        // Файл не существует или поврежден
+                        recordingURL = nil
+                    }
                 }
             }
         }

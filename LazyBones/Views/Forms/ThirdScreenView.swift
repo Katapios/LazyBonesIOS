@@ -299,6 +299,16 @@ struct ThirdScreenView: View {
                                 }
                             }
                             .padding(.vertical, 4)
+                        } else {
+                            // Сообщение когда нет голосовых заметок
+                            HStack {
+                                Image(systemName: "mic.slash")
+                                    .foregroundColor(.gray)
+                                Text("Создайте первую голосовую заметку на сегодня")
+                                    .foregroundColor(.gray)
+                                    .font(.subheadline)
+                            }
+                            .padding(.vertical, 8)
                         }
                         
                         // Кнопка добавления новой заметки
