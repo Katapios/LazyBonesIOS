@@ -7,7 +7,7 @@ struct ThirdScreenPlanData: Codable {
     let voiceNotes: [VoiceNote]
 }
 
-struct ThirdScreenView: View {
+struct DailyReportView: View {
     @EnvironmentObject var store: PostStore
     @State private var goodItems: [ChecklistItem] = []
     @State private var badItems: [ChecklistItem] = []
@@ -708,6 +708,6 @@ struct ThirdScreenView: View {
 }
 
 #Preview {
-    ThirdScreenView()
+    DailyReportView()
         .environmentObject(PostStore())
 } 

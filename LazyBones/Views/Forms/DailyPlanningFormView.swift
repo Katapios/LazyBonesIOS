@@ -34,8 +34,8 @@ struct DailyPlanningFormView: View {
             .padding(.bottom, 4)
             // --- TabView ---
             TabView(selection: $selectedTab) {
-                // Первый экран — третий экран (план с голосовыми заметками)
-                ThirdScreenView()
+                // Первый экран — отчет за день (с голосовыми заметками)
+                DailyReportView()
                     .tag(0)
                 // Второй экран — план на день
                 PlanningContentView()
