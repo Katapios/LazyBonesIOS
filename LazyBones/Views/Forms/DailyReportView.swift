@@ -614,9 +614,9 @@ struct DailyReportView: View {
         }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+        let task = URLSession.shared.dataTask(with: request) { _, response, error in
             DispatchQueue.main.async {
-                if let error = error {
+                if error != nil {
                     completion(false)
                 } else if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
                     completion(true)

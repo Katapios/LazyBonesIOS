@@ -75,7 +75,6 @@ class PostTelegramService: PostTelegramServiceProtocol {
         }
         
         var toSend = 0
-        let totalReports = 2
         
         // --- Обычный отчет ---
         if let regular = regular, !regular.goodItems.isEmpty {

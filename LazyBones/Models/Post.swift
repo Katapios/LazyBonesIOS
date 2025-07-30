@@ -326,8 +326,9 @@ class PostStore: ObservableObject, PostStoreProtocol {
                 }
                 
                 // Обновляем externalPosts на главном потоке
+                let finalExternalPosts = newExternalPosts
                 await MainActor.run {
-                    self.externalPosts = newExternalPosts
+                    self.externalPosts = finalExternalPosts
                     self.saveExternalPosts()
                     
                     // Обновляем lastUpdateId
@@ -337,7 +338,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
                         userDefaults?.set(self.lastUpdateId, forKey: "lastUpdateId")
                     }
                     
-                    Logger.info("Fetched \(newExternalPosts.count) external posts", log: Logger.telegram)
+                    Logger.info("Fetched \(finalExternalPosts.count) external posts", log: Logger.telegram)
                     completion(true)
                 }
                 
@@ -651,7 +652,8 @@ class PostStore: ObservableObject, PostStoreProtocol {
         // Если есть голосовое сообщение
         if let voice = message.voice {
             // Формируем ссылку на файл Telegram (file_id)
-            let fileURL = URL(string: "https://api.telegram.org/file/bot\(telegramToken ?? "")/\(voice.fileId)")
+            let token = telegramToken ?? ""
+            let fileURL = URL(string: "https://api.telegram.org/file/bot\(token)/\(voice.fileId ?? "")")
             let post = Post(
                 id: UUID(),
                 date: Date(timeIntervalSince1970: TimeInterval(message.date ?? 0)),
@@ -675,7 +677,8 @@ class PostStore: ObservableObject, PostStoreProtocol {
         }
         // Если есть аудио
         if let audio = message.audio {
-            let fileURL = URL(string: "https://api.telegram.org/file/bot\(telegramToken ?? "")/\(audio.fileId)")
+            let token = telegramToken ?? ""
+            let fileURL = URL(string: "https://api.telegram.org/file/bot\(token)/\(audio.fileId ?? "")")
             let post = Post(
                 id: UUID(),
                 date: Date(timeIntervalSince1970: TimeInterval(message.date ?? 0)),
@@ -699,7 +702,8 @@ class PostStore: ObservableObject, PostStoreProtocol {
         }
         // Если есть документ
         if let document = message.document {
-            let fileURL = URL(string: "https://api.telegram.org/file/bot\(telegramToken ?? "")/\(document.fileId)")
+            let token = telegramToken ?? ""
+            let fileURL = URL(string: "https://api.telegram.org/file/bot\(token)/\(document.fileId ?? "")")
             let post = Post(
                 id: UUID(),
                 date: Date(timeIntervalSince1970: TimeInterval(message.date ?? 0)),
