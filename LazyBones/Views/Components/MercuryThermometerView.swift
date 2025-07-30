@@ -52,10 +52,10 @@ struct MercuryThermometerView: View {
                 // Красная "ртуть" (Capsule справа налево)
                 if badCount > 0 {
                     HStack(spacing: 0) {
-                        Spacer().frame(width: barWidth * (1 - animatedBadRatio) - 10)
+                        Spacer().frame(width: max(0, barWidth * (1 - animatedBadRatio) - 10))
                         Capsule()
                             .fill(LinearGradient(gradient: Gradient(colors: [Color.red.opacity(0.85), Color.red]), startPoint: .top, endPoint: .bottom))
-                            .frame(width: barWidth * animatedBadRatio + 10, height: barHeight)
+                            .frame(width: max(0, barWidth * animatedBadRatio + 10), height: barHeight)
                             .shadow(color: Color.red.opacity(0.18), radius: 2, x: 0, y: 1)
                         Spacer().frame(width: tipDiameter)
                     }

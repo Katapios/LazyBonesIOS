@@ -1,4 +1,5 @@
 import SwiftUI
+import AVFoundation
 
 struct ThirdScreenPlanData: Codable {
     let goodItems: [String]
@@ -23,6 +24,7 @@ struct ThirdScreenView: View {
     @State private var tagPickerOffset: CGFloat = 0
     @State private var selectedTab: TabType = .good
     @State private var voiceNotes: [VoiceNote] = []
+    @State private var showVoiceRecorder: Bool = false
     
     enum TabType { case good, bad }
     
@@ -113,25 +115,46 @@ struct ThirdScreenView: View {
                 }
             }
             
-            // --- ЗОНА VOICE ---
-            VStack(spacing: 0) {
-                VoiceRecorderListView(voiceNotes: $voiceNotes)
-            }
-            .padding(.vertical, 6)
+
             
             // Поле ввода с TagPicker
             VStack(spacing: 8) {
                 HStack {
                     TextField("Добавить пункт плана", text: $newPlanItem)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
-                    Button(action: { withAnimation(.easeInOut(duration: 0.3)) { showTagPicker.toggle() } }) {
-                        Image(systemName: "tag")
-                            .font(.title2)
-                            .foregroundColor(.accentColor)
+                    
+                    // Иконки микрофона и тега рядом
+                    HStack(spacing: 8) {
+                        Button(action: { 
+                            withAnimation(.easeInOut(duration: 0.3)) { 
+                                showVoiceRecorder.toggle()
+                                if showVoiceRecorder {
+                                    showTagPicker = false
+                                }
+                            } 
+                        }) {
+                            Image(systemName: "mic.circle.fill")
+                                .font(.system(size: 32))
+                                .foregroundColor(showVoiceRecorder ? .red : .accentColor)
+                        }
+                        
+                        Button(action: { 
+                            withAnimation(.easeInOut(duration: 0.3)) { 
+                                showTagPicker.toggle()
+                                if showTagPicker {
+                                    showVoiceRecorder = false
+                                }
+                            } 
+                        }) {
+                            Image(systemName: "tag.circle.fill")
+                                .font(.system(size: 32))
+                                .foregroundColor(showTagPicker ? .blue : .accentColor)
+                        }
                     }
+                    
                     Button(action: addPlanItem) {
                         Image(systemName: "plus.circle.fill")
-                            .font(.title2)
+                            .font(.system(size: 32))
                     }.disabled(newPlanItem.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
                 
@@ -226,6 +249,70 @@ struct ThirdScreenView: View {
                                 .foregroundColor(isTagAdded ? .green : .blue)
                         }
                         .buttonStyle(PlainButtonStyle())
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(.systemGray6))
+                    )
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
+                
+                // VoiceRecorder выезжает вместо TagPicker
+                if showVoiceRecorder {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Голосовые заметки")
+                                .font(.headline)
+                            Spacer()
+                            Button(action: {
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    showVoiceRecorder = false
+                                }
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                        
+                        // Существующие голосовые заметки
+                        if !voiceNotes.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                ForEach(voiceNotes) { note in
+                                    VoiceRecorderRowView(
+                                        initialPath: note.path,
+                                        onVoiceNoteChanged: { newPath in
+                                            if let newPath = newPath {
+                                                if let idx = voiceNotes.firstIndex(where: { $0.id == note.id }) {
+                                                    voiceNotes[idx].path = newPath
+                                                }
+                                            } else {
+                                                if let idx = voiceNotes.firstIndex(where: { $0.id == note.id }) {
+                                                    voiceNotes.remove(at: idx)
+                                                }
+                                            }
+                                            savePlan()
+                                        },
+                                        isFirst: voiceNotes.first?.id == note.id
+                                    )
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        
+                        // Кнопка добавления новой заметки
+                        Button(action: {
+                            voiceNotes.append(VoiceNote(id: UUID(), path: ""))
+                            savePlan()
+                        }) {
+                            HStack {
+                                Image(systemName: "plus.circle.fill")
+                                Text("Добавить голосовую заметку")
+                            }
+                            .foregroundColor(.blue)
+                        }
+                        .padding(.top, 4)
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 12)
