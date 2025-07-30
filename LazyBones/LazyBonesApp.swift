@@ -20,6 +20,12 @@ struct LazyBonesApp: App {
     init() {
         Logger.info("App initializing", log: Logger.general)
         
+        // Тестирование конфигурационных переменных
+        #if DEBUG
+        ConfigTest.testAllConfigVariables()
+        ConfigTest.testWidgetConfigCompatibility()
+        #endif
+        
         // Инициализация DI контейнера
         setupDependencyInjection()
         

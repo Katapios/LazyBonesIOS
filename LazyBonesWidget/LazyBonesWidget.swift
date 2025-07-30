@@ -37,8 +37,8 @@ struct Provider: TimelineProvider {
     }
 
     static func isReportDoneToday() -> Bool {
-        let userDefaults = UserDefaults(suiteName: "group.com.katapios.LazyBones")
-        let data = userDefaults?.data(forKey: "posts")
+        let userDefaults = WidgetConfig.sharedUserDefaults
+        let data = userDefaults.data(forKey: "posts")
         print("[WIDGET] posts data:", data as Any)
         guard let data = data,
               let posts = try? JSONDecoder().decode([Post].self, from: data) else {
@@ -47,8 +47,8 @@ struct Provider: TimelineProvider {
         return posts.contains(where: { Calendar.current.isDateInToday($0.date) && $0.published })
     }
     static func deviceName() -> String {
-        let userDefaults = UserDefaults(suiteName: "group.com.katapios.LazyBones")
-        let name = userDefaults?.string(forKey: "deviceName")
+        let userDefaults = WidgetConfig.sharedUserDefaults
+        let name = userDefaults.string(forKey: "deviceName")
         print("[WIDGET] deviceName из UserDefaults:", name as Any)
         if let saved = name, !saved.isEmpty {
             return saved
@@ -92,8 +92,8 @@ struct Provider: TimelineProvider {
         }
     }
     static func currentReportStatus() -> String {
-        let userDefaults = UserDefaults(suiteName: "group.com.katapios.LazyBones")
-        let status = userDefaults?.string(forKey: "reportStatus") ?? "notStarted"
+        let userDefaults = WidgetConfig.sharedUserDefaults
+        let status = userDefaults.string(forKey: "reportStatus") ?? "notStarted"
         return status
     }
 }
@@ -108,7 +108,7 @@ struct SimpleEntry: TimelineEntry {
 struct LazyBonesWidgetEntryView : View {
     var entry: SimpleEntry
     
-    @AppStorage("notificationsEnabled", store: UserDefaults(suiteName: "group.com.katapios.LazyBones"))
+    @AppStorage("notificationsEnabled", store: WidgetConfig.sharedUserDefaults)
     var notificationsEnabled: Bool = false
     @Environment(\.widgetFamily) var family
 

@@ -29,7 +29,7 @@ enum BackgroundTaskServiceError: Error, LocalizedError {
 /// Реализация сервиса фоновых задач
 class BackgroundTaskService: BackgroundTaskServiceProtocol {
     
-    private let taskIdentifier = "com.katapios.LazyBones.sendReport"
+    private let taskIdentifier = AppConfig.backgroundTaskIdentifier
     private let userDefaultsManager: UserDefaultsManager
     
     init(userDefaultsManager: UserDefaultsManager = .shared) {
@@ -135,8 +135,8 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
         // Здесь будет логика обработки автоотправки отчетов
         // Пока используем старую логику для совместимости
         let store = PostStore.shared
-        let ud = UserDefaults(suiteName: "group.com.katapios.LazyBones")
-        let isAutoSend = ud?.bool(forKey: "autoSendToTelegram") ?? false
+        let ud = AppConfig.sharedUserDefaults
+        let isAutoSend = ud.bool(forKey: "autoSendToTelegram")
         
         if isAutoSend {
             store.autoSendAllReportsForToday {

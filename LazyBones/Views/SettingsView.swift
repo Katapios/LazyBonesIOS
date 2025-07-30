@@ -183,9 +183,9 @@ struct SettingsView: View {
     }
     
     func saveDeviceName() {
-        let userDefaults = UserDefaults(suiteName: "group.com.katapios.LazyBones")
-        userDefaults?.set(deviceName, forKey: "deviceName")
-        userDefaults?.synchronize()
+        let userDefaults = AppConfig.sharedUserDefaults
+        userDefaults.set(deviceName, forKey: "deviceName")
+        userDefaults.synchronize()
         WidgetCenter.shared.reloadAllTimelines()
         loadDeviceName()
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
@@ -193,8 +193,8 @@ struct SettingsView: View {
         }
     }
     func loadDeviceName() {
-        let userDefaults = UserDefaults(suiteName: "group.com.katapios.LazyBones")
-        let name = userDefaults?.string(forKey: "deviceName") ?? ""
+        let userDefaults = AppConfig.sharedUserDefaults
+        let name = userDefaults.string(forKey: "deviceName") ?? ""
         deviceName = name
     }
     func checkTelegramConnection() {
@@ -255,12 +255,12 @@ struct SettingsView: View {
     }
     // --- UserDefaults для background fetch test ---
     private func saveBackgroundFetchTestEnabled(_ value: Bool) {
-        let ud = UserDefaults(suiteName: "group.com.katapios.LazyBones")
-        ud?.set(value, forKey: "backgroundFetchTestEnabled")
+        let ud = AppConfig.sharedUserDefaults
+        ud.set(value, forKey: "backgroundFetchTestEnabled")
     }
     private func loadBackgroundFetchTestEnabled() -> Bool {
-        let ud = UserDefaults(suiteName: "group.com.katapios.LazyBones")
-        return ud?.bool(forKey: "backgroundFetchTestEnabled") ?? false
+        let ud = AppConfig.sharedUserDefaults
+        return ud.bool(forKey: "backgroundFetchTestEnabled")
     }
 }
 

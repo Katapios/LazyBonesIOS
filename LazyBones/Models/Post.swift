@@ -81,7 +81,7 @@ protocol PostStoreProtocol: ObservableObject {
 /// Хранилище отчётов с поддержкой App Group
 class PostStore: ObservableObject, PostStoreProtocol {
     static let shared = PostStore()
-    static let appGroup = "group.com.katapios.LazyBones"
+    static let appGroup = AppConfig.appGroup
     @Published var posts: [Post] = []
     @Published var externalPosts: [Post] = [] // Внешние отчеты из Telegram
     @Published var telegramToken: String? = nil
@@ -728,7 +728,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
 
 extension PostStore {
     static func rescheduleBGTask() {
-        let request = BGAppRefreshTaskRequest(identifier: "com.katapios.LazyBones.sendReport")
+        let request = BGAppRefreshTaskRequest(identifier: AppConfig.backgroundTaskIdentifier)
         request.earliestBeginDate = Calendar.current.date(byAdding: .day, value: 1, to: Date())
         do {
             try BGTaskScheduler.shared.submit(request)

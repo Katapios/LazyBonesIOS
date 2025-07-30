@@ -13,7 +13,7 @@ class LocalReportService {
     private let defaultBadTags = ["Прокрастинация", "Переедание", "Мало сна", "Стресс", "Лень", "Зависимость", "Скандал", "Трата времени"]
     
     private init() {
-        userDefaults = UserDefaults(suiteName: "group.com.katapios.LazyBones")
+        userDefaults = AppConfig.sharedUserDefaults
         migrateOldTagsIfNeeded()
     }
     

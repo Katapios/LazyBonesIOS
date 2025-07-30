@@ -10,7 +10,7 @@ import SwiftUI
 import WidgetKit
 
 struct LazyBonesWidgetControl: ControlWidget {
-    static let kind: String = "com.katapios.LazyBones.LazyBonesWidget"
+    static let kind: String = WidgetConfig.widgetKind
 
     var body: some ControlWidgetConfiguration {
         AppIntentControlConfiguration(

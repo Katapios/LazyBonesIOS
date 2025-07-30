@@ -21,7 +21,7 @@ class UserDefaultsManager: UserDefaultsManagerProtocol {
     static let shared = UserDefaultsManager()
     
     private let userDefaults: UserDefaults
-    private let appGroup = "group.com.katapios.LazyBones"
+    private let appGroup = AppConfig.appGroup
     
     private init() {
         self.userDefaults = UserDefaults(suiteName: appGroup) ?? UserDefaults.standard
