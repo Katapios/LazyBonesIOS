@@ -54,6 +54,9 @@ class PostNotificationService: PostNotificationServiceProtocol {
         
         Task {
             do {
+                // Сначала выводим debug информацию
+                await notificationService.debugNotificationStatus()
+                
                 // Используем правильную логику из NotificationService
                 try await notificationService.scheduleReportNotifications(
                     enabled: true,
@@ -63,6 +66,9 @@ class PostNotificationService: PostNotificationServiceProtocol {
                     mode: notificationMode
                 )
                 Logger.info("Notifications scheduled successfully with mode: \(notificationMode)", log: Logger.notifications)
+                
+                // Выводим debug информацию после планирования
+                await notificationService.debugNotificationStatus()
             } catch {
                 Logger.error("Failed to schedule notifications: \(error)", log: Logger.notifications)
             }

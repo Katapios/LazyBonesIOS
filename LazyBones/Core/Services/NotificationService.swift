@@ -11,6 +11,9 @@ protocol NotificationServiceProtocol {
     func cancelAllNotifications() async throws
     func getPendingNotifications() async throws -> [UNNotificationRequest]
     func getDeliveredNotifications() async throws -> [UNNotification]
+    func checkNotificationPermission() async -> Bool
+    func getNotificationSettings() async -> UNNotificationSettings
+    func debugNotificationStatus() async
 }
 
 /// Ошибки сервиса уведомлений
@@ -88,16 +91,28 @@ class NotificationService: NotificationServiceProtocol {
         content.body = body
         content.sound = .default
         
+        // Создаем компоненты даты для ежедневного повторения
         var triggerDate = DateComponents()
         triggerDate.hour = hour
         triggerDate.minute = minute
         
+        // Проверяем, что время еще не прошло сегодня
+        let calendar = Calendar.current
+        let now = Date()
+        var targetDate = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: now) ?? now
+        
+        // Если время уже прошло сегодня, планируем на завтра
+        if targetDate <= now {
+            targetDate = calendar.date(byAdding: .day, value: 1, to: targetDate) ?? targetDate
+        }
+        
+        // Создаем триггер для ежедневного повторения
         let trigger = UNCalendarNotificationTrigger(dateMatching: triggerDate, repeats: true)
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
         
         do {
             try await notificationCenter.add(request)
-            Logger.info("Repeating notification scheduled successfully: \(identifier)", log: Logger.ui)
+            Logger.info("Repeating notification scheduled successfully: \(identifier) for \(hour):\(minute) daily", log: Logger.ui)
         } catch {
             Logger.error("Failed to schedule repeating notification: \(error)", log: Logger.ui)
             throw NotificationServiceError.schedulingFailed
@@ -209,5 +224,31 @@ class NotificationService: NotificationServiceProtocol {
     func checkNotificationPermission() async -> Bool {
         let settings = await notificationCenter.notificationSettings()
         return settings.authorizationStatus == .authorized
+    }
+    
+    /// Получить детальную информацию о разрешениях на уведомления
+    func getNotificationSettings() async -> UNNotificationSettings {
+        return await notificationCenter.notificationSettings()
+    }
+    
+    /// Проверить и вывести статус уведомлений
+    func debugNotificationStatus() async {
+        Logger.info("=== DEBUG: Notification Status ===", log: Logger.ui)
+        
+        let settings = await getNotificationSettings()
+        Logger.info("Authorization status: \(settings.authorizationStatus.rawValue)", log: Logger.ui)
+        Logger.info("Alert setting: \(settings.alertSetting.rawValue)", log: Logger.ui)
+        Logger.info("Sound setting: \(settings.soundSetting.rawValue)", log: Logger.ui)
+        Logger.info("Badge setting: \(settings.badgeSetting.rawValue)", log: Logger.ui)
+        
+        let pendingRequests = await notificationCenter.pendingNotificationRequests()
+        Logger.info("Pending notifications: \(pendingRequests.count)", log: Logger.ui)
+        
+        for request in pendingRequests {
+            Logger.info("Pending: \(request.identifier)", log: Logger.ui)
+        }
+        
+        let deliveredNotifications = await notificationCenter.deliveredNotifications()
+        Logger.info("Delivered notifications: \(deliveredNotifications.count)", log: Logger.ui)
     }
 } 
