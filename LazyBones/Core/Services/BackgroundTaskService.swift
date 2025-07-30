@@ -132,18 +132,10 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
     private func processAutoSendReports() async {
         Logger.info("Processing auto-send reports", log: Logger.background)
         
-        // Здесь будет логика обработки автоотправки отчетов
-        // Пока используем старую логику для совместимости
+        // Используем PostStore для автоотправки отчетов
         let store = PostStore.shared
-        let ud = AppConfig.sharedUserDefaults
-        let isAutoSend = ud.bool(forKey: "autoSendToTelegram")
-        
-        if isAutoSend {
-            store.autoSendAllReportsForToday {
-                Logger.info("Auto-send reports sent", log: Logger.background)
-            }
-        } else {
-            Logger.info("Auto-send disabled", log: Logger.background)
+        store.autoSendAllReportsForToday {
+            Logger.info("Auto-send reports sent", log: Logger.background)
         }
     }
     
