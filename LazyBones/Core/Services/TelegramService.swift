@@ -172,7 +172,7 @@ class TelegramService: TelegramServiceProtocol {
             
             if response.ok {
                 let user = response.result // result теперь не опциональный
-                Logger.info("Bot info received: \(user.firstName)", log: Logger.networking)
+                Logger.info("Bot info received: \(user.firstName ?? "Unknown")", log: Logger.networking)
                 return user
             } else {
                 throw TelegramServiceError.apiError(response.description ?? "Unknown error")
