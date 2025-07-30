@@ -2,9 +2,9 @@ import SwiftUI
 
 /// Главная вкладка: таймер, статус и кнопка создания/редактирования отчёта
 struct MainView: View {
-    @State private var showPostForm = false
     @EnvironmentObject var store: PostStore
     @Environment(\.colorScheme) var colorScheme
+    @EnvironmentObject var appCoordinator: AppCoordinator
 
     var postForToday: Post? {
         store.posts.first(where: {
@@ -22,7 +22,9 @@ struct MainView: View {
                 icon: postForToday != nil
                     ? "pencil.circle.fill" : "plus.circle.fill",
                 color: store.reportStatus == .done ? .gray : .black,
-                action: { showPostForm = true },
+                action: { 
+                    appCoordinator.switchToTab(.planning)
+                },
                 isEnabled: store.reportStatus != .done
             )
             .padding(.horizontal)
@@ -30,23 +32,6 @@ struct MainView: View {
         }
         .padding(.vertical, 16)
         .frame(maxHeight: .infinity, alignment: .center)
-        .sheet(isPresented: $showPostForm) {
-            RegularReportFormView(
-                title: postForToday != nil
-                    ? "Редактировать отчёт" : "Создать отчёт",
-                post: postForToday,
-                onSave: {
-                    store.updateReportStatus()
-                    store.updateTimeLeft()
-                },
-                onPublish: {
-                    store.updateReportStatus()
-                    store.updateTimeLeft()
-                    store.load()  // обновляем список постов
-                }
-            )
-            .environmentObject(store)
-        }
         .padding()
     }
 

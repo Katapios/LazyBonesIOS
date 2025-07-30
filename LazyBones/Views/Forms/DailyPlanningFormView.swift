@@ -7,7 +7,7 @@ import SwiftUI
 
 struct DailyPlanningFormView: View {
     @EnvironmentObject var store: PostStore
-    @State private var selectedTab = 0 // По умолчанию открывается первый экран (локальный отчет)
+    @State private var selectedTab = 0 // По умолчанию открывается первый экран (третий экран)
     
     var postForToday: Post? {
         store.posts.first(where: { Calendar.current.isDateInToday($0.date) && !$0.published })
@@ -30,23 +30,16 @@ struct DailyPlanningFormView: View {
                 Circle()
                     .fill(selectedTab == 1 ? Color.accentColor : Color.gray.opacity(0.3))
                     .frame(width: 8, height: 8)
-                Circle()
-                    .fill(selectedTab == 2 ? Color.accentColor : Color.gray.opacity(0.3))
-                    .frame(width: 8, height: 8)
             }
             .padding(.bottom, 4)
             // --- TabView ---
             TabView(selection: $selectedTab) {
-                // Первый экран — форма создания/редактирования отчета
-                RegularReportFormView(post: postForToday)
+                // Первый экран — третий экран (план с голосовыми заметками)
+                ThirdScreenView()
                     .tag(0)
-                    .id(postForToday?.id ?? UUID()) // Пересоздаём при изменении поста
-                // Второй экран — весь старый функционал
+                // Второй экран — план на день
                 PlanningContentView()
                     .tag(1)
-                // Третий экран — отдельная вьюшка
-                ThirdScreenView()
-                    .tag(2)
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
         }
@@ -54,10 +47,9 @@ struct DailyPlanningFormView: View {
     
     private func getTitleForTab(_ tab: Int) -> String {
         switch tab {
-        case 0: return "Отчёт за день"
+        case 0: return "Отчет за день"
         case 1: return "План на день"
-        case 2: return "Третий экран"
-        default: return "Отчёт за день"
+        default: return "Отчет за день"
         }
     }
 }

@@ -58,6 +58,7 @@ struct ContentView: View {
             .tag(AppCoordinator.Tab.settings)
         }
         .environmentObject(store)
+        .environmentObject(appCoordinator)
         .onAppear {
             Logger.info("ContentView initialized", log: Logger.ui)
             appCoordinator.start()
