@@ -15,7 +15,8 @@ class VoiceRecorderTests: XCTestCase {
             voiceNotes: [
                 VoiceNote(id: UUID(), path: "/test/path/voice1.m4a"),
                 VoiceNote(id: UUID(), path: "/test/path/voice2.m4a")
-            ]
+            ],
+            type: .regular
         )
         XCTAssertEqual(post.voiceNotes.count, 2)
         XCTAssertEqual(post.voiceNotes[0].path, "/test/path/voice1.m4a")
@@ -29,7 +30,8 @@ class VoiceRecorderTests: XCTestCase {
             goodItems: [],
             badItems: [],
             published: false,
-            voiceNotes: []
+            voiceNotes: [],
+            type: .regular
         )
         let note1 = VoiceNote(id: UUID(), path: "/test/path/voice1.m4a")
         let note2 = VoiceNote(id: UUID(), path: "/test/path/voice2.m4a")
@@ -58,7 +60,8 @@ class VoiceRecorderTests: XCTestCase {
             voiceNotes: [
                 VoiceNote(id: UUID(), path: "/test/voice1.m4a"),
                 VoiceNote(id: UUID(), path: "/test/voice2.m4a")
-            ]
+            ],
+            type: .regular
         )
         let store = PostStore()
         let deviceName = store.getDeviceName()

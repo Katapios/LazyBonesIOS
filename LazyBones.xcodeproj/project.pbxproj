@@ -7,13 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-
 		7C4604FE2E3BB3B9003863E7 /* NewStatusLogicTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4604FA2E3BB3B9003863E7 /* NewStatusLogicTest.swift */; };
 		7C4604FF2E3BB3B9003863E7 /* ReportPeriodLogicTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4604FB2E3BB3B9003863E7 /* ReportPeriodLogicTest.swift */; };
 		7C4605002E3BB3B9003863E7 /* ReportStatusFlexibilityTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4604FC2E3BB3B9003863E7 /* ReportStatusFlexibilityTest.swift */; };
 		7C4605012E3BB3B9003863E7 /* NewDayLogicTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4604F92E3BB3B9003863E7 /* NewDayLogicTest.swift */; };
 		7C4605022E3BB3B9003863E7 /* ServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4604F52E3BB3B9003863E7 /* ServiceTests.swift */; };
-
 		7C8266262E1F92BA00365472 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7C8266252E1F92B900365472 /* WidgetKit.framework */; };
 		7C8266282E1F92BA00365472 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7C8266272E1F92BA00365472 /* SwiftUI.framework */; };
 		7C8266392E1F92BC00365472 /* LazyBonesWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7C8266232E1F92B900365472 /* LazyBonesWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -54,8 +52,6 @@
 
 /* Begin PBXFileReference section */
 		7C4604F52E3BB3B9003863E7 /* ServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceTests.swift; sourceTree = "<group>"; };
-
-
 		7C4604F92E3BB3B9003863E7 /* NewDayLogicTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewDayLogicTest.swift; sourceTree = "<group>"; };
 		7C4604FA2E3BB3B9003863E7 /* NewStatusLogicTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewStatusLogicTest.swift; sourceTree = "<group>"; };
 		7C4604FB2E3BB3B9003863E7 /* ReportPeriodLogicTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportPeriodLogicTest.swift; sourceTree = "<group>"; };

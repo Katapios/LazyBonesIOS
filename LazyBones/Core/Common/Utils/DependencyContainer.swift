@@ -102,6 +102,11 @@ extension DependencyContainer {
         // UserDefaults Manager
         register(UserDefaultsManager.self, instance: UserDefaultsManager.shared)
         
+        // Posts Provider (PostStore)
+        register(PostsProviderProtocol.self, factory: {
+            return PostStore.shared
+        })
+        
         // Notification Service
         register(NotificationServiceProtocol.self, factory: {
             NotificationService()
@@ -129,6 +134,16 @@ extension DependencyContainer {
             let notificationService = self.resolve(NotificationServiceProtocol.self)!
             let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
             return PostNotificationService(notificationService: notificationService, userDefaultsManager: userDefaultsManager)
+        })
+        
+        // Telegram Integration Service
+        register(TelegramIntegrationServiceType.self, factory: {
+            let telegramService = self.resolve(TelegramServiceProtocol.self)
+            let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
+            return TelegramIntegrationService(
+                userDefaultsManager: userDefaultsManager,
+                telegramService: telegramService
+            )
         })
         
         Logger.info("Core services registered successfully", log: Logger.general)

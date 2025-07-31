@@ -4,6 +4,7 @@ import WidgetKit
 import UserNotifications
 import BackgroundTasks // Added for BGTaskScheduler
 import ObjectiveC
+import Combine
 
 
 
@@ -141,6 +142,25 @@ class PostStore: ObservableObject, PostStoreProtocol {
         return DependencyContainer.shared.resolve(TelegramServiceProtocol.self)
     }
     
+    // НОВОЕ: TelegramIntegrationService для управления Telegram интеграцией
+    private lazy var telegramIntegrationService: TelegramIntegrationServiceType = {
+        let service = DependencyContainer.shared.resolve(TelegramIntegrationServiceType.self)!
+        
+        // Наблюдаем за изменениями внешних отчетов
+        if let observableService = service as? TelegramIntegrationService {
+            observableService.$externalPosts
+                .sink { [weak self] newExternalPosts in
+                    self?.externalPosts = newExternalPosts
+                }
+                .store(in: &cancellables)
+        }
+        
+        return service
+    }()
+    
+    // Для хранения подписок
+    private var cancellables = Set<AnyCancellable>()
+    
     init() {
         print("[DEBUG][INIT] PostStore инициализирован")
         
@@ -152,13 +172,16 @@ class PostStore: ObservableObject, PostStoreProtocol {
         
         loadSettings()
         loadTelegramSettings()
-        loadExternalPosts()
+        // loadExternalPosts() - теперь делегируется к telegramIntegrationService
         
         // НОВОЕ: Инициализация statusManager происходит автоматически через lazy var
         // loadReportStatus() - теперь делегируется к statusManager
         // loadForceUnlock() - теперь делегируется к statusManager
         // checkForNewDay() - теперь делегируется к statusManager
         // updateReportStatus() - теперь делегируется к statusManager
+        
+        // Синхронизируем внешние отчеты с новым сервисом
+        externalPosts = telegramIntegrationService.externalPosts
         
         updateTimeLeft()
         startTimer()
@@ -287,125 +310,62 @@ class PostStore: ObservableObject, PostStoreProtocol {
         Logger.debug("setTelegramService called - using DI container", log: Logger.general)
     }
     func saveTelegramSettings(token: String?, chatId: String?, botId: String?) {
+        // Делегируем к telegramIntegrationService
+        telegramIntegrationService.saveTelegramSettings(token: token, chatId: chatId, botId: botId)
+        
+        // Обновляем локальные свойства для обратной совместимости
         telegramToken = token
         telegramChatId = chatId
         telegramBotId = botId
-        let userDefaults = UserDefaults(suiteName: Self.appGroup)
-        userDefaults?.set(token, forKey: "telegramToken")
-        userDefaults?.set(chatId, forKey: "telegramChatId")
-        userDefaults?.set(botId, forKey: "telegramBotId")
-        
-        // Обновляем TelegramService в DI контейнере
-        if let token = token, !token.isEmpty {
-            DependencyContainer.shared.registerTelegramService(token: token)
-        }
     }
     func loadTelegramSettings() {
-        let userDefaults = UserDefaults(suiteName: Self.appGroup)
-        telegramToken = userDefaults?.string(forKey: "telegramToken")
-        telegramChatId = userDefaults?.string(forKey: "telegramChatId")
-        telegramBotId = userDefaults?.string(forKey: "telegramBotId")
-        lastUpdateId = userDefaults?.integer(forKey: "lastUpdateId")
+        // Делегируем к telegramIntegrationService
+        let settings = telegramIntegrationService.loadTelegramSettings()
         
-        // Обновляем TelegramService в DI контейнере если есть токен
-        if let token = telegramToken, !token.isEmpty {
-            DependencyContainer.shared.registerTelegramService(token: token)
-        }
+        // Обновляем локальные свойства для обратной совместимости
+        telegramToken = settings.token
+        telegramChatId = settings.chatId
+        telegramBotId = settings.botId
+        lastUpdateId = telegramIntegrationService.lastUpdateId
     }
     func saveLastUpdateId(_ updateId: Int) {
+        // Делегируем к telegramIntegrationService
+        telegramIntegrationService.saveLastUpdateId(updateId)
+        
+        // Обновляем локальное свойство для обратной совместимости
         lastUpdateId = updateId
-        let userDefaults = UserDefaults(suiteName: Self.appGroup)
-        userDefaults?.set(updateId, forKey: "lastUpdateId")
     }
     // Загрузка внешних отчетов из Telegram
     func fetchExternalPosts(completion: @escaping (Bool) -> Void) {
-        Logger.info("Fetching external posts from Telegram", log: Logger.telegram)
-        
-        // Проверяем, есть ли настройки Telegram
-        guard let token = telegramToken, !token.isEmpty else {
-            Logger.error("Telegram token is missing", log: Logger.telegram)
-            completion(false)
-            return
-        }
-        
-        Task {
-            do {
-                // Получаем TelegramService для обновлений
-                guard let telegramServiceForUpdates = telegramServiceForUpdates else {
-                    Logger.error("TelegramService not available", log: Logger.telegram)
-                    completion(false)
-                    return
-                }
-                
-                // Получаем обновления из Telegram
-                let updates = try await telegramServiceForUpdates.getUpdates(offset: lastUpdateId)
-                
-                // Фильтруем только сообщения (не редактирования)
-                let messages = updates.compactMap { update -> TelegramMessage? in
-                    if let message = update.message {
-                        return message
-                    }
-                    return nil
-                }
-                print("[DEBUG] Получено сообщений из Telegram: \(messages.count)")
-                for msg in messages {
-                    print("[DEBUG] message: \(msg)")
-                }
-                // Преобразуем сообщения в объекты Post
-                var newExternalPosts: [Post] = []
-                
-                for message in messages {
-                    if let post = convertTelegramMessageToPost(message) {
-                        newExternalPosts.append(post)
-                    }
-                }
-                
-                // Обновляем externalPosts на главном потоке
-                let finalExternalPosts = newExternalPosts
-                await MainActor.run {
-                    self.externalPosts = finalExternalPosts
-                    self.saveExternalPosts()
-                    
-                    // Обновляем lastUpdateId
-                    if let lastUpdate = updates.last {
-                        self.lastUpdateId = (lastUpdate.updateId ?? 0) + 1
-                        let userDefaults = UserDefaults(suiteName: Self.appGroup)
-                        userDefaults?.set(self.lastUpdateId, forKey: "lastUpdateId")
-                    }
-                    
-                    Logger.info("Fetched \(finalExternalPosts.count) external posts", log: Logger.telegram)
-                    completion(true)
-                }
-                
-            } catch {
-                await MainActor.run {
-                    Logger.error("Failed to fetch external posts: \(error)", log: Logger.telegram)
-                    completion(false)
-                }
+        // Делегируем к telegramIntegrationService
+        telegramIntegrationService.fetchExternalPosts { [weak self] success in
+            if success {
+                // Обновляем локальное свойство для обратной совместимости
+                self?.externalPosts = self?.telegramIntegrationService.externalPosts ?? []
             }
+            completion(success)
         }
     }
     func saveExternalPosts() {
-        guard let data = try? JSONEncoder().encode(externalPosts) else { return }
-        let userDefaults = UserDefaults(suiteName: Self.appGroup)
-        userDefaults?.set(data, forKey: "externalPosts")
+        // Делегируем к telegramIntegrationService
+        telegramIntegrationService.saveExternalPosts()
     }
+    
     func loadExternalPosts() {
-        let userDefaults = UserDefaults(suiteName: Self.appGroup)
-        guard let data = userDefaults?.data(forKey: "externalPosts"),
-              let decoded = try? JSONDecoder().decode([Post].self, from: data) else {
-            externalPosts = []
-            return
-        }
-        externalPosts = decoded
+        // Делегируем к telegramIntegrationService
+        telegramIntegrationService.loadExternalPosts()
+        
+        // Обновляем локальное свойство для обратной совместимости
+        externalPosts = telegramIntegrationService.externalPosts
     }
     func deleteBotMessages(completion: @escaping (Bool) -> Void) {
-        // TODO: Реализовать с новым TelegramService
-        completion(false)
+        // Делегируем к telegramIntegrationService
+        telegramIntegrationService.deleteBotMessages(completion: completion)
     }
+    
     func deleteAllBotMessages(completion: @escaping (Bool) -> Void) {
-        // TODO: Реализовать с новым TelegramService
-        completion(false)
+        // Делегируем к telegramIntegrationService
+        telegramIntegrationService.deleteAllBotMessages(completion: completion)
     }
     // MARK: - Report Status (ОБРАТНАЯ СОВМЕСТИМОСТЬ)
     func updateReportStatus() {
@@ -430,7 +390,8 @@ class PostStore: ObservableObject, PostStoreProtocol {
     // УДАЛЕНО: loadForceUnlock() - теперь делегируется к statusManager
     // Объединить локальные и внешние отчеты для отображения
     var allPosts: [Post] {
-        return posts + externalPosts
+        // Делегируем к telegramIntegrationService
+        return telegramIntegrationService.getAllPosts()
     }
 }
 
@@ -683,107 +644,8 @@ extension PostStore {
     
     /// Преобразует сообщение Telegram в объект Post
     private func convertTelegramMessageToPost(_ message: TelegramMessage) -> Post? {
-        // Если есть текст — обычный текстовый отчет
-        if let text = message.text, !text.isEmpty {
-            let post = Post(
-                id: UUID(),
-                date: Date(timeIntervalSince1970: TimeInterval(message.date ?? 0)),
-                goodItems: [],
-                badItems: [],
-                published: false,
-                voiceNotes: [],
-                type: .external,
-                isEvaluated: nil,
-                evaluationResults: nil,
-                authorUsername: message.from?.username,
-                authorFirstName: message.from?.firstName,
-                authorLastName: message.from?.lastName,
-                isExternal: true,
-                externalVoiceNoteURLs: nil,
-                externalText: text,
-                externalMessageId: message.messageId,
-                authorId: message.from?.id
-            )
-            return post
-        }
-        // Если есть голосовое сообщение
-        if let voice = message.voice {
-            // Формируем ссылку на файл Telegram (file_id)
-            let token = telegramToken ?? ""
-            let fileURL = URL(string: "https://api.telegram.org/file/bot\(token)/\(voice.fileId ?? "")")
-            let post = Post(
-                id: UUID(),
-                date: Date(timeIntervalSince1970: TimeInterval(message.date ?? 0)),
-                goodItems: [],
-                badItems: [],
-                published: false,
-                voiceNotes: [],
-                type: .external,
-                isEvaluated: nil,
-                evaluationResults: nil,
-                authorUsername: message.from?.username,
-                authorFirstName: message.from?.firstName,
-                authorLastName: message.from?.lastName,
-                isExternal: true,
-                externalVoiceNoteURLs: fileURL != nil ? [fileURL!] : nil,
-                externalText: message.caption ?? "[Голосовое сообщение]",
-                externalMessageId: message.messageId,
-                authorId: message.from?.id
-            )
-            return post
-        }
-        // Если есть аудио
-        if let audio = message.audio {
-            let token = telegramToken ?? ""
-            let fileURL = URL(string: "https://api.telegram.org/file/bot\(token)/\(audio.fileId ?? "")")
-            let post = Post(
-                id: UUID(),
-                date: Date(timeIntervalSince1970: TimeInterval(message.date ?? 0)),
-                goodItems: [],
-                badItems: [],
-                published: false,
-                voiceNotes: [],
-                type: .external,
-                isEvaluated: nil,
-                evaluationResults: nil,
-                authorUsername: message.from?.username,
-                authorFirstName: message.from?.firstName,
-                authorLastName: message.from?.lastName,
-                isExternal: true,
-                externalVoiceNoteURLs: fileURL != nil ? [fileURL!] : nil,
-                externalText: message.caption ?? "[Аудио сообщение]",
-                externalMessageId: message.messageId,
-                authorId: message.from?.id
-            )
-            return post
-        }
-        // Если есть документ
-        if let document = message.document {
-            let token = telegramToken ?? ""
-            let fileURL = URL(string: "https://api.telegram.org/file/bot\(token)/\(document.fileId ?? "")")
-            let post = Post(
-                id: UUID(),
-                date: Date(timeIntervalSince1970: TimeInterval(message.date ?? 0)),
-                goodItems: [],
-                badItems: [],
-                published: false,
-                voiceNotes: [],
-                type: .external,
-                isEvaluated: nil,
-                evaluationResults: nil,
-                authorUsername: message.from?.username,
-                authorFirstName: message.from?.firstName,
-                authorLastName: message.from?.lastName,
-                isExternal: true,
-                externalVoiceNoteURLs: fileURL != nil ? [fileURL!] : nil,
-                externalText: document.fileName ?? "[Документ]",
-                externalMessageId: message.messageId,
-                authorId: message.from?.id
-            )
-            return post
-        }
-        // Если ничего не подошло — не создаём Post
-        return nil
+        // Делегируем к telegramIntegrationService
+        return telegramIntegrationService.convertTelegramMessageToPost(message)
     }
 }
 

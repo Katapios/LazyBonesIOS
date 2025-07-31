@@ -11,6 +11,7 @@ protocol UserDefaultsManagerProtocol {
     func bool(forKey key: String) -> Bool
     func string(forKey key: String) -> String?
     func integer(forKey key: String) -> Int
+    func data(forKey key: String) -> Data?
     func loadPosts() -> [Post]
     func savePosts(_ posts: [Post])
 }
@@ -190,6 +191,10 @@ class UserDefaultsManager: UserDefaultsManagerProtocol {
     
     func integer(forKey key: String, defaultValue: Int) -> Int {
         return get(Int.self, forKey: key, defaultValue: defaultValue)
+    }
+    
+    func data(forKey key: String) -> Data? {
+        return userDefaults.data(forKey: key)
     }
     
     func loadPosts() -> [Post] {
