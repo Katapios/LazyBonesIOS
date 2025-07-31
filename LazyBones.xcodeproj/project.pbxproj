@@ -7,6 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+
+		7C4604FE2E3BB3B9003863E7 /* NewStatusLogicTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4604FA2E3BB3B9003863E7 /* NewStatusLogicTest.swift */; };
+		7C4604FF2E3BB3B9003863E7 /* ReportPeriodLogicTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4604FB2E3BB3B9003863E7 /* ReportPeriodLogicTest.swift */; };
+		7C4605002E3BB3B9003863E7 /* ReportStatusFlexibilityTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4604FC2E3BB3B9003863E7 /* ReportStatusFlexibilityTest.swift */; };
+		7C4605012E3BB3B9003863E7 /* NewDayLogicTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4604F92E3BB3B9003863E7 /* NewDayLogicTest.swift */; };
+		7C4605022E3BB3B9003863E7 /* ServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4604F52E3BB3B9003863E7 /* ServiceTests.swift */; };
+
 		7C8266262E1F92BA00365472 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7C8266252E1F92B900365472 /* WidgetKit.framework */; };
 		7C8266282E1F92BA00365472 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7C8266272E1F92BA00365472 /* SwiftUI.framework */; };
 		7C8266392E1F92BC00365472 /* LazyBonesWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7C8266232E1F92B900365472 /* LazyBonesWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -46,6 +53,13 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		7C4604F52E3BB3B9003863E7 /* ServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceTests.swift; sourceTree = "<group>"; };
+
+
+		7C4604F92E3BB3B9003863E7 /* NewDayLogicTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewDayLogicTest.swift; sourceTree = "<group>"; };
+		7C4604FA2E3BB3B9003863E7 /* NewStatusLogicTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewStatusLogicTest.swift; sourceTree = "<group>"; };
+		7C4604FB2E3BB3B9003863E7 /* ReportPeriodLogicTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportPeriodLogicTest.swift; sourceTree = "<group>"; };
+		7C4604FC2E3BB3B9003863E7 /* ReportStatusFlexibilityTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportStatusFlexibilityTest.swift; sourceTree = "<group>"; };
 		7C4B25752E20F66900602163 /* LazyBonesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LazyBonesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7C8266092E1F903200365472 /* LazyBones.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LazyBones.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7C8266232E1F92B900365472 /* LazyBonesWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LazyBonesWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -119,6 +133,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		7C4604F82E3BB3B9003863E7 /* ArchitectureTests */ = {
+			isa = PBXGroup;
+			children = (
+				7C4604F52E3BB3B9003863E7 /* ServiceTests.swift */,
+			);
+			path = ArchitectureTests;
+			sourceTree = "<group>";
+		};
 		7C8266002E1F903200365472 = {
 			isa = PBXGroup;
 			children = (
@@ -153,6 +175,11 @@
 		7CB9111A2E213A81005E97AD /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				7C4604F82E3BB3B9003863E7 /* ArchitectureTests */,
+				7C4604F92E3BB3B9003863E7 /* NewDayLogicTest.swift */,
+				7C4604FA2E3BB3B9003863E7 /* NewStatusLogicTest.swift */,
+				7C4604FB2E3BB3B9003863E7 /* ReportPeriodLogicTest.swift */,
+				7C4604FC2E3BB3B9003863E7 /* ReportStatusFlexibilityTest.swift */,
 				7CB911182E213A81005E97AD /* LazyBonesTests.swift */,
 				7CB911192E213A81005E97AD /* VoiceRecorderTests.swift */,
 			);
@@ -301,6 +328,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				7CB9111B2E213A81005E97AD /* LazyBonesTests.swift in Sources */,
+				7C4604FE2E3BB3B9003863E7 /* NewStatusLogicTest.swift in Sources */,
+				7C4604FF2E3BB3B9003863E7 /* ReportPeriodLogicTest.swift in Sources */,
+				7C4605002E3BB3B9003863E7 /* ReportStatusFlexibilityTest.swift in Sources */,
+				7C4605012E3BB3B9003863E7 /* NewDayLogicTest.swift in Sources */,
+				7C4605022E3BB3B9003863E7 /* ServiceTests.swift in Sources */,
 				7CB9111C2E213A81005E97AD /* VoiceRecorderTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

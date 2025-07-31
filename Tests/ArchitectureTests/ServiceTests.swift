@@ -50,7 +50,7 @@ class ServiceTests: XCTestCase {
         
         // Then
         XCTAssertEqual(loadedSettings.enabled, enabled)
-        XCTAssertEqual(loadedSettings.time, time, accuracy: 1.0) // 1 second tolerance
+        XCTAssertEqual(loadedSettings.time.timeIntervalSince1970, time.timeIntervalSince1970, accuracy: 1.0) // 1 second tolerance
     }
     
     func testUserDefaultsManager_SaveAndLoadNotificationSettings() {

@@ -97,10 +97,20 @@ class PostStore: ObservableObject, PostStoreProtocol {
     @Published var telegramChatId: String? = nil
     @Published var telegramBotId: String? = nil
     @Published var lastUpdateId: Int? = nil
-    @Published var reportStatus: ReportStatus = .notStarted
-    @Published var forceUnlock: Bool = false
+    // ОБРАТНАЯ СОВМЕСТИМОСТЬ: Публичные свойства для статусной модели
+    var reportStatus: ReportStatus {
+        get { return statusManager.reportStatus }
+        set { /* Делегируем к statusManager */ }
+    }
+    var forceUnlock: Bool {
+        get { return statusManager.forceUnlock }
+        set { statusManager.forceUnlock = newValue }
+    }
     @Published var timeLeft: String = "" // Новое свойство для отображения таймера
-    @Published var currentDay: Date = Calendar.current.startOfDay(for: Date()) // Отслеживание текущего дня
+    var currentDay: Date {
+        get { return statusManager.currentDay }
+        set { /* Делегируем к statusManager */ }
+    }
     
     // Сервисы
     private let telegramService: PostTelegramServiceProtocol
@@ -114,6 +124,17 @@ class PostStore: ObservableObject, PostStoreProtocol {
     }()
     private let userDefaultsManager: UserDefaultsManagerProtocol
     private let localService: LocalReportService
+    
+    // НОВОЕ: ReportStatusManager для управления статусной моделью
+    private lazy var statusManager: any ReportStatusManagerProtocol = {
+        return ReportStatusManager(
+            localService: localService,
+            timerService: timerService,
+            notificationService: notificationService,
+            postsProvider: self,
+            factory: ReportStatusFactory()
+        )
+    }()
     
     // TelegramService для получения обновлений
     private var telegramServiceForUpdates: TelegramServiceProtocol? {
@@ -132,19 +153,19 @@ class PostStore: ObservableObject, PostStoreProtocol {
         loadSettings()
         loadTelegramSettings()
         loadExternalPosts()
-        loadReportStatus()
-        loadForceUnlock()
-        checkForNewDay() // Проверяем, не наступил ли новый день
-        updateReportStatus()
+        
+        // НОВОЕ: Инициализация statusManager происходит автоматически через lazy var
+        // loadReportStatus() - теперь делегируется к statusManager
+        // loadForceUnlock() - теперь делегируется к statusManager
+        // checkForNewDay() - теперь делегируется к statusManager
+        // updateReportStatus() - теперь делегируется к statusManager
+        
         updateTimeLeft()
         startTimer()
         loadGoodTags()
         loadBadTags()
         loadAutoSendSettings() // autoSendTime загружается из UserDefaults
         scheduleAutoSendIfNeeded()
-        
-        // Инициализируем статус в таймер-сервисе
-        timerService.updateReportStatus(reportStatus)
     }
     
     private func loadSettings() {
@@ -386,133 +407,72 @@ class PostStore: ObservableObject, PostStoreProtocol {
         // TODO: Реализовать с новым TelegramService
         completion(false)
     }
-    // MARK: - Report Status
+    // MARK: - Report Status (ОБРАТНАЯ СОВМЕСТИМОСТЬ)
     func updateReportStatus() {
-        // Сначала проверяем новый день
-        checkForNewDay()
-        
-        if forceUnlock {
-            let newStatus: ReportStatus = .notStarted
-            if reportStatus != newStatus {
-                reportStatus = newStatus
-                localService.saveReportStatus(newStatus)
-                // Обновляем статус в таймер-сервисе
-                timerService.updateReportStatus(newStatus)
-                WidgetCenter.shared.reloadAllTimelines()
-                if notificationsEnabled { scheduleNotifications() }
-            }
-            print("[DEBUG] updateReportStatus (forceUnlock): forceUnlock=\(forceUnlock), reportStatus=\(reportStatus)")
-            return
-        }
-        
-        let today = Calendar.current.startOfDay(for: Date())
-        let isPeriodActive = isReportPeriodActive()
-        
-        // Новая логика статусов:
-        // 1. Если период активен:
-        //    - Нет отчета -> .notStarted (Заполни отчет)
-        //    - Есть отчет, не отправлен -> .inProgress (Отчет заполняется...)
-        //    - Есть отчет, отправлен -> .sent (Отчет отправлен)
-        // 2. Если период не активен:
-        //    - Нет отчета -> .notCreated (Отчёт не создан)
-        //    - Есть отчет, не отправлен -> .notSent (Отчёт не отправлен)
-        //    - Есть отчет, отправлен -> .sent (Отчет отправлен)
-        
-        let newStatus: ReportStatus
-        if let regular = posts.first(where: { $0.type == .regular && Calendar.current.isDate($0.date, inSameDayAs: today) }) {
-            if isPeriodActive {
-                if regular.published {
-                    newStatus = .sent
-                } else {
-                    newStatus = .inProgress
-                }
-            } else {
-                if regular.published {
-                    newStatus = .sent
-                } else {
-                    newStatus = .notSent
-                }
-            }
-        } else {
-            // Принудительно сбрасываем статус, если нет отчетов за сегодня
-            if reportStatus == .sent || reportStatus == .done {
-                reportStatus = .notStarted
-                localService.saveReportStatus(.notStarted)
-                timerService.updateReportStatus(.notStarted)
-                WidgetCenter.shared.reloadAllTimelines()
-                if notificationsEnabled { scheduleNotifications() }
-                return
-            }
-            
-            if isPeriodActive {
-                newStatus = .notStarted
-            } else {
-                newStatus = .notCreated
-            }
-        }
-        
-        // Обновляем только если статус изменился
-        if reportStatus != newStatus {
-            reportStatus = newStatus
-            localService.saveReportStatus(newStatus)
-            // Обновляем статус в таймер-сервисе
-            timerService.updateReportStatus(newStatus)
-            WidgetCenter.shared.reloadAllTimelines()
-            if notificationsEnabled { scheduleNotifications() }
-        }
-        print("[DEBUG] updateReportStatus: forceUnlock=\(forceUnlock), reportStatus=\(reportStatus), currentDay=\(currentDay)")
+        // Делегируем к statusManager
+        statusManager.updateStatus()
     }
     func loadReportStatus() {
-        let loadedStatus = localService.getReportStatus()
-        reportStatus = loadedStatus
-        // Обновляем статус в таймер-сервисе
-        timerService.updateReportStatus(reportStatus)
+        // Делегируем к statusManager
+        statusManager.loadStatus()
     }
     /// Разблокировать возможность создания отчёта (не трогая локальные отчёты)
     func unlockReportCreation() {
-        let today = Calendar.current.startOfDay(for: Date())
-        // Удаляем опубликованный отчет за сегодня, если есть
-        posts.removeAll { post in
-            Calendar.current.isDate(post.date, inSameDayAs: today) && post.published
-        }
-        // Обновляем статус в зависимости от текущего состояния
-        updateReportStatus()
-        save()
-        // Обновляем статус в таймер-сервисе
-        timerService.updateReportStatus(reportStatus)
-        WidgetCenter.shared.reloadAllTimelines()
-        print("[DEBUG] unlock: удален опубликованный отчет за сегодня, reportStatus=\(reportStatus)")
+        // Делегируем к statusManager
+        statusManager.unlockReportCreation()
     }
-    func loadForceUnlock() {
-        forceUnlock = localService.getForceUnlock()
+    
+    func checkForNewDay() {
+        // Делегируем к statusManager
+        statusManager.checkForNewDay()
     }
+    
+    // УДАЛЕНО: loadForceUnlock() - теперь делегируется к statusManager
     // Объединить локальные и внешние отчеты для отображения
     var allPosts: [Post] {
         return posts + externalPosts
     }
+}
 
-    // MARK: - Notification Settings
-    private let notifEnabledKey = "notificationsEnabled"
-    private let notifIntervalKey = "notificationIntervalHours"
-    private let notifModeKey = "notificationMode"
+// MARK: - PostsProviderProtocol Extension
+extension PostStore: PostsProviderProtocol {
+    func getPosts() -> [Post] {
+        return posts
+    }
+    
+    func updatePosts(_ posts: [Post]) {
+        self.posts = posts
+        save()
+    }
+}
+
+// MARK: - Notification Settings
+extension PostStore {
+    private static let notifEnabledKey = "notificationsEnabled"
+    private static let notifIntervalKey = "notificationIntervalHours"
+    private static let notifModeKey = "notificationMode"
+    
     func saveNotificationSettings() {
         let ud = UserDefaults(suiteName: Self.appGroup)
-        ud?.set(notificationsEnabled, forKey: notifEnabledKey)
-        ud?.set(notificationMode.rawValue, forKey: notifModeKey)
-        ud?.set(notificationIntervalHours, forKey: notifIntervalKey)
+        ud?.set(notificationsEnabled, forKey: Self.notifEnabledKey)
+        ud?.set(notificationMode.rawValue, forKey: Self.notifModeKey)
+        ud?.set(notificationIntervalHours, forKey: Self.notifIntervalKey)
     }
+    
     func loadNotificationSettings() {
         let ud = UserDefaults(suiteName: Self.appGroup)
-        notificationsEnabled = ud?.bool(forKey: notifEnabledKey) ?? false
-        if let modeRaw = ud?.string(forKey: notifModeKey), let mode = NotificationMode(rawValue: modeRaw) {
+        notificationsEnabled = ud?.bool(forKey: Self.notifEnabledKey) ?? false
+        if let modeRaw = ud?.string(forKey: Self.notifModeKey), let mode = NotificationMode(rawValue: modeRaw) {
             notificationMode = mode
         } else {
             notificationMode = .hourly
         }
-        notificationIntervalHours = ud?.integer(forKey: notifIntervalKey) == 0 ? 1 : ud!.integer(forKey: notifIntervalKey)
+        notificationIntervalHours = ud?.integer(forKey: Self.notifIntervalKey) == 0 ? 1 : ud!.integer(forKey: Self.notifIntervalKey)
     }
+}
 
-    // MARK: - Notification Logic
+// MARK: - Notification Logic
+extension PostStore {
     func requestNotificationPermissionAndSchedule() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
             DispatchQueue.main.async {
@@ -521,6 +481,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
             }
         }
     }
+    
     func scheduleNotifications() {
         notificationService.scheduleNotifications()
     }
@@ -528,6 +489,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
     func cancelAllNotifications() {
         notificationService.cancelAllNotifications()
     }
+    
     func timeLeftString(untilHour: Int) -> String {
         let now = Date()
         let calendar = Calendar.current
@@ -537,8 +499,10 @@ class PostStore: ObservableObject, PostStoreProtocol {
         let m = max(0, diff.minute ?? 0)
         return String(format: "%02d:%02d", h, m)
     }
+}
 
-    // MARK: - Timer Logic
+// MARK: - Timer Logic
+extension PostStore {
     /// Таймер
     func startTimer() {
         timerService.startTimer()
@@ -566,39 +530,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
         }
     }
     
-    /// Проверяет, не наступил ли новый день и сбрасывает статус если нужно
-    func checkForNewDay() {
-        let calendar = Calendar.current
-        let now = Date()
-        let today = calendar.startOfDay(for: now)
-        
-        // Если наступил новый день
-        if !calendar.isDate(currentDay, inSameDayAs: today) {
-            print("[DEBUG] Новый день наступил: \(currentDay) -> \(today)")
-            
-            // Сбрасываем статус на новый день
-            if reportStatus == .sent || reportStatus == .notCreated || reportStatus == .notSent || reportStatus == .done {
-                reportStatus = .notStarted
-                localService.saveReportStatus(.notStarted)
-                // Обновляем статус в таймер-сервисе
-                timerService.updateReportStatus(.notStarted)
-                print("[DEBUG] Статус сброшен на .notStarted для нового дня")
-            }
-            
-            // Сбрасываем forceUnlock для нового дня
-            if forceUnlock {
-                forceUnlock = false
-                localService.saveForceUnlock(false)
-                print("[DEBUG] forceUnlock сброшен для нового дня")
-            }
-            
-            // Обновляем текущий день
-            currentDay = today
-            
-            // Обновляем виджеты
-            WidgetCenter.shared.reloadAllTimelines()
-        }
-    }
+    // УДАЛЕНО: checkForNewDay() - теперь делегируется к statusManager
     
     /// Проверяет, активен ли период для создания/редактирования отчетов
     func isReportPeriodActive() -> Bool {

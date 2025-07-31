@@ -17,6 +17,9 @@ protocol PostNotificationServiceProtocol {
     
     /// Получить все доставленные уведомления
     func getDeliveredNotifications() async -> [UNNotification]
+    
+    /// Запланировать уведомления при необходимости
+    func scheduleNotificationsIfNeeded()
 }
 
 class PostNotificationService: PostNotificationServiceProtocol {
@@ -122,7 +125,8 @@ class PostNotificationService: PostNotificationServiceProtocol {
         return ReportStatus(rawValue: statusString) ?? .notStarted
     }
     
-
-    
-
+    func scheduleNotificationsIfNeeded() {
+        guard isNotificationsEnabled() else { return }
+        scheduleNotifications()
+    }
 } 

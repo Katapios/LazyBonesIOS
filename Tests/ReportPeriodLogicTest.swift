@@ -22,7 +22,8 @@ class ReportPeriodLogicTest: XCTestCase {
         print("Период активен: \(isActive)")
         
         // Проверяем, что логика работает
-        if now.hour >= startHour && now.hour < endHour {
+        let currentHour = calendar.component(.hour, from: now)
+        if currentHour >= startHour && currentHour < endHour {
             XCTAssertTrue(isActive, "Период должен быть активен в рабочее время")
         } else {
             XCTAssertFalse(isActive, "Период не должен быть активен вне рабочего времени")
