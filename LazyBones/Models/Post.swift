@@ -15,7 +15,7 @@ struct Post: Codable, Identifiable {
     let date: Date
     var goodItems: [String]
     var badItems: [String]
-    let published: Bool
+    var published: Bool
     var voiceNotes: [VoiceNote] // Массив голосовых заметок
     var type: PostType // Тип отчета: обычный, кастомный (план/теги)
     var isEvaluated: Bool? // true, если отчет оценен (только для кастомных)
@@ -43,15 +43,24 @@ enum ReportStatus: String, Codable {
     case notStarted = "notStarted"
     case inProgress = "inProgress"
     case done = "done"
+    case notCreated = "notCreated"
+    case notSent = "notSent"
+    case sent = "sent"
     
     var displayName: String {
         switch self {
         case .notStarted:
-            return "Не начат"
+            return "Заполни отчет"
         case .inProgress:
-            return "В процессе"
+            return "Отчет заполняется..."
         case .done:
             return "Завершен"
+        case .notCreated:
+            return "Отчёт не создан"
+        case .notSent:
+            return "Отчёт не отправлен"
+        case .sent:
+            return "Отчет отправлен"
         }
     }
 }
@@ -91,6 +100,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
     @Published var reportStatus: ReportStatus = .notStarted
     @Published var forceUnlock: Bool = false
     @Published var timeLeft: String = "" // Новое свойство для отображения таймера
+    @Published var currentDay: Date = Calendar.current.startOfDay(for: Date()) // Отслеживание текущего дня
     
     // Сервисы
     private let telegramService: PostTelegramServiceProtocol
@@ -124,6 +134,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
         loadExternalPosts()
         loadReportStatus()
         loadForceUnlock()
+        checkForNewDay() // Проверяем, не наступил ли новый день
         updateReportStatus()
         updateTimeLeft()
         startTimer()
@@ -131,6 +142,9 @@ class PostStore: ObservableObject, PostStoreProtocol {
         loadBadTags()
         loadAutoSendSettings() // autoSendTime загружается из UserDefaults
         scheduleAutoSendIfNeeded()
+        
+        // Инициализируем статус в таймер-сервисе
+        timerService.updateReportStatus(reportStatus)
     }
     
     private func loadSettings() {
@@ -374,49 +388,85 @@ class PostStore: ObservableObject, PostStoreProtocol {
     }
     // MARK: - Report Status
     func updateReportStatus() {
+        // Сначала проверяем новый день
+        checkForNewDay()
+        
         if forceUnlock {
             let newStatus: ReportStatus = .notStarted
             if reportStatus != newStatus {
                 reportStatus = newStatus
                 localService.saveReportStatus(newStatus)
+                // Обновляем статус в таймер-сервисе
+                timerService.updateReportStatus(newStatus)
                 WidgetCenter.shared.reloadAllTimelines()
                 if notificationsEnabled { scheduleNotifications() }
             }
             print("[DEBUG] updateReportStatus (forceUnlock): forceUnlock=\(forceUnlock), reportStatus=\(reportStatus)")
             return
         }
+        
         let today = Calendar.current.startOfDay(for: Date())
-        // Новый алгоритм:
-        // 1. Если есть опубликованный обычный отчет за сегодня — .done
-        // 2. Если есть обычный отчет за сегодня (не опубликован, но есть good/bad/voice) — .inProgress
-        // 3. Если есть только кастомный отчет за сегодня — .inProgress
-        // 4. Иначе — .notStarted
+        let isPeriodActive = isReportPeriodActive()
+        
+        // Новая логика статусов:
+        // 1. Если период активен:
+        //    - Нет отчета -> .notStarted (Заполни отчет)
+        //    - Есть отчет, не отправлен -> .inProgress (Отчет заполняется...)
+        //    - Есть отчет, отправлен -> .sent (Отчет отправлен)
+        // 2. Если период не активен:
+        //    - Нет отчета -> .notCreated (Отчёт не создан)
+        //    - Есть отчет, не отправлен -> .notSent (Отчёт не отправлен)
+        //    - Есть отчет, отправлен -> .sent (Отчет отправлен)
+        
         let newStatus: ReportStatus
         if let regular = posts.first(where: { $0.type == .regular && Calendar.current.isDate($0.date, inSameDayAs: today) }) {
-            if regular.published {
-                newStatus = .done
-            } else if !regular.goodItems.isEmpty || !regular.badItems.isEmpty || !regular.voiceNotes.isEmpty {
-                newStatus = .inProgress
+            if isPeriodActive {
+                if regular.published {
+                    newStatus = .sent
+                } else {
+                    newStatus = .inProgress
+                }
             } else {
-                newStatus = .notStarted
+                if regular.published {
+                    newStatus = .sent
+                } else {
+                    newStatus = .notSent
+                }
             }
-        } else if posts.contains(where: { $0.type == .custom && Calendar.current.isDate($0.date, inSameDayAs: today) }) {
-            newStatus = .inProgress
         } else {
-            newStatus = .notStarted
+            // Принудительно сбрасываем статус, если нет отчетов за сегодня
+            if reportStatus == .sent || reportStatus == .done {
+                reportStatus = .notStarted
+                localService.saveReportStatus(.notStarted)
+                timerService.updateReportStatus(.notStarted)
+                WidgetCenter.shared.reloadAllTimelines()
+                if notificationsEnabled { scheduleNotifications() }
+                return
+            }
+            
+            if isPeriodActive {
+                newStatus = .notStarted
+            } else {
+                newStatus = .notCreated
+            }
         }
         
         // Обновляем только если статус изменился
         if reportStatus != newStatus {
             reportStatus = newStatus
             localService.saveReportStatus(newStatus)
+            // Обновляем статус в таймер-сервисе
+            timerService.updateReportStatus(newStatus)
             WidgetCenter.shared.reloadAllTimelines()
             if notificationsEnabled { scheduleNotifications() }
         }
-        print("[DEBUG] updateReportStatus: forceUnlock=\(forceUnlock), reportStatus=\(reportStatus)")
+        print("[DEBUG] updateReportStatus: forceUnlock=\(forceUnlock), reportStatus=\(reportStatus), currentDay=\(currentDay)")
     }
     func loadReportStatus() {
-        reportStatus = localService.getReportStatus()
+        let loadedStatus = localService.getReportStatus()
+        reportStatus = loadedStatus
+        // Обновляем статус в таймер-сервисе
+        timerService.updateReportStatus(reportStatus)
     }
     /// Разблокировать возможность создания отчёта (не трогая локальные отчёты)
     func unlockReportCreation() {
@@ -425,9 +475,11 @@ class PostStore: ObservableObject, PostStoreProtocol {
         posts.removeAll { post in
             Calendar.current.isDate(post.date, inSameDayAs: today) && post.published
         }
-        reportStatus = .notStarted
+        // Обновляем статус в зависимости от текущего состояния
+        updateReportStatus()
         save()
-        localService.saveReportStatus(.notStarted)
+        // Обновляем статус в таймер-сервисе
+        timerService.updateReportStatus(reportStatus)
         WidgetCenter.shared.reloadAllTimelines()
         print("[DEBUG] unlock: удален опубликованный отчет за сегодня, reportStatus=\(reportStatus)")
     }
@@ -497,7 +549,12 @@ class PostStore: ObservableObject, PostStoreProtocol {
     }
     
     func updateTimeLeft() {
+        // Обновляем статус в таймер-сервисе
+        timerService.updateReportStatus(reportStatus)
         timerService.updateTimeLeft()
+        
+        // Проверяем, не наступил ли новый день
+        checkForNewDay()
         
         // Обновляем статус отчета при необходимости
         let calendar = Calendar.current
@@ -507,6 +564,60 @@ class PostStore: ObservableObject, PostStoreProtocol {
         if !hasTodayPost || (reportStatus == .done && hasTodayPost) {
             updateReportStatus()
         }
+    }
+    
+    /// Проверяет, не наступил ли новый день и сбрасывает статус если нужно
+    func checkForNewDay() {
+        let calendar = Calendar.current
+        let now = Date()
+        let today = calendar.startOfDay(for: now)
+        
+        // Если наступил новый день
+        if !calendar.isDate(currentDay, inSameDayAs: today) {
+            print("[DEBUG] Новый день наступил: \(currentDay) -> \(today)")
+            
+            // Сбрасываем статус на новый день
+            if reportStatus == .sent || reportStatus == .notCreated || reportStatus == .notSent || reportStatus == .done {
+                reportStatus = .notStarted
+                localService.saveReportStatus(.notStarted)
+                // Обновляем статус в таймер-сервисе
+                timerService.updateReportStatus(.notStarted)
+                print("[DEBUG] Статус сброшен на .notStarted для нового дня")
+            }
+            
+            // Сбрасываем forceUnlock для нового дня
+            if forceUnlock {
+                forceUnlock = false
+                localService.saveForceUnlock(false)
+                print("[DEBUG] forceUnlock сброшен для нового дня")
+            }
+            
+            // Обновляем текущий день
+            currentDay = today
+            
+            // Обновляем виджеты
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+    }
+    
+    /// Проверяет, активен ли период для создания/редактирования отчетов
+    func isReportPeriodActive() -> Bool {
+        let calendar = Calendar.current
+        let now = Date()
+        let start = calendar.date(
+            bySettingHour: notificationStartHour,
+            minute: 0,
+            second: 0,
+            of: now
+        )!
+        let end = calendar.date(
+            bySettingHour: notificationEndHour,
+            minute: 0,
+            second: 0,
+            of: now
+        )!
+        
+        return now >= start && now < end
     }
     // MARK: - Good/Bad Tags
     func loadTags() {
@@ -602,14 +713,32 @@ class PostStore: ObservableObject, PostStoreProtocol {
     }
     private static var autoSendTimerKey: UInt8 = 0
     func performAutoSendReport() {
+        // Проверяем, не наступил ли новый день перед автоотправкой
+        checkForNewDay()
+        
         telegramService.performAutoSendReport()
         
-        // Обновляем статус после отправки
+        // Обновляем статус после отправки только если это еще сегодня
         DispatchQueue.main.async { [weak self] in
-            self?.reportStatus = .done
-            self?.localService.saveReportStatus(.done)
-            self?.forceUnlock = false
-            self?.localService.saveForceUnlock(false)
+            guard let self = self else { return }
+            
+            // Проверяем еще раз, что мы все еще в том же дне
+            let calendar = Calendar.current
+            let now = Date()
+            let today = calendar.startOfDay(for: now)
+            
+            if calendar.isDate(self.currentDay, inSameDayAs: today) {
+                self.reportStatus = .sent
+                self.localService.saveReportStatus(.sent)
+                self.forceUnlock = false
+                self.localService.saveForceUnlock(false)
+                // Обновляем статус в таймер-сервисе
+                self.timerService.updateReportStatus(.sent)
+                print("[DEBUG] Автоотправка: статус установлен в .sent")
+            } else {
+                print("[DEBUG] Автоотправка: новый день наступил, статус не изменен")
+            }
+            
             WidgetCenter.shared.reloadAllTimelines()
         }
     }

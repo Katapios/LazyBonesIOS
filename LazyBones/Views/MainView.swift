@@ -8,8 +8,12 @@ struct MainView: View {
 
     var postForToday: Post? {
         store.posts.first(where: {
-            Calendar.current.isDateInToday($0.date) && !$0.published
+            Calendar.current.isDateInToday($0.date)
         })
+    }
+    
+    var isReportPeriodActive: Bool {
+        return store.isReportPeriodActive()
     }
 
     var body: some View {
@@ -21,11 +25,11 @@ struct MainView: View {
                     ? "Редактировать отчёт" : "Создать отчёт",
                 icon: postForToday != nil
                     ? "pencil.circle.fill" : "plus.circle.fill",
-                color: store.reportStatus == .done ? .gray : .black,
+                color: (store.reportStatus == .sent || store.reportStatus == .notCreated || store.reportStatus == .notSent) ? .gray : .black,
                 action: { 
                     appCoordinator.switchToTab(.planning)
                 },
-                isEnabled: store.reportStatus != .done
+                isEnabled: store.reportStatus == .notStarted || store.reportStatus == .inProgress
             )
             .padding(.horizontal)
             .padding(.vertical, 40)
@@ -33,6 +37,14 @@ struct MainView: View {
         .padding(.vertical, 16)
         .frame(maxHeight: .infinity, alignment: .center)
         .padding()
+        .onAppear {
+            // Проверяем новый день при появлении экрана
+            store.checkForNewDay()
+        }
+        .onChange(of: Calendar.current.startOfDay(for: Date())) { oldDay, newDay in
+            // Проверяем новый день при смене дня
+            store.checkForNewDay()
+        }
     }
 
     // Количество good и bad пунктов за сегодня

@@ -41,22 +41,42 @@ struct DailyReportView: View {
     }
     
     var body: some View {
-        VStack {
-            planSection
-        }
-        .hideKeyboardOnTap()
-        .onAppear {
-            // Загружаем сохраненные данные при появлении
-            loadSavedData()
-            lastPlanDate = Calendar.current.startOfDay(for: Date())
-        }
-        .onChange(of: Calendar.current.startOfDay(for: Date()), initial: false) { oldDay, newDay in
-            if newDay != lastPlanDate {
-                goodItems = []
-                badItems = []
-                voiceNotes = []
-                savePlan()
-                lastPlanDate = newDay
+        if store.reportStatus == .sent || store.reportStatus == .notCreated || store.reportStatus == .notSent {
+            VStack(spacing: 24) {
+                Spacer()
+                Image(systemName: "clock.arrow.circlepath")
+                    .resizable()
+                    .frame(width: 60, height: 60)
+                    .foregroundColor(.gray)
+                Text("Время создания локального отчета на сегодня подошло к концу.")
+                    .font(.title3)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.secondary)
+                Text("Ждите наступления следующего дня — тогда снова появится возможность создать или редактировать отчет.")
+                    .font(.body)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+            .padding()
+        } else {
+            VStack {
+                planSection
+            }
+            .hideKeyboardOnTap()
+            .onAppear {
+                // Загружаем сохраненные данные при появлении
+                loadSavedData()
+                lastPlanDate = Calendar.current.startOfDay(for: Date())
+            }
+            .onChange(of: Calendar.current.startOfDay(for: Date()), initial: false) { oldDay, newDay in
+                if newDay != lastPlanDate {
+                    goodItems = []
+                    badItems = []
+                    voiceNotes = []
+                    savePlan()
+                    lastPlanDate = newDay
+                }
             }
         }
     }
@@ -492,7 +512,7 @@ struct DailyReportView: View {
                 date: Date(),
                 goodItems: filteredGood,
                 badItems: filteredBad,
-                published: true,
+                published: false,
                 voiceNotes: voiceNotes,
                 type: .regular,
                 authorUsername: nil,
@@ -512,7 +532,7 @@ struct DailyReportView: View {
                 date: Date(),
                 goodItems: filteredGood,
                 badItems: filteredBad,
-                published: true,
+                published: false,
                 voiceNotes: voiceNotes,
                 type: .regular,
                 authorUsername: nil,
@@ -526,6 +546,8 @@ struct DailyReportView: View {
             )
             store.add(post: post)
         }
+        // Очищаем статус публикации при сохранении
+        publishStatus = nil
         savePlan()
     }
     
@@ -551,6 +573,15 @@ struct DailyReportView: View {
                 ) { allSuccess in
                     DispatchQueue.main.async {
                         if allSuccess {
+                            // Помечаем отчет как отправленный
+                            if let idx = self.store.posts.firstIndex(where: { $0.id == regular.id }) {
+                                var updated = self.store.posts[idx]
+                                updated.published = true
+                                self.store.posts[idx] = updated
+                                self.store.save()
+                                // Обновляем статус после отправки
+                                self.store.updateReportStatus()
+                            }
                             self.publishStatus = "Отчет успешно опубликован с голосовыми заметками!"
                         } else {
                             self.publishStatus = "Ошибка отправки голосовых заметок"
@@ -560,6 +591,15 @@ struct DailyReportView: View {
             } else {
                 DispatchQueue.main.async {
                     if success {
+                        // Помечаем отчет как отправленный
+                        if let idx = self.store.posts.firstIndex(where: { $0.id == regular.id }) {
+                            var updated = self.store.posts[idx]
+                            updated.published = true
+                            self.store.posts[idx] = updated
+                            self.store.save()
+                            // Обновляем статус после отправки
+                            self.store.updateReportStatus()
+                        }
                         self.publishStatus = "Отчет успешно опубликован!"
                     } else {
                         self.publishStatus = "Ошибка отправки: неверный токен или chat_id"

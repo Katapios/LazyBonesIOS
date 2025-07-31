@@ -10,7 +10,7 @@ struct DailyPlanningFormView: View {
     @State private var selectedTab = 0 // По умолчанию открывается первый экран (третий экран)
     
     var postForToday: Post? {
-        store.posts.first(where: { Calendar.current.isDateInToday($0.date) && !$0.published })
+        store.posts.first(where: { Calendar.current.isDateInToday($0.date) })
     }
     
     var body: some View {

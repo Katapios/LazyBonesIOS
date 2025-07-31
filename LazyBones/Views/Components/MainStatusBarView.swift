@@ -11,6 +11,9 @@ struct MainStatusBarView: View {
         case .done: return "Отчёт отправлен"
         case .inProgress: return "Отчет заполняется..."
         case .notStarted: return "Заполни отчет!"
+        case .notCreated: return "Отчёт не создан"
+        case .notSent: return "Отчёт не отправлен"
+        case .sent: return "Отчет отправлен"
         }
     }
     var reportStatusColor: Color {
@@ -18,6 +21,9 @@ struct MainStatusBarView: View {
         case .done: return .black
         case .inProgress: return .black
         case .notStarted: return .gray
+        case .notCreated: return .gray
+        case .notSent: return .gray
+        case .sent: return .black
         }
     }
     var timerLabel: String {
@@ -35,7 +41,14 @@ struct MainStatusBarView: View {
             second: 0,
             of: now
         )!
-        if store.reportStatus == .done {
+        
+        // Проверяем, не наступил ли новый день
+        let today = calendar.startOfDay(for: now)
+        if !calendar.isDate(store.currentDay, inSameDayAs: today) {
+            return "Новый день"
+        }
+        
+        if store.reportStatus == .sent || store.reportStatus == .notCreated || store.reportStatus == .notSent {
             return "До старта"
         } else if now < start {
             return "До старта"
@@ -61,7 +74,13 @@ struct MainStatusBarView: View {
             of: now
         )!
         
-        if store.reportStatus == .done {
+        // Проверяем, не наступил ли новый день
+        let today = calendar.startOfDay(for: now)
+        if !calendar.isDate(store.currentDay, inSameDayAs: today) {
+            return "00:00:00"
+        }
+        
+        if store.reportStatus == .sent || store.reportStatus == .notCreated || store.reportStatus == .notSent {
             let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
             let nextStart = calendar.date(bySettingHour: store.notificationStartHour, minute: 0, second: 0, of: tomorrow)!
             let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: nextStart)
@@ -92,6 +111,13 @@ struct MainStatusBarView: View {
             second: 0,
             of: now
         )!
+        
+        // Проверяем, не наступил ли новый день
+        let today = calendar.startOfDay(for: now)
+        if !calendar.isDate(store.currentDay, inSameDayAs: today) {
+            return 0.0 // Сбрасываем прогресс для нового дня
+        }
+        
         if now < start { return 0 }
         if now > end { return 1 }
         return min(1, max(0, now.timeIntervalSince(start) / end.timeIntervalSince(start)))
@@ -139,9 +165,15 @@ struct MainStatusBarView: View {
         .padding(.vertical, 8)
         .onAppear {
             startTimer()
+            // Проверяем новый день при появлении
+            store.checkForNewDay()
         }
         .onDisappear {
             stopTimer()
+        }
+        .onChange(of: Calendar.current.startOfDay(for: Date())) { oldDay, newDay in
+            // Проверяем новый день при смене дня
+            store.checkForNewDay()
         }
     }
     

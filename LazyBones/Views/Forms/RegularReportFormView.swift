@@ -64,7 +64,7 @@ struct RegularReportFormView: View {
     }
 
     var body: some View {
-        if store.reportStatus == .done {
+        if store.reportStatus == .sent || store.reportStatus == .notCreated || store.reportStatus == .notSent {
             VStack(spacing: 24) {
                 Spacer()
                 Image(systemName: "clock.arrow.circlepath")

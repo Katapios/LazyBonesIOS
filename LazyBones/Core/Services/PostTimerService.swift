@@ -12,6 +12,9 @@ protocol PostTimerServiceProtocol {
     /// Обновить время до следующего события
     func updateTimeLeft()
     
+    /// Обновить статус отчета
+    func updateReportStatus(_ status: ReportStatus)
+    
     /// Получить текущее время до события
     var timeLeft: String { get }
     
@@ -26,6 +29,7 @@ class PostTimerService: PostTimerServiceProtocol, ObservableObject {
     private var timer: Timer?
     private let userDefaultsManager: UserDefaultsManagerProtocol
     private let onTimeUpdate: (String, Double) -> Void
+    private var currentReportStatus: ReportStatus = .notStarted
     
     init(userDefaultsManager: UserDefaultsManagerProtocol, onTimeUpdate: @escaping (String, Double) -> Void) {
         self.userDefaultsManager = userDefaultsManager
@@ -76,7 +80,6 @@ class PostTimerService: PostTimerServiceProtocol, ObservableObject {
         let now = Date()
         let startHour = getNotificationStartHour()
         let endHour = getNotificationEndHour()
-        let reportStatus = getReportStatus()
         
         let start = calendar.date(bySettingHour: startHour, minute: 0, second: 0, of: now)!
         let end = calendar.date(bySettingHour: endHour, minute: 0, second: 0, of: now)!
@@ -85,7 +88,7 @@ class PostTimerService: PostTimerServiceProtocol, ObservableObject {
         let newTimeLeft: String
         let newProgress: Double
         
-        if reportStatus == .done {
+        if currentReportStatus == .sent || currentReportStatus == .notCreated || currentReportStatus == .notSent {
             let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
             let nextStart = calendar.date(bySettingHour: startHour, minute: 0, second: 0, of: tomorrow)!
             let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: nextStart)
@@ -114,6 +117,12 @@ class PostTimerService: PostTimerServiceProtocol, ObservableObject {
         }
     }
     
+    func updateReportStatus(_ status: ReportStatus) {
+        currentReportStatus = status
+        // Обновляем время сразу после изменения статуса
+        updateTimeLeft()
+    }
+    
     // MARK: - Private Methods
     
     private func getNotificationStartHour() -> Int {
@@ -122,10 +131,5 @@ class PostTimerService: PostTimerServiceProtocol, ObservableObject {
     
     private func getNotificationEndHour() -> Int {
         return userDefaultsManager.get(Int.self, forKey: "notificationEndHour", defaultValue: 22)
-    }
-    
-    private func getReportStatus() -> ReportStatus {
-        let statusString = userDefaultsManager.string(forKey: "reportStatus") ?? "notStarted"
-        return ReportStatus(rawValue: statusString) ?? .notStarted
     }
 } 
