@@ -716,30 +716,26 @@ class PostStore: ObservableObject, PostStoreProtocol {
         // Проверяем, не наступил ли новый день перед автоотправкой
         checkForNewDay()
         
-        telegramService.performAutoSendReport()
-        
-        // Обновляем статус после отправки только если это еще сегодня
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            
-            // Проверяем еще раз, что мы все еще в том же дне
-            let calendar = Calendar.current
-            let now = Date()
-            let today = calendar.startOfDay(for: now)
-            
-            if calendar.isDate(self.currentDay, inSameDayAs: today) {
-                self.reportStatus = .sent
-                self.localService.saveReportStatus(.sent)
-                self.forceUnlock = false
-                self.localService.saveForceUnlock(false)
-                // Обновляем статус в таймер-сервисе
-                self.timerService.updateReportStatus(.sent)
-                print("[DEBUG] Автоотправка: статус установлен в .sent")
-            } else {
-                print("[DEBUG] Автоотправка: новый день наступил, статус не изменен")
+        telegramService.performAutoSendReport { [weak self] in
+            // Обновляем статус после отправки только если это еще сегодня
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                
+                // Проверяем еще раз, что мы все еще в том же дне
+                let calendar = Calendar.current
+                let now = Date()
+                let today = calendar.startOfDay(for: now)
+                
+                if calendar.isDate(self.currentDay, inSameDayAs: today) {
+                    // Обновляем статус через updateReportStatus() для правильной логики
+                    self.updateReportStatus()
+                    print("[DEBUG] Автоотправка: статус обновлен через updateReportStatus()")
+                } else {
+                    print("[DEBUG] Автоотправка: новый день наступил, статус не изменен")
+                }
+                
+                WidgetCenter.shared.reloadAllTimelines()
             }
-            
-            WidgetCenter.shared.reloadAllTimelines()
         }
     }
     /// Автоматическая отправка всех отчетов за сегодня (кастомный и обычный)

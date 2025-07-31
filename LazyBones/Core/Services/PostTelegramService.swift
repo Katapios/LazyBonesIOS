@@ -7,7 +7,7 @@ protocol PostTelegramServiceProtocol {
     func sendToTelegram(text: String, completion: @escaping (Bool) -> Void)
     
     /// Выполнить автоматическую отправку отчетов
-    func performAutoSendReport()
+    func performAutoSendReport(completion: (() -> Void)?)
     
     /// Отправить все неотправленные отчеты за сегодня
     func autoSendAllReportsForToday()
@@ -53,7 +53,7 @@ class PostTelegramService: PostTelegramServiceProtocol {
         }
     }
     
-    func performAutoSendReport() {
+    func performAutoSendReport(completion: (() -> Void)? = nil) {
         Logger.info("Performing auto send report", log: Logger.telegram)
         
         let posts = loadPosts()
@@ -80,10 +80,15 @@ class PostTelegramService: PostTelegramServiceProtocol {
         if let regular = regular, !regular.goodItems.isEmpty {
             if !regularManuallySent {
                 toSend += 1
-                sendToTelegram(text: formatRegularReport(regular)) { _ in
+                sendToTelegram(text: formatRegularReport(regular)) { success in
+                    if success {
+                        // Помечаем отчет как отправленный
+                        self.markReportAsPublished(regular)
+                    }
                     toSend -= 1
                     if toSend == 0 {
                         Logger.info("Auto-send completed", log: Logger.telegram)
+                        completion?()
                     }
                 }
             }
@@ -93,10 +98,15 @@ class PostTelegramService: PostTelegramServiceProtocol {
         if let custom = customReport, !custom.goodItems.isEmpty {
             if !customManuallySent {
                 toSend += 1
-                sendToTelegram(text: formatCustomReport(custom)) { _ in
+                sendToTelegram(text: formatCustomReport(custom)) { success in
+                    if success {
+                        // Помечаем отчет как отправленный
+                        self.markReportAsPublished(custom)
+                    }
                     toSend -= 1
                     if toSend == 0 {
                         Logger.info("Auto-send completed", log: Logger.telegram)
+                        completion?()
                     }
                 }
             }
@@ -109,11 +119,17 @@ class PostTelegramService: PostTelegramServiceProtocol {
                 toSend -= 1
                 if toSend == 0 {
                     Logger.info("Auto-send completed", log: Logger.telegram)
+                    completion?()
                 }
             }
         }
         
         Logger.info("Auto-send initiated for \(toSend) reports", log: Logger.telegram)
+        
+        // Если нет отчетов для отправки, вызываем completion сразу
+        if toSend == 0 {
+            completion?()
+        }
     }
     
     func autoSendAllReportsForToday() {
@@ -186,6 +202,27 @@ class PostTelegramService: PostTelegramServiceProtocol {
         } else {
             Logger.error("telegramService is not TelegramService", log: Logger.telegram)
             return "[Ошибка форматирования отчёта]"
+        }
+    }
+    
+    private func markReportAsPublished(_ post: Post) {
+        Logger.info("Marking report as published: \(post.id)", log: Logger.telegram)
+        
+        // Загружаем все отчеты
+        var posts = loadPosts()
+        
+        // Находим и обновляем нужный отчет
+        if let index = posts.firstIndex(where: { $0.id == post.id }) {
+            var updatedPost = posts[index]
+            updatedPost.published = true
+            posts[index] = updatedPost
+            
+            // Сохраняем обновленные отчеты
+            userDefaultsManager.savePosts(posts)
+            
+            Logger.info("Report marked as published successfully", log: Logger.telegram)
+        } else {
+            Logger.error("Report not found for marking as published: \(post.id)", log: Logger.telegram)
         }
     }
     
