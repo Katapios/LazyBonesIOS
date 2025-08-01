@@ -146,6 +146,16 @@ extension DependencyContainer {
             )
         })
         
+        // Notification Manager Service
+        register(NotificationManagerServiceType.self, factory: {
+            let notificationService = self.resolve(NotificationServiceProtocol.self)!
+            let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
+            return NotificationManagerService(
+                userDefaultsManager: userDefaultsManager,
+                notificationService: notificationService
+            )
+        })
+        
         Logger.info("Core services registered successfully", log: Logger.general)
     }
     

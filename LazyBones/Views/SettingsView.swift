@@ -230,28 +230,8 @@ struct SettingsView: View {
         task.resume()
     }
     func notificationScheduleForToday() -> String? {
-        let calendar = Calendar.current
-        let now = Date()
-        let startHour = store.notificationStartHour
-        let endHour = store.notificationEndHour
-        var hours: [Int] = []
-        switch store.notificationMode {
-        case .hourly:
-            hours = Array(stride(from: startHour, to: endHour, by: 1))
-        case .twice:
-            hours = [startHour, endHour - 1]
-        }
-        let currentHour = calendar.component(.hour, from: now)
-        let todayHours = hours.filter { $0 > currentHour }
-        guard !todayHours.isEmpty else { return nil }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-        let today = calendar.startOfDay(for: now)
-        let times = todayHours.map { hour -> String in
-            let date = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: today)!
-            return formatter.string(from: date)
-        }
-        return times.joined(separator: ", ")
+        // Делегируем к notificationManagerService через PostStore
+        return store.notificationManagerService.notificationScheduleForToday()
     }
     // --- UserDefaults для background fetch test ---
     private func saveBackgroundFetchTestEnabled(_ value: Bool) {

@@ -143,20 +143,9 @@ class PostStore: ObservableObject, PostStoreProtocol {
     }
     
     // НОВОЕ: TelegramIntegrationService для управления Telegram интеграцией
-    private lazy var telegramIntegrationService: TelegramIntegrationServiceType = {
-        let service = DependencyContainer.shared.resolve(TelegramIntegrationServiceType.self)!
-        
-        // Наблюдаем за изменениями внешних отчетов
-        if let observableService = service as? TelegramIntegrationService {
-            observableService.$externalPosts
-                .sink { [weak self] newExternalPosts in
-                    self?.externalPosts = newExternalPosts
-                }
-                .store(in: &cancellables)
-        }
-        
-        return service
-    }()
+    private(set) var telegramIntegrationService: TelegramIntegrationServiceType!
+    // НОВОЕ: NotificationManagerService для управления уведомлениями
+    private(set) var notificationManagerService: NotificationManagerServiceType
     
     // Для хранения подписок
     private var cancellables = Set<AnyCancellable>()
@@ -164,31 +153,64 @@ class PostStore: ObservableObject, PostStoreProtocol {
     init() {
         print("[DEBUG][INIT] PostStore инициализирован")
         
-        // Получаем сервисы из DI контейнера
-        self.userDefaultsManager = DependencyContainer.shared.resolve(UserDefaultsManager.self)!
-        self.telegramService = DependencyContainer.shared.resolve(PostTelegramServiceProtocol.self)!
-        self.notificationService = DependencyContainer.shared.resolve(PostNotificationServiceProtocol.self)!
-        self.localService = LocalReportService.shared
+        // Получаем сервисы из DI контейнера безопасно
+        guard let userDefaultsManager = DependencyContainer.shared.resolve(UserDefaultsManager.self),
+              let telegramService = DependencyContainer.shared.resolve(PostTelegramServiceProtocol.self),
+              let notificationService = DependencyContainer.shared.resolve(PostNotificationServiceProtocol.self),
+              let notificationManagerService = DependencyContainer.shared.resolve(NotificationManagerServiceType.self),
+              let telegramIntegrationService = DependencyContainer.shared.resolve(TelegramIntegrationServiceType.self) else {
+            fatalError("Failed to resolve required dependencies in PostStore init")
+        }
         
+        self.userDefaultsManager = userDefaultsManager
+        self.telegramService = telegramService
+        self.notificationService = notificationService
+        self.localService = LocalReportService.shared
+        self.notificationManagerService = notificationManagerService
+        self.telegramIntegrationService = telegramIntegrationService
+        
+        // Подписки на Published свойства notificationManagerService
+        if let observableService = notificationManagerService as? NotificationManagerService {
+            observableService.$notificationsEnabled
+                .sink { [weak self] newValue in self?.notificationsEnabled = newValue }
+                .store(in: &cancellables)
+            observableService.$notificationMode
+                .sink { [weak self] newValue in self?.notificationMode = newValue }
+                .store(in: &cancellables)
+            observableService.$notificationIntervalHours
+                .sink { [weak self] newValue in self?.notificationIntervalHours = newValue }
+                .store(in: &cancellables)
+            observableService.$notificationStartHour
+                .sink { [weak self] newValue in self?.notificationStartHour = newValue }
+                .store(in: &cancellables)
+            observableService.$notificationEndHour
+                .sink { [weak self] newValue in self?.notificationEndHour = newValue }
+                .store(in: &cancellables)
+        }
+        
+        // Подписка на внешние отчеты
+        if let observableService = telegramIntegrationService as? TelegramIntegrationService {
+            observableService.$externalPosts
+                .sink { [weak self] newExternalPosts in self?.externalPosts = newExternalPosts }
+                .store(in: &cancellables)
+        }
+        
+        // Загружаем настройки
         loadSettings()
         loadTelegramSettings()
-        // loadExternalPosts() - теперь делегируется к telegramIntegrationService
-        
-        // НОВОЕ: Инициализация statusManager происходит автоматически через lazy var
-        // loadReportStatus() - теперь делегируется к statusManager
-        // loadForceUnlock() - теперь делегируется к statusManager
-        // checkForNewDay() - теперь делегируется к statusManager
-        // updateReportStatus() - теперь делегируется к statusManager
         
         // Синхронизируем внешние отчеты с новым сервисом
         externalPosts = telegramIntegrationService.externalPosts
         
+        // Инициализируем таймер и другие компоненты после полной инициализации
         updateTimeLeft()
         startTimer()
         loadGoodTags()
         loadBadTags()
-        loadAutoSendSettings() // autoSendTime загружается из UserDefaults
+        loadAutoSendSettings()
         scheduleAutoSendIfNeeded()
+        
+        print("[DEBUG][INIT] PostStore инициализация завершена")
     }
     
     private func loadSettings() {
@@ -197,20 +219,12 @@ class PostStore: ObservableObject, PostStoreProtocol {
         loadAutoSendSettings()
         loadTags()
     }
-    // --- Notification settings ---
-    @Published var notificationsEnabled: Bool = false {
-        didSet { saveNotificationSettings();
-            if notificationsEnabled { requestNotificationPermissionAndSchedule() } else { cancelAllNotifications() }
-        }
-    }
-    @Published var notificationIntervalHours: Int = 1 { // 1-12
-        didSet { saveNotificationSettings(); if notificationsEnabled { scheduleNotifications() } }
-    }
+        // --- Notification settings ---
+    @Published var notificationsEnabled: Bool = false
+    @Published var notificationIntervalHours: Int = 1 // 1-12
     @Published var notificationStartHour: Int = 8 // В будущем можно сделать настраиваемым
     @Published var notificationEndHour: Int = 22 // В будущем можно сделать настраиваемым
-    @Published var notificationMode: NotificationMode = .hourly {
-        didSet { saveNotificationSettings(); if notificationsEnabled { scheduleNotifications() } }
-    }
+    @Published var notificationMode: NotificationMode = .hourly
     @Published var goodTags: [String] = []
     @Published var badTags: [String] = []
     // --- Новое для автоотправки ---
@@ -409,46 +423,41 @@ extension PostStore: PostsProviderProtocol {
 
 // MARK: - Notification Settings
 extension PostStore {
-    private static let notifEnabledKey = "notificationsEnabled"
-    private static let notifIntervalKey = "notificationIntervalHours"
-    private static let notifModeKey = "notificationMode"
+    // УДАЛЕНО: константы ключей теперь используются в NotificationManagerService
     
     func saveNotificationSettings() {
-        let ud = UserDefaults(suiteName: Self.appGroup)
-        ud?.set(notificationsEnabled, forKey: Self.notifEnabledKey)
-        ud?.set(notificationMode.rawValue, forKey: Self.notifModeKey)
-        ud?.set(notificationIntervalHours, forKey: Self.notifIntervalKey)
+        // Делегируем к notificationManagerService
+        notificationManagerService.saveNotificationSettings()
     }
     
     func loadNotificationSettings() {
-        let ud = UserDefaults(suiteName: Self.appGroup)
-        notificationsEnabled = ud?.bool(forKey: Self.notifEnabledKey) ?? false
-        if let modeRaw = ud?.string(forKey: Self.notifModeKey), let mode = NotificationMode(rawValue: modeRaw) {
-            notificationMode = mode
-        } else {
-            notificationMode = .hourly
-        }
-        notificationIntervalHours = ud?.integer(forKey: Self.notifIntervalKey) == 0 ? 1 : ud!.integer(forKey: Self.notifIntervalKey)
+        // Делегируем к notificationManagerService
+        notificationManagerService.loadNotificationSettings()
+        
+        // Синхронизируем локальные свойства для обратной совместимости
+        notificationsEnabled = notificationManagerService.notificationsEnabled
+        notificationMode = notificationManagerService.notificationMode
+        notificationIntervalHours = notificationManagerService.notificationIntervalHours
+        notificationStartHour = notificationManagerService.notificationStartHour
+        notificationEndHour = notificationManagerService.notificationEndHour
     }
 }
 
 // MARK: - Notification Logic
 extension PostStore {
     func requestNotificationPermissionAndSchedule() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
-            DispatchQueue.main.async {
-                if granted { self.scheduleNotifications() }
-                else { self.notificationsEnabled = false }
-            }
-        }
+        // Делегируем к notificationManagerService
+        notificationManagerService.requestNotificationPermissionAndSchedule()
     }
     
     func scheduleNotifications() {
-        notificationService.scheduleNotifications()
+        // Делегируем к notificationManagerService
+        notificationManagerService.scheduleNotifications()
     }
     
     func cancelAllNotifications() {
-        notificationService.cancelAllNotifications()
+        // Делегируем к notificationManagerService
+        notificationManagerService.cancelAllNotifications()
     }
     
     func timeLeftString(untilHour: Int) -> String {
@@ -519,7 +528,7 @@ extension PostStore {
     }
     
     func loadGoodTags() {
-        goodTags = localService.loadGoodTags()
+        self.goodTags = localService.loadGoodTags()
     }
     func saveGoodTags(_ tags: [String]) {
         localService.saveGoodTags(tags)
@@ -527,18 +536,18 @@ extension PostStore {
     }
     func addGoodTag(_ tag: String) {
         localService.addGoodTag(tag)
-        loadGoodTags()
+        self.goodTags = localService.loadGoodTags()
     }
     func removeGoodTag(_ tag: String) {
         localService.removeGoodTag(tag)
-        loadGoodTags()
+        self.goodTags = localService.loadGoodTags()
     }
     func updateGoodTag(old: String, new: String) {
         localService.updateGoodTag(old: old, new: new)
-        loadGoodTags()
+        self.goodTags = localService.loadGoodTags()
     }
     func loadBadTags() {
-        badTags = localService.loadBadTags()
+        self.badTags = localService.loadBadTags()
     }
     func saveBadTags(_ tags: [String]) {
         localService.saveBadTags(tags)
@@ -546,15 +555,15 @@ extension PostStore {
     }
     func addBadTag(_ tag: String) {
         localService.addBadTag(tag)
-        loadBadTags()
+        self.badTags = localService.loadBadTags()
     }
     func removeBadTag(_ tag: String) {
         localService.removeBadTag(tag)
-        loadBadTags()
+        self.badTags = localService.loadBadTags()
     }
     func updateBadTag(old: String, new: String) {
         localService.updateBadTag(old: old, new: new)
-        loadBadTags()
+        self.badTags = localService.loadBadTags()
     }
 
     // MARK: - Автоотправка в Telegram
