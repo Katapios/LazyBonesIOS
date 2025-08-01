@@ -16,143 +16,12 @@ struct ReportsView: View {
         NavigationStack {
             ScrollView(.vertical, showsIndicators: true) {
                 VStack(spacing: 16) {
-                    // --- Локальные отчёты ---
-                    if !store.posts.filter({ $0.type == .regular }).isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("ЛОКАЛЬНЫЕ ОТЧЁТЫ")
-                                .font(.title3)
-                                .foregroundColor(.accentColor)
-                                .padding(.horizontal, 8)
-                                .padding(.top, 8)
-                            if isSelectionMode {
-                                let regularPosts = store.posts.filter { $0.type == .regular }
-                                let selectedRegular = regularPosts.filter { selectedLocalReportIDs.contains($0.id) }
-                                if selectedRegular.count == 0 || selectedRegular.count == regularPosts.count {
-                                    Button(action: selectAllLocalReports) {
-                                        Text(selectedRegular.count == regularPosts.count ? "Снять все" : "Выбрать все")
-                                            .font(.caption)
-                                            .frame(maxWidth: .infinity, alignment: .center)
-                                            .foregroundColor(.primary)
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .padding(.vertical, 2)
-                                }
-                            }
-                            ForEach(store.posts.filter { $0.type == .regular }) { post in
-                                ReportCardView(
-                                    post: post,
-                                    isSelectable: isSelectionMode,
-                                    isSelected: selectedLocalReportIDs.contains(post.id),
-                                    onSelect: { toggleSelection(for: post.id) }
-                                )
-                            }
-                        }
-                    }
-                    // --- Кастомные отчёты ---
-                    if store.posts.contains(where: { $0.type == .custom }) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("КАСТОМНЫЕ ОТЧЁТЫ")
-                                .font(.title3)
-                                .foregroundColor(.accentColor)
-                                .padding(.horizontal, 8)
-                                .padding(.top, 8)
-                            if isSelectionMode {
-                                let customPosts = store.posts.filter { $0.type == .custom }
-                                let selectedCustom = customPosts.filter { selectedLocalReportIDs.contains($0.id) }
-                                if selectedCustom.count == 0 || selectedCustom.count == customPosts.count {
-                                    Button(action: selectAllCustomReports) {
-                                        Text(selectedCustom.count == customPosts.count ? "Снять все" : "Выбрать все")
-                                            .font(.caption)
-                                            .frame(maxWidth: .infinity, alignment: .center)
-                                            .foregroundColor(.primary)
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .padding(.vertical, 2)
-                                }
-                            }
-                            ForEach(store.posts.filter { $0.type == .custom }) { post in
-                                VStack(alignment: .leading, spacing: 4) {
-                                    ReportCardView(
-                                        post: post,
-                                        isSelectable: isSelectionMode,
-                                        isSelected: selectedLocalReportIDs.contains(post.id),
-                                        onSelect: { toggleSelection(for: post.id) },
-                                        showEvaluateButton: Calendar.current.isDateInToday(post.date) && !isSelectionMode && (post.isEvaluated != true || allowCustomReportReevaluation),
-                                        isEvaluated: post.isEvaluated == true && !allowCustomReportReevaluation,
-                                        onEvaluate: {
-                                            evaluatingPost = post
-                                            showEvaluationSheet = true
-                                        }
-                                    )
-                                    .overlay(
-                                        Text(post.date, style: .date)
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                            .padding(.top, 2),
-                                        alignment: .bottomTrailing
-                                    )
-                                    // Убираем дублирование - результаты оценки уже отображаются в ReportCardView
-                                }
-                            }
-                        }
-                    }
-
-                    // --- Внешние отчёты из Telegram ---
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("ИЗ TELEGRAM")
-                            .font(.title3)
-                            .foregroundColor(.accentColor)
-                            .padding(.horizontal, 8)
-                            .padding(.top, 8)
-                        HStack(spacing: 12) {
-                            Button(action: reloadExternalReports) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "arrow.clockwise")
-                                    Text("Обновить")
-                                }
-                            }
-                            .buttonStyle(.bordered)
-                            Link(destination: URL(string: "https://t.me/+Ny08CEMnQJplMGJi")!) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "paperplane.fill")
-                                    Text("В группу")
-                                }
-                            }
-                            .buttonStyle(.bordered)
-                            if isLoadingExternal {
-                                ProgressView().scaleEffect(0.7)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 2)
-                        if store.externalPosts.isEmpty && !isLoadingExternal {
-                            Text("Нет внешних отчётов")
-                                .foregroundColor(.primary)
-                                .font(.caption)
-                                .frame(maxWidth: .infinity, alignment: .center)
-                                .padding(.vertical, 16)
-                        }
-                        ForEach(store.externalPosts) { post in
-                            ReportCardView(post: post, isSelectable: false, isSelected: false, onSelect: nil)
-                        }
-                    }
-
-                    // --- Техническое предупреждение ---
+                    regularReportsSection
+                    customReportsSection
+                    externalReportsSection
                     telegramWarning
-                        .foregroundColor(.primary)
-
-                    // --- Кнопка очистки истории ---
                     telegramClearButton
-                        .foregroundColor(.primary)
-
-                    // --- Ошибка загрузки ---
-                    if let error = externalError {
-                        Text(error)
-                            .foregroundColor(.primary)
-                            .font(.caption)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.vertical, 16)
-                    }
+                    errorSection
                 }
                 .padding(.top, 16)
                 .padding([.leading, .trailing, .bottom])
@@ -160,38 +29,215 @@ struct ReportsView: View {
             .navigationTitle("Отчёты")
             .safeAreaInset(edge: .top) { Spacer().frame(height: 8) }
             .scrollIndicators(.hidden)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    if !store.posts.isEmpty {
-                        Button(isSelectionMode ? "Отмена" : "Выбрать") {
-                            withAnimation {
-                                isSelectionMode.toggle()
-                                if !isSelectionMode { selectedLocalReportIDs.removeAll() }
+            .toolbar { toolbarContent }
+            .sheet(isPresented: $showEvaluationSheet) { evaluationSheetContent }
+        }
+    }
+
+    private var regularReportsSection: some View {
+        Group {
+            if !store.posts.filter({ $0.type == .regular }).isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("ЛОКАЛЬНЫЕ ОТЧЁТЫ")
+                        .font(.title3)
+                        .foregroundColor(.accentColor)
+                        .padding(.horizontal, 8)
+                        .padding(.top, 8)
+                    if isSelectionMode {
+                        let regularPosts = store.posts.filter { $0.type == .regular }
+                        let selectedRegular = regularPosts.filter { selectedLocalReportIDs.contains($0.id) }
+                        if selectedRegular.count == 0 || selectedRegular.count == regularPosts.count {
+                            Button(action: selectAllLocalReports) {
+                                Text(selectedRegular.count == regularPosts.count ? "Снять все" : "Выбрать все")
+                                    .font(.caption)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .foregroundColor(.primary)
                             }
+                            .buttonStyle(.bordered)
+                            .padding(.vertical, 2)
                         }
                     }
-                }
-                if isSelectionMode && !selectedLocalReportIDs.isEmpty {
-                    ToolbarItem(placement: .bottomBar) {
-                        Button(role: .destructive, action: deleteSelectedReports) {
-                            Label("Удалить (\(selectedLocalReportIDs.count))", systemImage: "trash")
-                        }
-                        .frame(maxWidth: .infinity)
+                    ForEach(store.posts.filter { $0.type == .regular }) { post in
+                        ReportCardView(
+                            post: post,
+                            isSelectable: isSelectionMode,
+                            isSelected: selectedLocalReportIDs.contains(post.id),
+                            onSelect: { toggleSelection(for: post.id) }
+                        )
                     }
                 }
             }
-            .sheet(isPresented: $showEvaluationSheet) {
-                if let post = evaluatingPost {
-                    CustomReportEvaluationView(post: post) { checked in
-                        if let idx = store.posts.firstIndex(where: { $0.id == post.id }) {
-                            var updated = store.posts[idx]
-                            updated.evaluationResults = checked
-                            updated.isEvaluated = true
-                            store.posts[idx] = updated
-                            store.save()
-                        }
+        }
+    }
+
+    private var customReportsSection: some View {
+        Group {
+            if store.posts.contains(where: { $0.type == .custom }) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("КАСТОМНЫЕ ОТЧЁТЫ")
+                        .font(.title3)
+                        .foregroundColor(.accentColor)
+                        .padding(.horizontal, 8)
+                        .padding(.top, 8)
+                    
+                    customSelectionButton
+                    
+                    ForEach(store.posts.filter { $0.type == .custom }) { post in
+                        customReportCard(for: post)
                     }
                 }
+            } else {
+                EmptyView()
+            }
+        }
+    }
+    
+    private var customSelectionButton: some View {
+        Group {
+            if isSelectionMode {
+                let customPosts = store.posts.filter { $0.type == .custom }
+                let selectedCustom = customPosts.filter { selectedLocalReportIDs.contains($0.id) }
+                if selectedCustom.count == 0 || selectedCustom.count == customPosts.count {
+                    Button(action: selectAllCustomReports) {
+                        Text(selectedCustom.count == customPosts.count ? "Снять все" : "Выбрать все")
+                            .font(.caption)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .foregroundColor(.primary)
+                    }
+                    .buttonStyle(.bordered)
+                    .padding(.vertical, 2)
+                } else {
+                    EmptyView()
+                }
+            } else {
+                EmptyView()
+            }
+        }
+    }
+    
+    private func customReportCard(for post: Post) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ReportCardView(
+                post: post,
+                isSelectable: isSelectionMode,
+                isSelected: selectedLocalReportIDs.contains(post.id),
+                onSelect: { toggleSelection(for: post.id) },
+                showEvaluateButton: Calendar.current.isDateInToday(post.date) && !isSelectionMode && (post.isEvaluated != true || allowCustomReportReevaluation),
+                isEvaluated: post.isEvaluated == true && !allowCustomReportReevaluation,
+                onEvaluate: {
+                    evaluatingPost = post
+                    showEvaluationSheet = true
+                }
+            )
+            .overlay(
+                Text(post.date, style: .date)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .padding(.top, 2),
+                alignment: .bottomTrailing
+            )
+            .onChange(of: store.posts.count) { _, _ in
+                if let evaluatingPost = evaluatingPost,
+                   let updatedPost = store.posts.first(where: { $0.id == evaluatingPost.id }) {
+                    self.evaluatingPost = updatedPost
+                }
+            }
+        }
+    }
+
+    private var externalReportsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("ИЗ TELEGRAM")
+                .font(.title3)
+                .foregroundColor(.accentColor)
+                .padding(.horizontal, 8)
+                .padding(.top, 8)
+            HStack(spacing: 12) {
+                Button(action: reloadExternalReports) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.clockwise")
+                        Text("Обновить")
+                    }
+                }
+                .buttonStyle(.bordered)
+                Link(destination: URL(string: "https://t.me/+Ny08CEMnQJplMGJi")!) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "paperplane.fill")
+                        Text("В группу")
+                    }
+                }
+                .buttonStyle(.bordered)
+                if isLoadingExternal {
+                    ProgressView().scaleEffect(0.7)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.vertical, 2)
+            if store.externalPosts.isEmpty && !isLoadingExternal {
+                Text("Нет внешних отчётов")
+                    .foregroundColor(.primary)
+                    .font(.caption)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 16)
+            }
+            ForEach(store.externalPosts) { post in
+                ReportCardView(post: post, isSelectable: false, isSelected: false, onSelect: nil)
+            }
+        }
+    }
+
+    private var errorSection: some View {
+        Group {
+            if let error = externalError {
+                Text(error)
+                    .foregroundColor(.primary)
+                    .font(.caption)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 16)
+            }
+        }
+    }
+
+    private var toolbarContent: some ToolbarContent {
+        Group {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                if !store.posts.isEmpty {
+                    Button(isSelectionMode ? "Отмена" : "Выбрать") {
+                        withAnimation {
+                            isSelectionMode.toggle()
+                            if !isSelectionMode { selectedLocalReportIDs.removeAll() }
+                        }
+                    }
+                } else {
+                    EmptyView()
+                }
+            }
+            if isSelectionMode && !selectedLocalReportIDs.isEmpty {
+                ToolbarItem(placement: .bottomBar) {
+                    Button(role: .destructive, action: deleteSelectedReports) {
+                        Label("Удалить (\(selectedLocalReportIDs.count))", systemImage: "trash")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+        }
+    }
+
+    private var evaluationSheetContent: some View {
+        Group {
+            if let post = evaluatingPost {
+                CustomReportEvaluationView(post: post) { checked in
+                    if let idx = store.posts.firstIndex(where: { $0.id == post.id }) {
+                        var updated = store.posts[idx]
+                        updated.evaluationResults = checked
+                        updated.isEvaluated = true
+                        store.posts[idx] = updated
+                        evaluatingPost = updated
+                        store.save()
+                    }
+                }
+            } else {
+                EmptyView()
             }
         }
     }
@@ -341,20 +387,25 @@ struct CustomReportEvaluationView: View {
     let post: Post
     let onComplete: (_ checked: [Bool]) -> Void
     @State private var checked: [Bool]
+    @State private var currentPost: Post
     @Environment(\.dismiss) var dismiss
+    
     init(post: Post, onComplete: @escaping ([Bool]) -> Void) {
         self.post = post
         self.onComplete = onComplete
+        // Инициализируем checked с правильным размером
         _checked = State(initialValue: Array(repeating: false, count: post.goodItems.count))
+        _currentPost = State(initialValue: post)
     }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Оцените выполнение плана")
                 .font(.headline)
             List {
-                ForEach(post.goodItems.indices, id: \.self) { idx in
+                ForEach(currentPost.goodItems.indices, id: \.self) { idx in
                     HStack {
-                        Text(post.goodItems[idx])
+                        Text(currentPost.goodItems[idx])
                         Spacer()
                         Toggle("", isOn: $checked[idx])
                             .labelsHidden()
@@ -369,6 +420,20 @@ struct CustomReportEvaluationView: View {
             .frame(maxWidth: .infinity)
         }
         .padding()
+        .onAppear {
+            // Обновляем currentPost и checked при появлении view
+            currentPost = post
+            if checked.count != post.goodItems.count {
+                checked = Array(repeating: false, count: post.goodItems.count)
+            }
+        }
+        .onChange(of: post.goodItems.count) { oldCount, newCount in
+            // Обновляем checked при изменении количества элементов
+            currentPost = post
+            if checked.count != newCount {
+                checked = Array(repeating: false, count: newCount)
+            }
+        }
     }
 }
 
