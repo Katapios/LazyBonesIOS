@@ -251,9 +251,15 @@ class TelegramService: TelegramServiceProtocol {
         message += "📱 <i>Устройство: \(deviceName)</i>\n\n"
         
         if !report.goodItems.isEmpty {
-            message += "✅ <b>Хорошее:</b>\n"
-            for item in report.goodItems {
-                message += "• \(item)\n"
+            message += "✅ <b>План:</b>\n"
+            for (index, item) in report.goodItems.enumerated() {
+                let status = if let evaluationResults = report.evaluationResults, 
+                               index < evaluationResults.count {
+                    evaluationResults[index] ? "✅" : "❌"
+                } else {
+                    "•"
+                }
+                message += "\(status) \(item)\n"
             }
             message += "\n"
         }
@@ -268,6 +274,14 @@ class TelegramService: TelegramServiceProtocol {
         
         if !report.voiceNotes.isEmpty {
             message += "🎤 <b>Голосовые заметки:</b> \(report.voiceNotes.count)\n"
+        }
+        
+        // Добавляем общую статистику оценки
+        if let evaluationResults = report.evaluationResults, !evaluationResults.isEmpty {
+            let completed = evaluationResults.filter { $0 }.count
+            let total = evaluationResults.count
+            let percentage = Int((Double(completed) / Double(total)) * 100)
+            message += "\n📊 <b>Результат выполнения:</b> \(completed)/\(total) (\(percentage)%)\n"
         }
         
         return message

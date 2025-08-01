@@ -333,10 +333,11 @@ struct PlanningContentView: View {
     
     func publishCustomReportToTelegram() {
         let today = Calendar.current.startOfDay(for: Date())
-        guard let custom = store.posts.first(where: { $0.type == .custom && Calendar.current.isDate($0.date, inSameDayAs: today) }) else {
+        guard let customIndex = store.posts.firstIndex(where: { $0.type == .custom && Calendar.current.isDate($0.date, inSameDayAs: today) }) else {
             publishStatus = "Сначала сохраните план как отчет!"
             return
         }
+        let custom = store.posts[customIndex] // Получаем актуальную версию поста
         if custom.isEvaluated != true {
             publishStatus = "Сначала оцените план!"
             return
@@ -345,19 +346,8 @@ struct PlanningContentView: View {
             publishStatus = "Заполните токен и chat_id в настройках"
             return
         }
-        let dateFormatter = DateFormatter()
-        dateFormatter.locale = Locale(identifier: "ru_RU")
-        dateFormatter.dateStyle = .full
-        let dateStr = dateFormatter.string(from: custom.date)
         let deviceName = store.getDeviceName()
-        var message = "\u{1F4C5} <b>План на день за \(dateStr)</b>\n"
-        message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
-        if !custom.goodItems.isEmpty {
-            message += "<b>✅ План:</b>\n"
-            for (index, item) in custom.goodItems.enumerated() {
-                message += "\(index + 1). \(item)\n"
-            }
-        }
+        let message = store.telegramIntegrationService.formatCustomReportForTelegram(custom, deviceName: deviceName)
         let urlString = "https://api.telegram.org/bot\(token)/sendMessage"
         let params = [
             "chat_id": chatId,

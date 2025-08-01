@@ -27,6 +27,9 @@ protocol TelegramIntegrationServiceProtocol: ObservableObject {
     
     // MARK: - Combined Posts
     func getAllPosts() -> [Post]
+    
+    // MARK: - Report Formatting
+    func formatCustomReportForTelegram(_ report: Post, deviceName: String) -> String
 }
 
 /// Сервис для интеграции с Telegram
@@ -300,6 +303,41 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
     func getAllPosts() -> [Post] {
         // Возвращаем только внешние отчеты, так как локальные отчеты будут добавлены в PostStore
         return externalPosts
+    }
+    
+    // MARK: - Report Formatting
+    
+    func formatCustomReportForTelegram(_ report: Post, deviceName: String) -> String {
+        if let telegramService = telegramService as? TelegramService {
+            return telegramService.formatCustomReportForTelegram(report, deviceName: deviceName)
+        } else {
+            // Fallback форматирование если TelegramService недоступен
+            var message = "📝 <b>Кастомный отчет за \(DateUtils.formatDate(report.date))</b>\n"
+            message += "📱 <i>Устройство: \(deviceName)</i>\n\n"
+            
+            if !report.goodItems.isEmpty {
+                message += "✅ <b>План:</b>\n"
+                for (index, item) in report.goodItems.enumerated() {
+                    let status = if let evaluationResults = report.evaluationResults, 
+                                   index < evaluationResults.count {
+                        evaluationResults[index] ? "✅" : "❌"
+                    } else {
+                        "•"
+                    }
+                    message += "\(status) \(item)\n"
+                }
+                message += "\n"
+            }
+            
+            if let evaluationResults = report.evaluationResults, !evaluationResults.isEmpty {
+                let completed = evaluationResults.filter { $0 }.count
+                let total = evaluationResults.count
+                let percentage = Int((Double(completed) / Double(total)) * 100)
+                message += "\n📊 <b>Результат выполнения:</b> \(completed)/\(total) (\(percentage)%)\n"
+            }
+            
+            return message
+        }
     }
 }
 
