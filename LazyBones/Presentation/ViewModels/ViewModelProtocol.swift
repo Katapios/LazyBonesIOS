@@ -7,7 +7,7 @@ protocol ViewModelProtocol: ObservableObject {
     associatedtype State
     associatedtype Event
     
-    var state: State { get set }
+    @MainActor var state: State { get set }
     
     func handle(_ event: Event) async
 }
@@ -27,9 +27,10 @@ class BaseViewModel<State, Event>: ObservableObject, ViewModelProtocol {
 }
 
 /// Протокол для ViewModels с загрузкой данных
+@preconcurrency
 protocol LoadableViewModel: ViewModelProtocol {
-    var isLoading: Bool { get set }
-    var error: Error? { get set }
+    @MainActor var isLoading: Bool { get set }
+    @MainActor var error: Error? { get set }
     
     func load() async
 } 

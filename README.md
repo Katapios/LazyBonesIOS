@@ -133,6 +133,176 @@ Presentation → Domain ← Data → Infrastructure
 - **Источник**: Telegram Bot API
 - **Обработка**: Автоматическая конвертация в Post
 
+## 🏗️ Слои архитектуры
+
+### 🎨 Presentation Layer (Слой представления)
+
+**Назначение**: Отображение UI и обработка пользовательских действий
+
+#### ViewModels
+```swift
+// Базовый протокол для ViewModels
+protocol ViewModelProtocol: ObservableObject {
+    associatedtype State
+    associatedtype Event
+    
+    @MainActor var state: State { get set }
+    func handle(_ event: Event) async
+}
+
+// ViewModel для списка отчетов
+@MainActor
+class ReportListViewModel: BaseViewModel<ReportListState, ReportListEvent> {
+    private let getReportsUseCase: any GetReportsUseCaseProtocol
+    private let deleteReportUseCase: any DeleteReportUseCaseProtocol
+    
+    func load() async { /* ... */ }
+    func deleteReport(_ report: DomainPost) async { /* ... */ }
+}
+```
+
+#### Views
+```swift
+// SwiftUI View для отображения отчетов
+struct ReportListView: View {
+    @StateObject var viewModel: ReportListViewModel
+    
+    var body: some View {
+        NavigationView {
+            // UI компоненты
+        }
+    }
+}
+```
+
+### 🧠 Domain Layer (Слой домена)
+
+**Назначение**: Бизнес-логика и правила приложения
+
+#### Entities (Сущности)
+```swift
+// Доменная сущность отчета
+struct DomainPost: Codable {
+    let id: UUID
+    let date: Date
+    var goodItems: [String]
+    var badItems: [String]
+    var published: Bool
+    var voiceNotes: [DomainVoiceNote]
+    var type: PostType
+    // ... другие свойства
+}
+
+// Доменная сущность голосовой заметки
+struct DomainVoiceNote: Codable {
+    let id: UUID
+    let url: URL
+    let duration: TimeInterval
+    let createdAt: Date
+}
+```
+
+#### Use Cases (Сценарии использования)
+```swift
+// Создание отчета
+protocol CreateReportUseCaseProtocol: UseCaseProtocol where
+    Input == CreateReportInput,
+    Output == DomainPost,
+    ErrorType == CreateReportError
+{
+}
+
+// Получение отчетов
+protocol GetReportsUseCaseProtocol: UseCaseProtocol where
+    Input == GetReportsInput,
+    Output == [DomainPost],
+    ErrorType == GetReportsError
+{
+}
+```
+
+#### Repository Protocols (Протоколы репозиториев)
+```swift
+// Протокол для работы с отчетами
+protocol PostRepositoryProtocol {
+    func save(_ post: DomainPost) async throws
+    func fetch() async throws -> [DomainPost]
+    func fetch(for date: Date) async throws -> [DomainPost]
+    func update(_ post: DomainPost) async throws
+    func delete(_ post: DomainPost) async throws
+    func clear() async throws
+}
+```
+
+### 💾 Data Layer (Слой данных)
+
+**Назначение**: Управление данными и их преобразование
+
+#### Repositories (Репозитории)
+```swift
+// Реализация репозитория отчетов
+class PostRepository: PostRepositoryProtocol {
+    private let dataSource: PostDataSourceProtocol
+    
+    func save(_ post: DomainPost) async throws {
+        let dataPost = PostMapper.toDataModel(post)
+        // Сохранение через dataSource
+    }
+    
+    func fetch() async throws -> [DomainPost] {
+        let posts = try await dataSource.load()
+        return PostMapper.toDomainModels(posts)
+    }
+}
+```
+
+#### Data Sources (Источники данных)
+```swift
+// Протокол источника данных
+protocol PostDataSourceProtocol {
+    func save(_ posts: [Post]) async throws
+    func load() async throws -> [Post]
+    func clear() async throws
+}
+
+// Реализация на основе UserDefaults
+class UserDefaultsPostDataSource: PostDataSourceProtocol {
+    private let userDefaults: UserDefaults
+    private let postsKey = "savedPosts"
+    
+    func save(_ posts: [Post]) async throws {
+        let data = try JSONEncoder().encode(posts)
+        userDefaults.set(data, forKey: postsKey)
+    }
+}
+```
+
+#### Mappers (Мапперы)
+```swift
+// Преобразование между Domain и Data моделями
+struct PostMapper {
+    static func toDataModel(_ domainPost: DomainPost) -> Post {
+        return Post(
+            id: domainPost.id,
+            date: domainPost.date,
+            goodItems: domainPost.goodItems,
+            badItems: domainPost.badItems,
+            // ... другие поля
+        )
+    }
+    
+    static func toDomainModel(_ dataPost: Post) -> DomainPost {
+        return DomainPost(
+            id: dataPost.id,
+            date: dataPost.date,
+            goodItems: dataPost.goodItems,
+            badItems: dataPost.badItems,
+            // ... другие поля
+        )
+    }
+}
+```
+
 ## 🔄 Основные пользовательские сценарии
 
 ### 1. 📱 Создание обычного отчета (Clean Architecture)

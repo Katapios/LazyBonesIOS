@@ -63,8 +63,7 @@ class UpdateStatusUseCase: UpdateStatusUseCaseProtocol {
             let currentStatus = try await settingsRepository.loadReportStatus()
             
             // Получаем отчеты за сегодня
-            let today = Calendar.current.startOfDay(for: Date())
-            let todayPosts = try await postRepository.fetch(for: today)
+            let todayPosts = try await postRepository.fetch(for: Calendar.current.startOfDay(for: Date()))
             
             // Определяем новый статус
             let newStatus = calculateNewStatus(
@@ -85,10 +84,6 @@ class UpdateStatusUseCase: UpdateStatusUseCaseProtocol {
     // MARK: - Private Methods
     
     private func checkForNewDay() async throws {
-        let calendar = Calendar.current
-        let now = Date()
-        let today = calendar.startOfDay(for: now)
-        
         // Получаем сохраненный день
         let currentStatus = try await settingsRepository.loadReportStatus()
         
@@ -116,7 +111,6 @@ class UpdateStatusUseCase: UpdateStatusUseCaseProtocol {
         
         let calendar = Calendar.current
         let now = Date()
-        let today = calendar.startOfDay(for: now)
         
         // Проверяем активность периода (8:00 - 22:00)
         let startHour = 8
@@ -126,7 +120,7 @@ class UpdateStatusUseCase: UpdateStatusUseCaseProtocol {
         
         // Ищем обычный отчет за сегодня
         let regularPost = todayPosts.first { 
-            $0.type == .regular && calendar.isDate($0.date, inSameDayAs: today) 
+            $0.type == .regular && calendar.isDate($0.date, inSameDayAs: calendar.startOfDay(for: now)) 
         }
         
         // Определяем статус

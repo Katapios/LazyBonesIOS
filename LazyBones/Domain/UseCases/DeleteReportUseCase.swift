@@ -28,10 +28,11 @@ enum DeleteReportError: Error, LocalizedError {
 }
 
 /// Use Case для удаления отчетов
-protocol DeleteReportUseCaseProtocol: UseCaseProtocol {
-    typealias Input = DeleteReportInput
-    typealias Output = Void
-    typealias ErrorType = DeleteReportError
+protocol DeleteReportUseCaseProtocol: UseCaseProtocol where
+    Input == DeleteReportInput,
+    Output == Void,
+    ErrorType == DeleteReportError
+{
 }
 
 /// Реализация Use Case для удаления отчетов
