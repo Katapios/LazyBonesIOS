@@ -49,7 +49,12 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
         ) { task in
             Logger.info("Background task triggered: \(self.taskIdentifier)", log: Logger.background)
             Task {
-                await self.handleSendReportTask(task as! BGAppRefreshTask)
+                if let refreshTask = task as? BGAppRefreshTask {
+                    await self.handleSendReportTask(refreshTask)
+                } else {
+                    Logger.error("Unexpected task type: \(type(of: task))", log: Logger.background)
+                    task.setTaskCompleted(success: false)
+                }
             }
         }
         Logger.info("Background tasks registered successfully", log: Logger.background)

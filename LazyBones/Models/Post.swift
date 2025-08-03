@@ -164,7 +164,22 @@ class PostStore: ObservableObject, PostStoreProtocol {
               let notificationManagerService = DependencyContainer.shared.resolve(NotificationManagerServiceType.self),
               let telegramIntegrationService = DependencyContainer.shared.resolve(TelegramIntegrationServiceType.self),
               let autoSendService = DependencyContainer.shared.resolve(AutoSendServiceType.self) else {
-            fatalError("Failed to resolve required dependencies in PostStore init")
+            Logger.critical("Failed to resolve required dependencies in PostStore init", log: Logger.general)
+            // Используем дефолтные значения вместо краша
+            self.userDefaultsManager = UserDefaultsManager.shared
+            self.telegramService = PostTelegramService(telegramService: TelegramService(token: ""), userDefaultsManager: UserDefaultsManager.shared)
+            self.notificationService = PostNotificationService(notificationService: NotificationService(), userDefaultsManager: UserDefaultsManager.shared)
+            self.notificationManagerService = NotificationManagerService(userDefaultsManager: UserDefaultsManager.shared, notificationService: NotificationService())
+            self.telegramIntegrationService = TelegramIntegrationService(userDefaultsManager: UserDefaultsManager.shared, telegramService: nil)
+            self.autoSendService = AutoSendService(userDefaultsManager: UserDefaultsManager.shared, postTelegramService: PostTelegramService(telegramService: TelegramService(token: ""), userDefaultsManager: UserDefaultsManager.shared))
+            self.localService = LocalReportService.shared
+            self.statusManager = ReportStatusManager(
+                localService: LocalReportService.shared,
+                timerService: PostTimerService(userDefaultsManager: UserDefaultsManager.shared) { _, _ in },
+                notificationService: PostNotificationService(notificationService: NotificationService(), userDefaultsManager: UserDefaultsManager.shared),
+                postsProvider: PostStore.shared
+            )
+            return
         }
         
         self.userDefaultsManager = userDefaultsManager
@@ -174,6 +189,14 @@ class PostStore: ObservableObject, PostStoreProtocol {
         self.notificationManagerService = notificationManagerService
         self.telegramIntegrationService = telegramIntegrationService
         self.autoSendService = autoSendService
+        
+        // Инициализируем statusManager
+        self.statusManager = ReportStatusManager(
+            localService: LocalReportService.shared,
+            timerService: timerService,
+            notificationService: notificationService,
+            postsProvider: self
+        )
         
         // Подписки на Published свойства notificationManagerService
         if let observableService = notificationManagerService as? NotificationManagerService {
@@ -574,14 +597,17 @@ extension PostStore {
     func addGoodTag(_ tag: String) {
         localService.addGoodTag(tag)
         self.goodTags = localService.loadGoodTags()
+        Logger.info("Added good tag: \(tag)", log: Logger.general)
     }
     func removeGoodTag(_ tag: String) {
         localService.removeGoodTag(tag)
         self.goodTags = localService.loadGoodTags()
+        Logger.info("Removed good tag: \(tag)", log: Logger.general)
     }
     func updateGoodTag(old: String, new: String) {
         localService.updateGoodTag(old: old, new: new)
         self.goodTags = localService.loadGoodTags()
+        Logger.info("Updated good tag: \(old) -> \(new)", log: Logger.general)
     }
     func loadBadTags() {
         self.badTags = localService.loadBadTags()
@@ -593,14 +619,17 @@ extension PostStore {
     func addBadTag(_ tag: String) {
         localService.addBadTag(tag)
         self.badTags = localService.loadBadTags()
+        Logger.info("Added bad tag: \(tag)", log: Logger.general)
     }
     func removeBadTag(_ tag: String) {
         localService.removeBadTag(tag)
         self.badTags = localService.loadBadTags()
+        Logger.info("Removed bad tag: \(tag)", log: Logger.general)
     }
     func updateBadTag(old: String, new: String) {
         localService.updateBadTag(old: old, new: new)
         self.badTags = localService.loadBadTags()
+        Logger.info("Updated bad tag: \(old) -> \(new)", log: Logger.general)
     }
 
     // MARK: - Автоотправка в Telegram (делегируется к AutoSendService)

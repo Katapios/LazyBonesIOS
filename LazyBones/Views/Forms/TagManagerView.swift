@@ -74,6 +74,9 @@ struct TagManagerView: View {
             store.addBadTag(trimmed)
         }
         newTag = ""
+        
+        // Принудительно обновляем теги для синхронизации с UI
+        store.loadTags()
     }
     func startEditTag(_ idx: Int) {
         editingTagIndex = idx
@@ -91,6 +94,9 @@ struct TagManagerView: View {
         }
         editingTagIndex = nil
         editingTagText = ""
+        
+        // Принудительно обновляем теги для синхронизации с UI
+        store.loadTags()
     }
     func deleteTag() {
         guard let tag = tagToDelete else { return }
@@ -100,6 +106,9 @@ struct TagManagerView: View {
             store.removeBadTag(tag)
         }
         tagToDelete = nil
+        
+        // Принудительно обновляем теги для синхронизации с UI
+        store.loadTags()
     }
 }
 

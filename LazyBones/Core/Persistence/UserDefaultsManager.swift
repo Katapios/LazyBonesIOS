@@ -25,6 +25,7 @@ class UserDefaultsManager: UserDefaultsManagerProtocol {
     
     private let userDefaults: UserDefaults
     private let appGroup = AppConfig.appGroup
+    private let queue = DispatchQueue(label: "UserDefaultsManager", qos: .userInitiated)
     
     private init() {
         self.userDefaults = UserDefaults(suiteName: appGroup) ?? UserDefaults.standard
@@ -34,7 +35,10 @@ class UserDefaultsManager: UserDefaultsManagerProtocol {
     
     /// Сохранить значение
     func set<T>(_ value: T, forKey key: String) {
-        userDefaults.set(value, forKey: key)
+        queue.async {
+            self.userDefaults.set(value, forKey: key)
+            self.userDefaults.synchronize()
+        }
     }
     
     /// Получить значение
@@ -59,7 +63,7 @@ class UserDefaultsManager: UserDefaultsManagerProtocol {
             }
             // Специальная обработка для Int
             if T.self == Int.self, let intValue = value as? Int {
-                return intValue as! T
+                return intValue as? T ?? defaultValue
             }
         }
         return defaultValue

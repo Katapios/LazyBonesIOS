@@ -711,19 +711,35 @@ struct DailyReportView: View {
         var body = Data()
         
         // Добавляем chat_id
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"chat_id\"\r\n\r\n".data(using: .utf8)!)
-        body.append("\(chatId)\r\n".data(using: .utf8)!)
+        guard let boundaryData = "--\(boundary)\r\n".data(using: .utf8),
+              let chatIdHeader = "Content-Disposition: form-data; name=\"chat_id\"\r\n\r\n".data(using: .utf8),
+              let chatIdData = "\(chatId)\r\n".data(using: .utf8) else {
+            completion(false)
+            return
+        }
+        
+        body.append(boundaryData)
+        body.append(chatIdHeader)
+        body.append(chatIdData)
         
         // Добавляем аудиофайл
         do {
             let audioData = try Data(contentsOf: voiceURL)
-            body.append("--\(boundary)\r\n".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"voice\"; filename=\"voice_note.m4a\"\r\n".data(using: .utf8)!)
-            body.append("Content-Type: audio/m4a\r\n\r\n".data(using: .utf8)!)
+            guard let voiceHeader = "--\(boundary)\r\n".data(using: .utf8),
+                  let voiceDisposition = "Content-Disposition: form-data; name=\"voice\"; filename=\"voice_note.m4a\"\r\n".data(using: .utf8),
+                  let voiceContentType = "Content-Type: audio/m4a\r\n\r\n".data(using: .utf8),
+                  let newline = "\r\n".data(using: .utf8),
+                  let endBoundary = "--\(boundary)--\r\n".data(using: .utf8) else {
+                completion(false)
+                return
+            }
+            
+            body.append(voiceHeader)
+            body.append(voiceDisposition)
+            body.append(voiceContentType)
             body.append(audioData)
-            body.append("\r\n".data(using: .utf8)!)
-            body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+            body.append(newline)
+            body.append(endBoundary)
         } catch {
             completion(false)
             return

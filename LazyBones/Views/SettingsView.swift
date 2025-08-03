@@ -216,9 +216,9 @@ struct SettingsView: View {
             "chat_id": chatId,
             "text": message
         ]
-        var urlComponents = URLComponents(string: urlString)!
-        urlComponents.queryItems = params.map { URLQueryItem(name: $0.key, value: $0.value) }
-        guard let url = urlComponents.url else {
+        var urlComponents = URLComponents(string: urlString)
+        urlComponents?.queryItems = params.map { URLQueryItem(name: $0.key, value: $0.value) }
+        guard let url = urlComponents?.url else {
             telegramStatus = "Ошибка URL"
             return
         }

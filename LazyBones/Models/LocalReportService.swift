@@ -81,12 +81,16 @@ class LocalReportService {
         var tags = loadGoodTags()
         tags.removeAll { $0 == tag }
         saveGoodTags(tags)
+        Logger.info("Removed good tag: \(tag), remaining tags: \(tags.count)", log: Logger.general)
     }
     func updateGoodTag(old: String, new: String) {
         var tags = loadGoodTags()
         if let idx = tags.firstIndex(of: old) {
             tags[idx] = new
             saveGoodTags(tags)
+            Logger.info("Updated good tag: \(old) -> \(new)", log: Logger.general)
+        } else {
+            Logger.warning("Could not find good tag to update: \(old)", log: Logger.general)
         }
     }
     // MARK: - Bad Tags
@@ -111,12 +115,16 @@ class LocalReportService {
         var tags = loadBadTags()
         tags.removeAll { $0 == tag }
         saveBadTags(tags)
+        Logger.info("Removed bad tag: \(tag), remaining tags: \(tags.count)", log: Logger.general)
     }
     func updateBadTag(old: String, new: String) {
         var tags = loadBadTags()
         if let idx = tags.firstIndex(of: old) {
             tags[idx] = new
             saveBadTags(tags)
+            Logger.info("Updated bad tag: \(old) -> \(new)", log: Logger.general)
+        } else {
+            Logger.warning("Could not find bad tag to update: \(old)", log: Logger.general)
         }
     }
     // MARK: - Миграция старых тегов

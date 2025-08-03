@@ -25,31 +25,47 @@ struct TagPickerUIKitWheel: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UIPickerView, context: Context) {
+        // Сначала обновляем данные
         uiView.reloadAllComponents()
-        // Если selectedIndex вне диапазона — сбросить в 0
+        
+        // Безопасно обрабатываем selectedIndex
         var safeIndex = selectedIndex
+        
+        // Проверяем границы массива тегов
         if tags.isEmpty {
             safeIndex = 0
         } else if selectedIndex >= tags.count {
             safeIndex = 0
+        } else if selectedIndex < 0 {
+            safeIndex = 0
         }
+        
+        // Устанавливаем безопасный индекс только если он в пределах массива
         if tags.indices.contains(safeIndex) {
             uiView.selectRow(safeIndex, inComponent: 0, animated: true)
         }
-        // Если был сброс, обновить binding
+        
+        // Обновляем binding только если индекс изменился
         if selectedIndex != safeIndex {
             DispatchQueue.main.async {
                 self.selectedIndex = safeIndex
             }
         }
-        // Обновим жесты: если тегов один — добавить, иначе убрать
+        
+        // Обновляем жесты для одиночного тега
+        updateGestureRecognizers(for: uiView, context: context)
+    }
+    
+    private func updateGestureRecognizers(for uiView: UIPickerView, context: Context) {
         if tags.count == 1 {
+            // Добавляем жест только если его еще нет
             if uiView.gestureRecognizers?.first(where: { $0 is UITapGestureRecognizer }) == nil {
                 let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTapOnPicker))
                 uiView.addGestureRecognizer(tap)
                 uiView.isUserInteractionEnabled = true
             }
         } else {
+            // Удаляем все tap жесты
             uiView.gestureRecognizers?.forEach { gr in
                 if gr is UITapGestureRecognizer {
                     uiView.removeGestureRecognizer(gr)
@@ -89,11 +105,15 @@ struct TagPickerUIKitWheel: UIViewRepresentable {
             return label
         }
         func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
-            if parent.tags.indices.contains(row) {
-                parent.selectedIndex = row
-                parent.onSelect(parent.tags[row])
-                pickerView.selectRow(row, inComponent: 0, animated: true)
+            // Проверяем, что индекс в пределах массива тегов
+            guard parent.tags.indices.contains(row) else {
+                Logger.warning("Selected row \(row) is out of bounds for tags array with \(parent.tags.count) items", log: Logger.general)
+                return
             }
+            
+            parent.selectedIndex = row
+            parent.onSelect(parent.tags[row])
+            pickerView.selectRow(row, inComponent: 0, animated: true)
         }
         func pickerView(_ pickerView: UIPickerView, rowHeightForComponent component: Int) -> CGFloat {
             44
@@ -101,6 +121,13 @@ struct TagPickerUIKitWheel: UIViewRepresentable {
         // --- Новый метод для обработки тапа по колесу, если тег один ---
         @objc func handleTapOnPicker() {
             guard parent.tags.count == 1 else { return }
+            
+            // Дополнительная проверка безопасности
+            guard parent.tags.indices.contains(0) else {
+                Logger.warning("Cannot access tag at index 0, tags array is empty", log: Logger.general)
+                return
+            }
+            
             parent.selectedIndex = 0
             parent.onSelect(parent.tags[0])
         }
