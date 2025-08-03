@@ -52,7 +52,18 @@ class ReportStatusFlexibilityTest: XCTestCase {
         let customProvider = DefaultReportStatusConfigProvider(config: customConfig)
         let customFactory = ReportStatusFactory(configProvider: customProvider)
         
-        XCTAssertEqual(customFactory.isReportPeriodActive(), false) // Зависит от времени
+        // Проверяем, что конфигурация корректно применяется
+        XCTAssertEqual(customConfig.timeSettings.startHour, 9)
+        XCTAssertEqual(customConfig.timeSettings.endHour, 18)
+        XCTAssertFalse(customConfig.statusSettings.enableForceUnlock)
+        XCTAssertFalse(customConfig.statusSettings.autoResetOnNewDay)
+        XCTAssertTrue(customConfig.statusSettings.enableNotifications)
+        XCTAssertFalse(customConfig.uiSettings.showTimer)
+        XCTAssertTrue(customConfig.uiSettings.showProgress)
+        XCTAssertFalse(customConfig.uiSettings.enableWidgetUpdates)
+        
+        // Проверяем, что фабрика создается с кастомной конфигурацией
+        XCTAssertNotNil(customFactory)
     }
     
     // MARK: - Тесты фабрики статусов

@@ -252,8 +252,16 @@ class ServiceTests: XCTestCase {
     func testDateUtils_IsSameDay() {
         // Given
         let date1 = Date()
-        let date2 = Calendar.current.date(byAdding: .hour, value: 12, to: date1)!
-        let date3 = Calendar.current.date(byAdding: .day, value: 1, to: date1)!
+        let calendar = Calendar.current
+        
+        // Создаем дату в том же дне, но с другим временем
+        var components = calendar.dateComponents([.year, .month, .day], from: date1)
+        components.hour = 12
+        components.minute = 30
+        let date2 = calendar.date(from: components)!
+        
+        // Создаем дату в следующем дне
+        let date3 = calendar.date(byAdding: .day, value: 1, to: date1)!
         
         // When & Then
         XCTAssertTrue(DateUtils.isSameDay(date1, date2))

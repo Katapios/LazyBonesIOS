@@ -35,10 +35,8 @@ class UserDefaultsManager: UserDefaultsManagerProtocol {
     
     /// Сохранить значение
     func set<T>(_ value: T, forKey key: String) {
-        queue.async {
-            self.userDefaults.set(value, forKey: key)
-            self.userDefaults.synchronize()
-        }
+        userDefaults.set(value, forKey: key)
+        userDefaults.synchronize()
     }
     
     /// Получить значение
