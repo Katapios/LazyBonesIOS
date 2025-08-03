@@ -4,7 +4,7 @@ import WidgetKit
 
 /// Главный координатор приложения с поддержкой Clean Architecture
 @MainActor
-class AppCoordinator: BaseCoordinator, ObservableObject, @preconcurrency ErrorHandlingCoordinator, @preconcurrency LoadingCoordinator {
+class AppCoordinator: BaseCoordinator, ObservableObject, ErrorHandlingCoordinator, @preconcurrency LoadingCoordinator {
     
     // MARK: - Published Properties
     @Published var currentTab: Tab = .main
@@ -121,17 +121,16 @@ class AppCoordinator: BaseCoordinator, ObservableObject, @preconcurrency ErrorHa
     private func initializeServices() async {
         showLoading()
         
+        // Инициализируем необходимые сервисы
+        let backgroundTaskService = dependencyContainer.resolve(BackgroundTaskServiceProtocol.self)
         do {
-            // Инициализируем необходимые сервисы
-            let backgroundTaskService = dependencyContainer.resolve(BackgroundTaskServiceProtocol.self)
             try backgroundTaskService?.registerBackgroundTasks()
-            
-            let notificationService = dependencyContainer.resolve(NotificationManagerServiceType.self)
-            await notificationService?.requestNotificationPermissionAndSchedule()
-            
         } catch {
             handleError(error)
         }
+        
+        let notificationService = dependencyContainer.resolve(NotificationManagerServiceType.self)
+        notificationService?.requestNotificationPermissionAndSchedule()
         
         hideLoading()
     }
@@ -144,12 +143,12 @@ class AppCoordinator: BaseCoordinator, ObservableObject, @preconcurrency ErrorHa
         childCoordinators.removeAll()
         
         // Сохраняем данные
-        Task {
-            await saveApplicationState()
+        Task { @MainActor in
+            saveApplicationState()
         }
     }
     
-    private func saveApplicationState() async {
+    private func saveApplicationState() {
         // Сохранение состояния приложения
         let userDefaultsManager = dependencyContainer.resolve(UserDefaultsManager.self)
         userDefaultsManager?.set(currentTab.rawValue, forKey: "lastActiveTab")
@@ -160,12 +159,8 @@ class AppCoordinator: BaseCoordinator, ObservableObject, @preconcurrency ErrorHa
         Logger.info("Handling background task", log: Logger.background)
         
         Task {
-            do {
-                let autoSendService = dependencyContainer.resolve(AutoSendServiceType.self)
-                await autoSendService?.performAutoSendReport()
-            } catch {
-                Logger.error("Background task error: \(error)", log: Logger.background)
-            }
+            let autoSendService = dependencyContainer.resolve(AutoSendServiceType.self)
+            autoSendService?.performAutoSendReport()
         }
     }
     

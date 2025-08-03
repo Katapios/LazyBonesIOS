@@ -23,7 +23,6 @@ class ReportsCoordinator: BaseCoordinator {
     }
     
     func showReportList() {
-        let viewModel = dependencyContainer.resolve(ReportListViewModel.self)!
         // ReportListView уже существует и принимает viewModel
         Logger.debug("Showing report list", log: Logger.ui)
     }
