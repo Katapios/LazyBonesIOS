@@ -112,13 +112,21 @@ class NotificationManagerService: NotificationManagerServiceProtocol {
     // MARK: - Notification Logic
     
     func requestNotificationPermissionAndSchedule() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
-            DispatchQueue.main.async {
-                if granted { 
-                    self.scheduleNotifications() 
-                } else { 
-                    self.notificationsEnabled = false 
+        Task {
+            do {
+                let granted = try await notificationService.requestPermission()
+                await MainActor.run {
+                    if granted { 
+                        self.scheduleNotifications() 
+                    } else { 
+                        self.notificationsEnabled = false 
+                    }
                 }
+            } catch {
+                await MainActor.run {
+                    self.notificationsEnabled = false
+                }
+                Logger.error("Failed to request notification permission: \(error)", log: Logger.notifications)
             }
         }
     }
@@ -136,6 +144,16 @@ class NotificationManagerService: NotificationManagerServiceProtocol {
         
         Task {
             do {
+                // Проверяем разрешения на уведомления
+                let hasPermission = await notificationService.checkNotificationPermission()
+                guard hasPermission else {
+                    Logger.warning("No notification permission, skipping scheduling", log: Logger.notifications)
+                    await MainActor.run {
+                        self.notificationsEnabled = false
+                    }
+                    return
+                }
+                
                 // Сначала выводим debug информацию
                 await notificationService.debugNotificationStatus()
                 

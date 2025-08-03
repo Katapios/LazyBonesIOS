@@ -1,5 +1,8 @@
 import Foundation
 
+// Импорты для сервисов
+import Combine
+
 /// Контейнер зависимостей для Dependency Injection
 class DependencyContainer {
     
@@ -114,7 +117,12 @@ extension DependencyContainer {
         
         // Background Task Service
         register(BackgroundTaskServiceProtocol.self, factory: {
-            BackgroundTaskService()
+            let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
+            let autoSendService = self.resolve(AutoSendServiceType.self)!
+            return BackgroundTaskService(
+                userDefaultsManager: userDefaultsManager,
+                autoSendService: autoSendService
+            )
         })
         
         // Telegram Service
@@ -153,6 +161,16 @@ extension DependencyContainer {
             return NotificationManagerService(
                 userDefaultsManager: userDefaultsManager,
                 notificationService: notificationService
+            )
+        })
+        
+        // Auto Send Service
+        register(AutoSendServiceType.self, factory: {
+            let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
+            let postTelegramService = self.resolve(PostTelegramServiceProtocol.self)!
+            return AutoSendService(
+                userDefaultsManager: userDefaultsManager,
+                postTelegramService: postTelegramService
             )
         })
         

@@ -96,16 +96,6 @@ class NotificationService: NotificationServiceProtocol {
         triggerDate.hour = hour
         triggerDate.minute = minute
         
-        // Проверяем, что время еще не прошло сегодня
-        let calendar = Calendar.current
-        let now = Date()
-        var targetDate = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: now) ?? now
-        
-        // Если время уже прошло сегодня, планируем на завтра
-        if targetDate <= now {
-            targetDate = calendar.date(byAdding: .day, value: 1, to: targetDate) ?? targetDate
-        }
-        
         // Создаем триггер для ежедневного повторения
         let trigger = UNCalendarNotificationTrigger(dateMatching: triggerDate, repeats: true)
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
@@ -223,7 +213,9 @@ class NotificationService: NotificationServiceProtocol {
     /// Проверить разрешения на уведомления
     func checkNotificationPermission() async -> Bool {
         let settings = await notificationCenter.notificationSettings()
-        return settings.authorizationStatus == .authorized
+        let isAuthorized = settings.authorizationStatus == .authorized
+        Logger.info("Notification permission check: \(isAuthorized)", log: Logger.notifications)
+        return isAuthorized
     }
     
     /// Получить детальную информацию о разрешениях на уведомления

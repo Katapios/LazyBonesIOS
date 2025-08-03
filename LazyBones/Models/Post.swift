@@ -147,8 +147,12 @@ class PostStore: ObservableObject, PostStoreProtocol {
     // НОВОЕ: NotificationManagerService для управления уведомлениями
     private(set) var notificationManagerService: NotificationManagerServiceType
     
+    // НОВОЕ: AutoSendService для управления автоотправкой
+    private(set) var autoSendService: AutoSendServiceType
+    
     // Для хранения подписок
     private var cancellables = Set<AnyCancellable>()
+    private var isUpdatingFromNotificationService = false
     
     init() {
         print("[DEBUG][INIT] PostStore инициализирован")
@@ -158,7 +162,8 @@ class PostStore: ObservableObject, PostStoreProtocol {
               let telegramService = DependencyContainer.shared.resolve(PostTelegramServiceProtocol.self),
               let notificationService = DependencyContainer.shared.resolve(PostNotificationServiceProtocol.self),
               let notificationManagerService = DependencyContainer.shared.resolve(NotificationManagerServiceType.self),
-              let telegramIntegrationService = DependencyContainer.shared.resolve(TelegramIntegrationServiceType.self) else {
+              let telegramIntegrationService = DependencyContainer.shared.resolve(TelegramIntegrationServiceType.self),
+              let autoSendService = DependencyContainer.shared.resolve(AutoSendServiceType.self) else {
             fatalError("Failed to resolve required dependencies in PostStore init")
         }
         
@@ -168,23 +173,44 @@ class PostStore: ObservableObject, PostStoreProtocol {
         self.localService = LocalReportService.shared
         self.notificationManagerService = notificationManagerService
         self.telegramIntegrationService = telegramIntegrationService
+        self.autoSendService = autoSendService
         
         // Подписки на Published свойства notificationManagerService
         if let observableService = notificationManagerService as? NotificationManagerService {
             observableService.$notificationsEnabled
-                .sink { [weak self] newValue in self?.notificationsEnabled = newValue }
+                .sink { [weak self] newValue in 
+                    self?.isUpdatingFromNotificationService = true
+                    self?.notificationsEnabled = newValue
+                    self?.isUpdatingFromNotificationService = false
+                }
                 .store(in: &cancellables)
             observableService.$notificationMode
-                .sink { [weak self] newValue in self?.notificationMode = newValue }
+                .sink { [weak self] newValue in 
+                    self?.isUpdatingFromNotificationService = true
+                    self?.notificationMode = newValue
+                    self?.isUpdatingFromNotificationService = false
+                }
                 .store(in: &cancellables)
             observableService.$notificationIntervalHours
-                .sink { [weak self] newValue in self?.notificationIntervalHours = newValue }
+                .sink { [weak self] newValue in 
+                    self?.isUpdatingFromNotificationService = true
+                    self?.notificationIntervalHours = newValue
+                    self?.isUpdatingFromNotificationService = false
+                }
                 .store(in: &cancellables)
             observableService.$notificationStartHour
-                .sink { [weak self] newValue in self?.notificationStartHour = newValue }
+                .sink { [weak self] newValue in 
+                    self?.isUpdatingFromNotificationService = true
+                    self?.notificationStartHour = newValue
+                    self?.isUpdatingFromNotificationService = false
+                }
                 .store(in: &cancellables)
             observableService.$notificationEndHour
-                .sink { [weak self] newValue in self?.notificationEndHour = newValue }
+                .sink { [weak self] newValue in 
+                    self?.isUpdatingFromNotificationService = true
+                    self?.notificationEndHour = newValue
+                    self?.isUpdatingFromNotificationService = false
+                }
                 .store(in: &cancellables)
         }
         
@@ -207,8 +233,14 @@ class PostStore: ObservableObject, PostStoreProtocol {
         startTimer()
         loadGoodTags()
         loadBadTags()
-        loadAutoSendSettings()
-        scheduleAutoSendIfNeeded()
+        // Автоотправка теперь управляется через AutoSendService
+        autoSendService.loadAutoSendSettings()
+        autoSendService.scheduleAutoSendIfNeeded()
+        
+        // Инициализируем уведомления при запуске
+        if notificationsEnabled {
+            notificationManagerService.requestNotificationPermissionAndSchedule()
+        }
         
         print("[DEBUG][INIT] PostStore инициализация завершена")
     }
@@ -216,44 +248,49 @@ class PostStore: ObservableObject, PostStoreProtocol {
     private func loadSettings() {
         load()
         loadNotificationSettings()
-        loadAutoSendSettings()
+        // Автоотправка теперь управляется через AutoSendService
         loadTags()
     }
         // --- Notification settings ---
-    @Published var notificationsEnabled: Bool = false
-    @Published var notificationIntervalHours: Int = 1 // 1-12
-    @Published var notificationStartHour: Int = 8 // В будущем можно сделать настраиваемым
-    @Published var notificationEndHour: Int = 22 // В будущем можно сделать настраиваемым
-    @Published var notificationMode: NotificationMode = .hourly
+    @Published var notificationsEnabled: Bool = false {
+        didSet {
+            if !isUpdatingFromNotificationService {
+                // Синхронизируем с NotificationManagerService
+                notificationManagerService.notificationsEnabled = notificationsEnabled
+            }
+        }
+    }
+    @Published var notificationIntervalHours: Int = 1 { // 1-12
+        didSet {
+            if !isUpdatingFromNotificationService {
+                notificationManagerService.notificationIntervalHours = notificationIntervalHours
+            }
+        }
+    }
+    @Published var notificationStartHour: Int = 8 { // В будущем можно сделать настраиваемым
+        didSet {
+            if !isUpdatingFromNotificationService {
+                notificationManagerService.notificationStartHour = notificationStartHour
+            }
+        }
+    }
+    @Published var notificationEndHour: Int = 22 { // В будущем можно сделать настраиваемым
+        didSet {
+            if !isUpdatingFromNotificationService {
+                notificationManagerService.notificationEndHour = notificationEndHour
+            }
+        }
+    }
+    @Published var notificationMode: NotificationMode = .hourly {
+        didSet {
+            if !isUpdatingFromNotificationService {
+                notificationManagerService.notificationMode = notificationMode
+            }
+        }
+    }
     @Published var goodTags: [String] = []
     @Published var badTags: [String] = []
-    // --- Новое для автоотправки ---
-    @Published var autoSendToTelegram: Bool = false {
-        didSet {
-            saveAutoSendSettings()
-        }
-    }
-    @Published var autoSendTime: Date = Calendar.current.date(bySettingHour: 21, minute: 0, second: 0, of: Date()) ?? Date() {
-        didSet {
-            saveAutoSendSettings()
-            scheduleAutoSendIfNeeded()
-        }
-    }
-    @Published var lastAutoSendStatus: String? = nil {
-        didSet {
-            saveAutoSendSettings()
-        }
-    }
-    private var lastAutoSendDate: Date? {
-        get {
-            let ud = UserDefaults(suiteName: Self.appGroup)
-            return ud?.object(forKey: "lastAutoSendDate") as? Date
-        }
-        set {
-            let ud = UserDefaults(suiteName: Self.appGroup)
-            ud?.set(newValue, forKey: "lastAutoSendDate")
-        }
-    }
+    // --- Автоотправка управляется через AutoSendService ---
 
 
 
@@ -277,7 +314,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
         print("[DEBUG][PostStore] add(post:) called")
         posts.append(post)
         save()
-        scheduleAutoSendIfNeeded()
+        autoSendService.scheduleAutoSendIfNeeded()
         let today = Calendar.current.startOfDay(for: Date())
         if forceUnlock && Calendar.current.isDate(post.date, inSameDayAs: today) {
             forceUnlock = false
@@ -301,7 +338,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
         if let idx = posts.firstIndex(where: { $0.id == post.id }) {
             posts[idx] = post
             save()
-            scheduleAutoSendIfNeeded()
+            autoSendService.scheduleAutoSendIfNeeded()
             let today = Calendar.current.startOfDay(for: Date())
             if forceUnlock && Calendar.current.isDate(post.date, inSameDayAs: today) {
                 forceUnlock = false
@@ -566,84 +603,10 @@ extension PostStore {
         self.badTags = localService.loadBadTags()
     }
 
-    // MARK: - Автоотправка в Telegram
-    func loadAutoSendSettings() {
-        let userDefaults = UserDefaults(suiteName: Self.appGroup)
-        autoSendToTelegram = userDefaults?.bool(forKey: "autoSendToTelegram") ?? false
-        if let date = userDefaults?.object(forKey: "autoSendTime") as? Date {
-            print("[AutoSend][LOAD] Загружено время автоотправки: \(date)")
-            autoSendTime = date
-        } else {
-            print("[AutoSend][LOAD] Время автоотправки не найдено, используется дефолт: \(autoSendTime)")
-        }
-        lastAutoSendStatus = userDefaults?.string(forKey: "lastAutoSendStatus")
-        saveAutoSendSettings()
-    }
-    func saveAutoSendSettings() {
-        let userDefaults = UserDefaults(suiteName: Self.appGroup)
-        userDefaults?.set(autoSendToTelegram, forKey: "autoSendToTelegram")
-        userDefaults?.set(autoSendTime, forKey: "autoSendTime")
-        userDefaults?.set(lastAutoSendStatus, forKey: "lastAutoSendStatus")
-        print("[AutoSend][SAVE] Сохраняю время автоотправки: \(autoSendTime)")
-    }
-    func scheduleAutoSendIfNeeded() {
-        // MVP: использовать Timer для планирования автоотправки (BGTaskScheduler — для продакшена)
-        autoSendTimer?.invalidate()
-        guard autoSendToTelegram else { print("[AutoSend] Disabled"); return }
-        let now = Date()
-        let cal = Calendar.current
-        let todaySend = cal.date(
-            bySettingHour: cal.component(.hour, from: autoSendTime),
-            minute: cal.component(.minute, from: autoSendTime),
-            second: 0,
-            of: now
-        ) ?? autoSendTime
-        let interval = todaySend.timeIntervalSince(now)
-        print("[AutoSend] Scheduling auto send for", todaySend, "in", interval, "seconds")
-        if interval > 0 {
-            // Таймер только для debug/MVP, не для BGTaskScheduler
-#if DEBUG
-            autoSendTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] _ in
-                self?.performAutoSendReport()
-            }
-#endif
-        }
-    }
-    private var autoSendTimer: Timer? {
-        get { objc_getAssociatedObject(self, &PostStore.autoSendTimerKey) as? Timer }
-        set { objc_setAssociatedObject(self, &PostStore.autoSendTimerKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
-    }
-    private static var autoSendTimerKey: UInt8 = 0
-    func performAutoSendReport() {
-        // Проверяем, не наступил ли новый день перед автоотправкой
-        checkForNewDay()
-        
-        telegramService.performAutoSendReport { [weak self] in
-            // Обновляем статус после отправки только если это еще сегодня
-            DispatchQueue.main.async {
-                guard let self = self else { return }
-                
-                // Проверяем еще раз, что мы все еще в том же дне
-                let calendar = Calendar.current
-                let now = Date()
-                let today = calendar.startOfDay(for: now)
-                
-                if calendar.isDate(self.currentDay, inSameDayAs: today) {
-                    // Обновляем статус через updateReportStatus() для правильной логики
-                    self.updateReportStatus()
-                    print("[DEBUG] Автоотправка: статус обновлен через updateReportStatus()")
-                } else {
-                    print("[DEBUG] Автоотправка: новый день наступил, статус не изменен")
-                }
-                
-                WidgetCenter.shared.reloadAllTimelines()
-            }
-        }
-    }
+    // MARK: - Автоотправка в Telegram (делегируется к AutoSendService)
     /// Автоматическая отправка всех отчетов за сегодня (кастомный и обычный)
     func autoSendAllReportsForToday(completion: (() -> Void)? = nil) {
-        telegramService.autoSendAllReportsForToday()
-        completion?()
+        autoSendService.autoSendAllReportsForToday(completion: completion)
     }
     func sendToTelegram(text: String, completion: @escaping (Bool) -> Void) {
         telegramService.sendToTelegram(text: text, completion: completion)

@@ -149,8 +149,14 @@ struct SettingsView: View {
     
     private var autoSendSection: some View {
         Section(header: Text("Автоотправка отчетов")) {
-            Toggle("Включить автоотправку отчетов", isOn: $store.autoSendToTelegram)
-                .onChange(of: store.autoSendToTelegram) { store.saveAutoSendSettings() }
+            Toggle("Включить автоотправку отчетов", isOn: Binding(
+                get: { store.autoSendService.autoSendEnabled },
+                set: { newValue in
+                    store.autoSendService.autoSendEnabled = newValue
+                    store.autoSendService.saveAutoSendSettings()
+                    store.autoSendService.scheduleAutoSendIfNeeded()
+                }
+            ))
             Text("Отчеты будут автоматически отправляться один раз в сутки, в период с 22:01 до 23:59. Если пользователь уже отправил отчеты вручную, автоотправка не производится. Если система не смогла отправить отчеты за предыдущие дни, они будут отправлены вместе с текущими. Отправка происходит в фоне, когда система разрешит выполнение фоновой задачи.")
                 .font(.caption)
                 .foregroundColor(.secondary)

@@ -20,7 +20,7 @@ struct AppConfig {
     // MARK: - Background Task Identifiers
     
     /// Идентификатор для background task отправки отчета
-    static let backgroundTaskIdentifier = "com.katapios.LazyBones.sendReport"
+    static let backgroundTaskIdentifier = "com.katapios.LazyBones1.sendReport"
     
     // MARK: - Widget Identifiers
     

@@ -31,9 +31,11 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
     
     private let taskIdentifier = AppConfig.backgroundTaskIdentifier
     private let userDefaultsManager: UserDefaultsManager
+    private let autoSendService: AutoSendServiceType
     
-    init(userDefaultsManager: UserDefaultsManager = .shared) {
+    init(userDefaultsManager: UserDefaultsManager = .shared, autoSendService: AutoSendServiceType? = nil) {
         self.userDefaultsManager = userDefaultsManager
+        self.autoSendService = autoSendService ?? DependencyContainer.shared.resolve(AutoSendServiceType.self)!
     }
     
     // MARK: - BackgroundTaskServiceProtocol
@@ -79,10 +81,8 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
         }
         
         do {
-            // Проверяем настройки автоотправки
-            let (enabled, _) = userDefaultsManager.loadAutoSendSettings()
-            
-            if enabled {
+            // Проверяем настройки автоотправки через AutoSendService
+            if autoSendService.autoSendEnabled {
                 Logger.info("Auto-send enabled, processing reports", log: Logger.background)
                 await processAutoSendReports()
             } else {
@@ -132,11 +132,9 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
     private func processAutoSendReports() async {
         Logger.info("Processing auto-send reports", log: Logger.background)
         
-        // Используем PostStore для автоотправки отчетов
-        let store = PostStore.shared
-        store.autoSendAllReportsForToday {
-            Logger.info("Auto-send reports sent", log: Logger.background)
-        }
+        // Используем AutoSendService для автоотправки отчетов
+        autoSendService.performAutoSendReport()
+        Logger.info("Auto-send reports sent", log: Logger.background)
     }
     
     // MARK: - Helper Methods

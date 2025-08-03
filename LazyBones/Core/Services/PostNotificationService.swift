@@ -61,9 +61,10 @@ class PostNotificationService: PostNotificationServiceProtocol {
                 await notificationService.debugNotificationStatus()
                 
                 // Используем правильную логику из NotificationService
+                let intervalHours = getNotificationIntervalHours()
                 try await notificationService.scheduleReportNotifications(
                     enabled: true,
-                    intervalHours: 1, // Для hourly режима
+                    intervalHours: intervalHours,
                     startHour: startHour,
                     endHour: endHour,
                     mode: notificationMode
@@ -118,6 +119,10 @@ class PostNotificationService: PostNotificationServiceProtocol {
         let modeString = userDefaultsManager.string(forKey: "notificationMode") ?? "hourly"
         Logger.info("Notification mode loaded: \(modeString)", log: Logger.notifications)
         return modeString
+    }
+    
+    private func getNotificationIntervalHours() -> Int {
+        return userDefaultsManager.get(Int.self, forKey: "notificationIntervalHours", defaultValue: 1)
     }
     
     private func getReportStatus() -> ReportStatus {
