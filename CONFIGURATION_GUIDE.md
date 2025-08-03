@@ -29,12 +29,12 @@ static let appGroup = "group.com.katapios.LazyBones"
 
 ### Background Task Identifiers
 ```swift
-static let backgroundTaskIdentifier = "com.katapios.LazyBones.sendReport"
+static let backgroundTaskIdentifier = "com.katapios.LazyBones1.sendReport"
 ```
 
 ### Widget Identifiers
 ```swift
-static let widgetKind = "com.katapios.LazyBones.LazyBonesWidget"
+static let widgetKind = "com.katapios.LazyBones1.LazyBonesWidget"
 ```
 
 ## Как изменить конфигурацию
