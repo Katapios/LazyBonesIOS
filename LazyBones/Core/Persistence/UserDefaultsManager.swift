@@ -14,6 +14,8 @@ protocol UserDefaultsManagerProtocol {
     func data(forKey key: String) -> Data?
     func loadPosts() -> [Post]
     func savePosts(_ posts: [Post])
+    func saveTelegramSettings(token: String?, chatId: String?, botId: String?)
+    func loadTelegramSettings() -> (token: String?, chatId: String?, botId: String?)
 }
 
 /// Менеджер для работы с UserDefaults
@@ -77,9 +79,23 @@ class UserDefaultsManager: UserDefaultsManagerProtocol {
     
     /// Сохранить настройки Telegram
     func saveTelegramSettings(token: String?, chatId: String?, botId: String?) {
-        set(token, forKey: "telegramToken")
-        set(chatId, forKey: "telegramChatId")
-        set(botId, forKey: "telegramBotId")
+        if let token = token {
+            set(token, forKey: "telegramToken")
+        } else {
+            remove(forKey: "telegramToken")
+        }
+        
+        if let chatId = chatId {
+            set(chatId, forKey: "telegramChatId")
+        } else {
+            remove(forKey: "telegramChatId")
+        }
+        
+        if let botId = botId {
+            set(botId, forKey: "telegramBotId")
+        } else {
+            remove(forKey: "telegramBotId")
+        }
     }
     
     /// Загрузить настройки Telegram

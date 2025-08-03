@@ -65,11 +65,10 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
         telegramChatId = chatId
         telegramBotId = botId
         
-        userDefaultsManager.set(token, forKey: "telegramToken")
-        userDefaultsManager.set(chatId, forKey: "telegramChatId")
-        userDefaultsManager.set(botId, forKey: "telegramBotId")
+        // Используем специальный метод для сохранения настроек Telegram
+        userDefaultsManager.saveTelegramSettings(token: token, chatId: chatId, botId: botId)
         
-        // Обновляем TelegramService в DI контейнере
+        // Обновляем TelegramService в DI контейнере только если есть валидный токен
         if let token = token, !token.isEmpty {
             DependencyContainer.shared.registerTelegramService(token: token)
         }
