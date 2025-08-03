@@ -11,9 +11,15 @@ import Foundation
 
 /// Корневой TabView приложения с новой архитектурой
 struct ContentView: View {
-    @StateObject var appCoordinator = AppCoordinator()
+    @StateObject var appCoordinator: AppCoordinator
     @StateObject var store = PostStore()
     @Environment(\.scenePhase) private var scenePhase
+    
+    init() {
+        // Создаем AppCoordinator с DI контейнером
+        let dependencyContainer = DependencyContainer.shared
+        self._appCoordinator = StateObject(wrappedValue: AppCoordinator(dependencyContainer: dependencyContainer))
+    }
     
     var body: some View {
         TabView(selection: $appCoordinator.currentTab) {
@@ -73,6 +79,19 @@ struct ContentView: View {
         .onChange(of: appCoordinator.currentTab) { _, newTab in
             Logger.debug("Tab changed to: \(newTab.title)", log: Logger.ui)
         }
+        .overlay {
+            if appCoordinator.isLoading {
+                ProgressView("Загрузка...")
+                    .background(Color.black.opacity(0.3))
+            }
+        }
+        .alert("Ошибка", isPresented: .constant(appCoordinator.errorMessage != nil)) {
+            Button("OK") {
+                appCoordinator.clearError()
+            }
+        } message: {
+            Text(appCoordinator.errorMessage ?? "")
+        }
     }
 }
 
@@ -81,6 +100,6 @@ struct ContentView: View {
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
-            .environmentObject(AppCoordinator())
+            .environmentObject(AppCoordinator(dependencyContainer: DependencyContainer.shared))
     }
 }
