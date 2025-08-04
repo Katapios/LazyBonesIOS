@@ -63,6 +63,8 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
             await deleteSelectedReports()
         case .clearError:
             state.error = nil
+        case .resetLastUpdateId:
+            await resetLastUpdateId()
         }
     }
     
@@ -128,6 +130,9 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
             state.isRefreshing = false
             return
         }
+        
+        // Принудительно обновляем TelegramService для получения актуального токена
+        telegramIntegrationService.refreshTelegramService()
         
         // Используем completion-based API для совместимости
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
@@ -263,5 +268,20 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
         state.telegramConnected = settings.token != nil && !settings.token!.isEmpty
         
         // canClearHistory вычисляется автоматически в state
+    }
+    
+    private func resetLastUpdateId() async {
+        Logger.info("Resetting lastUpdateId for debugging", log: Logger.telegram)
+        telegramIntegrationService.resetLastUpdateId()
+        
+        // Показываем сообщение пользователю
+        state.error = NSError(domain: "ExternalReports", code: 0, userInfo: [NSLocalizedDescriptionKey: "ID обновлений сброшен. Теперь можно получить все сообщения заново."])
+        
+        // Очищаем ошибку через 3 секунды
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            Task { @MainActor in
+                self.state.error = nil
+            }
+        }
     }
 } 

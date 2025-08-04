@@ -43,41 +43,60 @@ struct ExternalReportsView: View {
     
     // MARK: - Controls Section
     private var controlsSection: some View {
-        HStack(spacing: 12) {
+        VStack(spacing: 8) {
+            HStack(spacing: 12) {
+                Button(action: { 
+                    Task {
+                        await viewModel.handle(.refreshFromTelegram)
+                    }
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.clockwise")
+                        Text("Обновить")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .disabled(!viewModel.state.telegramConnected || viewModel.state.isRefreshing)
+                
+                Button(action: { 
+                    Task {
+                        await viewModel.handle(.openTelegramGroup)
+                    }
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "paperplane.fill")
+                        Text("В группу")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .onTapGesture {
+                    if let url = URL(string: "https://t.me/+Ny08CEMnQJplMGJi") {
+                        openURL(url)
+                    }
+                }
+                
+                if viewModel.state.isRefreshing {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                }
+            }
+            
+            // Кнопка для отладки - сброс lastUpdateId
+            #if DEBUG
             Button(action: { 
                 Task {
-                    await viewModel.handle(.refreshFromTelegram)
+                    await viewModel.handle(.resetLastUpdateId)
                 }
             }) {
                 HStack(spacing: 4) {
-                    Image(systemName: "arrow.clockwise")
-                    Text("Обновить")
+                    Image(systemName: "arrow.counterclockwise")
+                    Text("Сбросить ID (Debug)")
                 }
             }
             .buttonStyle(.bordered)
-            .disabled(!viewModel.state.telegramConnected || viewModel.state.isRefreshing)
-            
-            Button(action: { 
-                Task {
-                    await viewModel.handle(.openTelegramGroup)
-                }
-            }) {
-                HStack(spacing: 4) {
-                    Image(systemName: "paperplane.fill")
-                    Text("В группу")
-                }
-            }
-            .buttonStyle(.bordered)
-            .onTapGesture {
-                if let url = URL(string: "https://t.me/+Ny08CEMnQJplMGJi") {
-                    openURL(url)
-                }
-            }
-            
-            if viewModel.state.isRefreshing {
-                ProgressView()
-                    .scaleEffect(0.7)
-            }
+            .foregroundColor(.orange)
+            .font(.caption)
+            #endif
         }
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.vertical, 2)

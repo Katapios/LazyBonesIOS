@@ -139,10 +139,14 @@ class TelegramService: TelegramServiceProtocol {
     
     func getUpdates(offset: Int? = nil) async throws -> [TelegramUpdate] {
         Logger.debug("Getting updates with offset: \(offset ?? 0)", log: Logger.networking)
+        Logger.info("TelegramService.getUpdates called with token: \(String(token.prefix(10)))...", log: Logger.networking)
         
         var parameters: [String: Any] = [:]
         if let offset = offset {
             parameters["offset"] = offset
+            Logger.info("Using offset parameter: \(offset)", log: Logger.networking)
+        } else {
+            Logger.info("No offset parameter - will get all available updates", log: Logger.networking)
         }
         
         do {
@@ -151,15 +155,29 @@ class TelegramService: TelegramServiceProtocol {
                 parameters: parameters
             )
             
+            Logger.info("Telegram API response received", log: Logger.networking)
+            Logger.info("Response ok: \(response.ok)", log: Logger.networking)
+            if let description = response.description {
+                Logger.info("Response description: \(description)", log: Logger.networking)
+            }
+            
             if response.ok {
                 let updates = response.result // result теперь не опциональный
                 Logger.info("Received \(updates.count) updates", log: Logger.networking)
+                
+                // Логируем детали каждого обновления
+                for (index, update) in updates.enumerated() {
+                    Logger.debug("Update \(index): id=\(update.updateId ?? 0), hasMessage=\(update.message != nil)", log: Logger.networking)
+                }
+                
                 return updates
             } else {
+                Logger.error("Telegram API error: \(response.description ?? "Unknown error")", log: Logger.networking)
                 throw TelegramServiceError.apiError(response.description ?? "Unknown error")
             }
         } catch {
             Logger.error("Failed to get updates: \(error)", log: Logger.networking)
+            Logger.error("Error type: \(type(of: error))", log: Logger.networking)
             throw TelegramServiceError.networkError(error)
         }
     }

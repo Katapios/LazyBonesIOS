@@ -37,4 +37,7 @@ enum ExternalReportsEvent {
     
     /// Очистить ошибку
     case clearError
+    
+    /// Сбросить lastUpdateId (для отладки)
+    case resetLastUpdateId
 } 

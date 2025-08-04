@@ -30,6 +30,10 @@ protocol TelegramIntegrationServiceProtocol: ObservableObject {
     
     // MARK: - Report Formatting
     func formatCustomReportForTelegram(_ report: Post, deviceName: String) -> String
+    
+    // MARK: - Debug and Maintenance
+    func refreshTelegramService()
+    func resetLastUpdateId()
 }
 
 /// Сервис для интеграции с Telegram
@@ -58,9 +62,27 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
         loadExternalPosts()
     }
     
+    // MARK: - Private Helper Methods
+    
+    /// Получить актуальный TelegramService из DI контейнера
+    private func getCurrentTelegramService() -> TelegramServiceProtocol? {
+        // Пытаемся получить актуальный сервис из DI контейнера
+        if let currentService = DependencyContainer.shared.resolve(TelegramServiceProtocol.self) {
+            return currentService
+        }
+        
+        // Fallback к сохраненному сервису
+        return telegramService
+    }
+    
     // MARK: - Settings Management
     
     func saveTelegramSettings(token: String?, chatId: String?, botId: String?) {
+        Logger.info("Saving Telegram settings", log: Logger.telegram)
+        Logger.info("Token: \(token?.prefix(10) ?? "nil")...", log: Logger.telegram)
+        Logger.info("ChatId: \(chatId ?? "nil")", log: Logger.telegram)
+        Logger.info("BotId: \(botId ?? "nil")", log: Logger.telegram)
+        
         telegramToken = token
         telegramChatId = chatId
         telegramBotId = botId
@@ -70,7 +92,11 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
         
         // Обновляем TelegramService в DI контейнере только если есть валидный токен
         if let token = token, !token.isEmpty {
+            Logger.info("Registering new TelegramService with token", log: Logger.telegram)
             DependencyContainer.shared.registerTelegramService(token: token)
+        } else {
+            Logger.info("Clearing TelegramService (no valid token)", log: Logger.telegram)
+            // Можно добавить очистку сервиса если нужно
         }
     }
     
@@ -80,12 +106,29 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
         telegramBotId = userDefaultsManager.string(forKey: "telegramBotId")
         lastUpdateId = userDefaultsManager.integer(forKey: "lastUpdateId")
         
+        Logger.info("Loaded Telegram settings", log: Logger.telegram)
+        Logger.info("Token: \(telegramToken?.prefix(10) ?? "nil")...", log: Logger.telegram)
+        Logger.info("ChatId: \(telegramChatId ?? "nil")", log: Logger.telegram)
+        Logger.info("LastUpdateId: \(lastUpdateId ?? 0)", log: Logger.telegram)
+        
         // Обновляем TelegramService в DI контейнере если есть токен
         if let token = telegramToken, !token.isEmpty {
+            Logger.info("Updating TelegramService in DI container", log: Logger.telegram)
             DependencyContainer.shared.registerTelegramService(token: token)
         }
         
         return (telegramToken, telegramChatId, telegramBotId)
+    }
+    
+    /// Принудительно обновить TelegramService в DI контейнере
+    func refreshTelegramService() {
+        Logger.info("Refreshing TelegramService", log: Logger.telegram)
+        if let token = telegramToken, !token.isEmpty {
+            DependencyContainer.shared.registerTelegramService(token: token)
+            Logger.info("TelegramService refreshed successfully", log: Logger.telegram)
+        } else {
+            Logger.warning("Cannot refresh TelegramService - no valid token", log: Logger.telegram)
+        }
     }
     
     func saveLastUpdateId(_ updateId: Int) {
@@ -111,7 +154,7 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
         Task {
             do {
                 // Получаем TelegramService для обновлений
-                guard let telegramServiceForUpdates = telegramService else {
+                guard let telegramServiceForUpdates = getCurrentTelegramService() else {
                     Logger.error("TelegramService not available", log: Logger.telegram)
                     Logger.error("telegramService is nil", log: Logger.telegram)
                     completion(false)
@@ -120,8 +163,14 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
                 
                 Logger.info("TelegramService is available", log: Logger.telegram)
                 
+                // Если lastUpdateId = 0, получаем все сообщения (не передаем offset)
+                let offset = lastUpdateId == 0 ? nil : lastUpdateId
+                Logger.info("Using offset: \(offset ?? -1) for getUpdates", log: Logger.telegram)
+                
                 // Получаем обновления из Telegram
-                let updates = try await telegramServiceForUpdates.getUpdates(offset: lastUpdateId)
+                let updates = try await telegramServiceForUpdates.getUpdates(offset: offset)
+                
+                Logger.info("Received \(updates.count) updates from Telegram", log: Logger.telegram)
                 
                 // Фильтруем только сообщения (не редактирования)
                 let messages = updates.compactMap { update -> TelegramMessage? in
@@ -139,8 +188,13 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
                 for message in messages {
                     if let post = convertTelegramMessageToPost(message) {
                         newExternalPosts.append(post)
+                        Logger.debug("Converted message \(message.messageId ?? 0) to post", log: Logger.telegram)
+                    } else {
+                        Logger.debug("Failed to convert message \(message.messageId ?? 0)", log: Logger.telegram)
                     }
                 }
+                
+                Logger.info("Successfully converted \(newExternalPosts.count) messages to posts", log: Logger.telegram)
                 
                 // Добавляем новые сообщения к существующим на главном потоке
                 let postsToAdd = newExternalPosts // Создаем копию для использования в MainActor
@@ -158,6 +212,7 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
                     if let lastUpdate = updates.last {
                         self.lastUpdateId = (lastUpdate.updateId ?? 0) + 1
                         self.userDefaultsManager.set(self.lastUpdateId, forKey: "lastUpdateId")
+                        Logger.info("Updated lastUpdateId to: \(self.lastUpdateId ?? 0)", log: Logger.telegram)
                     }
                     
                     Logger.info("Added \(postsToAdd.count) new external posts, total: \(self.externalPosts.count)", log: Logger.telegram)
@@ -167,6 +222,7 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
             } catch {
                 await MainActor.run {
                     Logger.error("Failed to fetch external posts: \(error)", log: Logger.telegram)
+                    Logger.error("Error details: \(error.localizedDescription)", log: Logger.telegram)
                     completion(false)
                 }
             }
@@ -208,6 +264,13 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
         
         Logger.info("Successfully cleared all external posts history", log: Logger.telegram)
         completion(true)
+    }
+    
+    /// Сбросить lastUpdateId для получения всех сообщений заново
+    func resetLastUpdateId() {
+        Logger.info("Resetting lastUpdateId to 0", log: Logger.telegram)
+        lastUpdateId = 0
+        userDefaultsManager.set(0, forKey: "lastUpdateId")
     }
     
     // MARK: - Message Conversion
@@ -471,7 +534,7 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
     // MARK: - Report Formatting
     
     func formatCustomReportForTelegram(_ report: Post, deviceName: String) -> String {
-        if let telegramService = telegramService as? TelegramService {
+        if let telegramService = getCurrentTelegramService() as? TelegramService {
             return telegramService.formatCustomReportForTelegram(report, deviceName: deviceName)
         } else {
             // Fallback форматирование если TelegramService недоступен

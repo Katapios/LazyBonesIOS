@@ -98,4 +98,12 @@ class MockTelegramIntegrationService: TelegramIntegrationServiceProtocol {
     func formatCustomReportForTelegram(_ report: Post, deviceName: String) -> String {
         return "Mock formatted report for \(deviceName)"
     }
+    
+    func refreshTelegramService() {
+        // Mock implementation
+    }
+    
+    func resetLastUpdateId() {
+        self.lastUpdateId = 0
+    }
 } 
