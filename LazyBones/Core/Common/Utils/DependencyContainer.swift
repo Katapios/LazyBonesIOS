@@ -174,6 +174,51 @@ extension DependencyContainer {
             )
         })
         
+        // Use Cases
+        register(CreateReportUseCase.self, factory: {
+            let postRepository = self.resolve(PostRepository.self)!
+            return CreateReportUseCase(postRepository: postRepository)
+        })
+        
+        register(GetReportsUseCase.self, factory: {
+            let postRepository = self.resolve(PostRepository.self)!
+            return GetReportsUseCase(postRepository: postRepository)
+        })
+        
+        register(DeleteReportUseCase.self, factory: {
+            let postRepository = self.resolve(PostRepository.self)!
+            return DeleteReportUseCase(postRepository: postRepository)
+        })
+        
+                        register(UpdateStatusUseCase.self, factory: {
+                    let postRepository = self.resolve(PostRepository.self)!
+                    let settingsRepository = self.resolve(SettingsRepository.self)!
+                    return UpdateStatusUseCase(
+                        postRepository: postRepository,
+                        settingsRepository: settingsRepository
+                    )
+                })
+
+                register(UpdateReportUseCase.self, factory: {
+                    let postRepository = self.resolve(PostRepository.self)!
+                    return UpdateReportUseCase(postRepository: postRepository)
+                })
+        
+        // Repositories
+        register(PostRepository.self, factory: {
+            let dataSource = self.resolve(UserDefaultsPostDataSource.self)!
+            return PostRepository(dataSource: dataSource)
+        })
+        
+        register(UserDefaultsPostDataSource.self, factory: {
+            return UserDefaultsPostDataSource()
+        })
+        
+        register(SettingsRepository.self, factory: {
+            let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
+            return SettingsRepository(userDefaultsManager: userDefaultsManager)
+        })
+        
         Logger.info("Core services registered successfully", log: Logger.general)
     }
     
@@ -183,5 +228,15 @@ extension DependencyContainer {
         
         let telegramService = TelegramService(token: token)
         register(TelegramServiceProtocol.self, instance: telegramService)
+    }
+    
+    /// Зарегистрировать ViewModels для отчетов
+    func registerReportViewModels() {
+        Logger.info("Registering report ViewModels", log: Logger.general)
+        
+        // ViewModels будут создаваться напрямую в коде, где они нужны
+        // так как они требуют MainActor и асинхронной инициализации
+        
+        Logger.info("Report ViewModels registration completed", log: Logger.general)
     }
 } 

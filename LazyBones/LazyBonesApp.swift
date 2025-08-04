@@ -46,6 +46,9 @@ private func setupDependencyInjection() {
     // Регистрация основных сервисов
     container.registerCoreServices()
     
+    // Регистрация ViewModels
+    container.registerReportViewModels()
+    
     // Регистрация Telegram сервиса (если есть токен)
     let userDefaultsManager = UserDefaultsManager.shared
     let (token, _, _) = userDefaultsManager.loadTelegramSettings()
