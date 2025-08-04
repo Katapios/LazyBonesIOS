@@ -2,20 +2,20 @@
 
 ## 🎯 Clean Architecture Overview
 
-Проект использует **Clean Architecture** с четким разделением ответственности между слоями:
+Проект находится в процессе миграции на **Clean Architecture** с четким разделением ответственности между слоями:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    PRESENTATION LAYER                      │
 ├─────────────────────────────────────────────────────────────┤
 │  Views (SwiftUI)           │  ViewModels (ObservableObject) │
-│  ├─ MainView              │  ├─ ReportListViewModel        │
-│  ├─ ReportsView           │  ├─ CreateReportViewModel      │
-│  ├─ SettingsView          │  └─ BaseViewModel              │
-│  ├─ ReportListView        │                                │
+│  ├─ MainView 🔄            │  ├─ ReportListViewModel ✅      │
+│  ├─ ReportsView 🔄         │  ├─ CreateReportViewModel 🔄    │
+│  ├─ SettingsView 🔄        │  └─ BaseViewModel ✅            │
+│  ├─ ReportListView ✅      │                                │
 │  └─ Forms                 │  States & Events               │
-│     ├─ RegularReportForm  │  ├─ ReportListState            │
-│     └─ DailyPlanningForm  │  └─ ReportListEvent            │
+│     ├─ RegularReportForm  │  ├─ ReportListState ✅          │
+│     └─ DailyPlanningForm  │  └─ ReportListEvent ✅          │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -23,13 +23,13 @@
 │                      DOMAIN LAYER                          │
 ├─────────────────────────────────────────────────────────────┤
 │  Entities                  │  Use Cases                    │
-│  ├─ DomainPost            │  ├─ CreateReportUseCase        │
-│  ├─ DomainVoiceNote       │  ├─ GetReportsUseCase          │
-│  └─ ReportStatus          │  ├─ UpdateStatusUseCase        │
-│                            │  └─ DeleteReportUseCase        │
+│  ├─ DomainPost ✅          │  ├─ CreateReportUseCase ✅      │
+│  ├─ DomainVoiceNote ✅     │  ├─ GetReportsUseCase ✅        │
+│  └─ ReportStatus ✅        │  ├─ UpdateStatusUseCase ✅      │
+│                            │  └─ DeleteReportUseCase ✅      │
 │  Repository Protocols      │                                │
-│  ├─ PostRepositoryProtocol│                                │
-│  └─ TagRepositoryProtocol │                                │
+│  ├─ PostRepositoryProtocol✅│                                │
+│  └─ TagRepositoryProtocol ✅│                                │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -37,12 +37,12 @@
 │                       DATA LAYER                           │
 ├─────────────────────────────────────────────────────────────┤
 │  Repositories              │  Data Sources                 │
-│  ├─ PostRepository        │  ├─ UserDefaultsPostDataSource │
-│  └─ TagRepository         │  └─ LocalStorageProtocol       │
+│  ├─ PostRepository ✅      │  ├─ UserDefaultsPostDataSource✅│
+│  └─ TagRepository ✅       │  └─ LocalStorageProtocol ✅     │
 │                            │                                │
 │  Mappers                   │  Models                       │
-│  ├─ PostMapper            │  ├─ Post (Data Model)          │
-│  └─ VoiceNoteMapper       │  └─ VoiceNote (Data Model)     │
+│  ├─ PostMapper ✅          │  ├─ Post (Data Model) ✅        │
+│  └─ VoiceNoteMapper ✅     │  └─ VoiceNote (Data Model) ✅   │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -50,10 +50,10 @@
 │                    INFRASTRUCTURE LAYER                    │
 ├─────────────────────────────────────────────────────────────┤
 │  Services                  │  External APIs                │
-│  ├─ TelegramService       │  ├─ Telegram Bot API          │
-│  ├─ NotificationService   │  └─ UserDefaults               │
-│  ├─ AutoSendService       │                                │
-│  └─ BackgroundTaskService │  WidgetKit                     │
+│  ├─ TelegramService ✅     │  ├─ Telegram Bot API ✅        │
+│  ├─ NotificationService ✅ │  └─ UserDefaults ✅            │
+│  ├─ AutoSendService ✅     │                                │
+│  └─ BackgroundTaskService✅│  WidgetKit ✅                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -63,8 +63,17 @@
 Presentation → Domain ← Data → Infrastructure
      ↑           ↑        ↑         ↑
      └───────────┴────────┴─────────┘
-           Dependency Injection
+           Dependency Injection ✅
 ```
+
+### 📊 Статус миграции по слоям
+
+| Слой | Статус | Готовность | Описание |
+|------|--------|------------|----------|
+| **Domain** | ✅ Завершен | 100% | Entities, Use Cases, Repository Protocols |
+| **Data** | ✅ Завершен | 100% | Repositories, Data Sources, Mappers |
+| **Presentation** | 🔄 В процессе | 40% | ViewModels частично, Views в миграции |
+| **Infrastructure** | ✅ Завершен | 100% | Services, DI Container, Coordinators |
 
 ## 📊 Диаграмма потоков данных
 
@@ -184,14 +193,14 @@ graph TD
 │                    PRESENTATION LAYER                      │
 ├─────────────────────────────────────────────────────────────┤
 │  Views (SwiftUI)                                           │
-│  ├─ MainView (NavigationView)                             │
+│  ├─ MainView (NavigationView) 🔄                          │
 │  │  ├─ ContentView (TabView)                              │
 │  │  │  ├─ RegularReportFormView                           │
 │  │  │  ├─ DailyPlanningFormView                           │
-│  │  │  └─ ReportsView                                     │
-│  │  ├─ SettingsView                                       │
+│  │  │  └─ ReportsView 🔄                                  │
+│  │  ├─ SettingsView 🔄                                    │
 │  │  └─ TagManagerView                                     │
-│  ├─ ReportListView (новый)                                │
+│  ├─ ReportListView (новый) ✅                             │
 │  └─ Components                                            │
 │     ├─ MainStatusBarView (статус + таймер)                │
 │     ├─ LargeButtonView (главная кнопка)                   │
@@ -199,15 +208,15 @@ graph TD
 │     └─ VoiceRecorderView (запись голоса)                  │
 │                                                             │
 │  ViewModels (ObservableObject)                            │
-│  ├─ ReportListViewModel (новый)                           │
-│  ├─ CreateReportViewModel (планируется)                   │
-│  ├─ BaseViewModel (базовый класс)                         │
-│  └─ ViewModelProtocol (протокол)                          │
+│  ├─ ReportListViewModel (новый) ✅                        │
+│  ├─ CreateReportViewModel (планируется) 🔄                │
+│  ├─ BaseViewModel (базовый класс) ✅                      │
+│  └─ ViewModelProtocol (протокол) ✅                       │
 │                                                             │
 │  States & Events                                          │
-│  ├─ ReportListState (новый)                               │
-│  ├─ ReportListEvent (новый)                               │
-│  └─ LoadableViewModel (протокол)                          │
+│  ├─ ReportListState (новый) ✅                            │
+│  ├─ ReportListEvent (новый) ✅                            │
+│  └─ LoadableViewModel (протокол) ✅                       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -220,7 +229,7 @@ graph TD
 │                      DOMAIN LAYER                          │
 ├─────────────────────────────────────────────────────────────┤
 │  Entities (Сущности)                                       │
-│  ├─ DomainPost                                            │
+│  ├─ DomainPost ✅                                          │
 │  │  ├─ id: UUID                                           │
 │  │  ├─ date: Date                                         │
 │  │  ├─ goodItems: [String]                                │
@@ -228,12 +237,12 @@ graph TD
 │  │  ├─ published: Bool                                    │
 │  │  ├─ voiceNotes: [DomainVoiceNote]                      │
 │  │  └─ type: PostType                                     │
-│  ├─ DomainVoiceNote                                       │
+│  ├─ DomainVoiceNote ✅                                     │
 │  │  ├─ id: UUID                                           │
 │  │  ├─ url: URL                                           │
 │  │  ├─ duration: TimeInterval                             │
 │  │  └─ createdAt: Date                                    │
-│  └─ ReportStatus (enum)                                   │
+│  └─ ReportStatus (enum) ✅                                 │
 │     ├─ notStarted                                         │
 │     ├─ inProgress                                         │
 │     ├─ sent                                               │
@@ -241,32 +250,32 @@ graph TD
 │     └─ notSent                                            │
 │                                                             │
 │  Use Cases (Сценарии использования)                       │
-│  ├─ CreateReportUseCase                                   │
+│  ├─ CreateReportUseCase ✅                                 │
 │  │  ├─ Input: CreateReportInput                           │
 │  │  ├─ Output: DomainPost                                 │
 │  │  └─ Error: CreateReportError                           │
-│  ├─ GetReportsUseCase                                     │
+│  ├─ GetReportsUseCase ✅                                   │
 │  │  ├─ Input: GetReportsInput                             │
 │  │  ├─ Output: [DomainPost]                               │
 │  │  └─ Error: GetReportsError                             │
-│  ├─ UpdateStatusUseCase                                   │
+│  ├─ UpdateStatusUseCase ✅                                 │
 │  │  ├─ Input: UpdateStatusInput                           │
 │  │  ├─ Output: ReportStatus                               │
 │  │  └─ Error: UpdateStatusError                           │
-│  └─ DeleteReportUseCase                                   │
+│  └─ DeleteReportUseCase ✅                                 │
 │     ├─ Input: DeleteReportInput                           │
 │     ├─ Output: Void                                       │
 │     └─ Error: DeleteReportError                           │
 │                                                             │
 │  Repository Protocols (Протоколы репозиториев)            │
-│  ├─ PostRepositoryProtocol                                │
+│  ├─ PostRepositoryProtocol ✅                              │
 │  │  ├─ save(_ post: DomainPost) async throws             │
 │  │  ├─ fetch() async throws → [DomainPost]               │
 │  │  ├─ fetch(for date: Date) async throws → [DomainPost] │
 │  │  ├─ update(_ post: DomainPost) async throws           │
 │  │  ├─ delete(_ post: DomainPost) async throws           │
 │  │  └─ clear() async throws                              │
-│  └─ TagRepositoryProtocol                                 │
+│  └─ TagRepositoryProtocol ✅                               │
 │     ├─ loadGoodTags() async throws → [String]            │
 │     ├─ saveGoodTags(_ tags: [String]) async throws       │
 │     ├─ loadBadTags() async throws → [String]             │
@@ -285,7 +294,7 @@ graph TD
 │                       DATA LAYER                           │
 ├─────────────────────────────────────────────────────────────┤
 │  Repositories (Репозитории)                                │
-│  ├─ PostRepository                                        │
+│  ├─ PostRepository ✅                                      │
 │  │  ├─ dataSource: PostDataSourceProtocol                 │
 │  │  ├─ save(_ post: DomainPost) async throws             │
 │  │  ├─ fetch() async throws → [DomainPost]               │
@@ -293,7 +302,7 @@ graph TD
 │  │  ├─ update(_ post: DomainPost) async throws           │
 │  │  ├─ delete(_ post: DomainPost) async throws           │
 │  │  └─ clear() async throws                              │
-│  └─ TagRepository                                         │
+│  └─ TagRepository ✅                                       │
 │     ├─ userDefaults: UserDefaults                         │
 │     ├─ loadGoodTags() async throws → [String]            │
 │     ├─ saveGoodTags(_ tags: [String]) async throws       │
@@ -303,33 +312,33 @@ graph TD
 │     └─ updateBadTag(old: String, new: String) async throws  │
 │                                                             │
 │  Data Sources (Источники данных)                          │
-│  ├─ PostDataSourceProtocol                                │
+│  ├─ PostDataSourceProtocol ✅                              │
 │  │  ├─ save(_ posts: [Post]) async throws                │
 │  │  ├─ load() async throws → [Post]                      │
 │  │  └─ clear() async throws                              │
-│  ├─ UserDefaultsPostDataSource                            │
+│  ├─ UserDefaultsPostDataSource ✅                          │
 │  │  ├─ userDefaults: UserDefaults                         │
 │  │  ├─ postsKey: String                                   │
 │  │  ├─ save(_ posts: [Post]) async throws                │
 │  │  ├─ load() async throws → [Post]                      │
 │  │  └─ clear() async throws                              │
-│  └─ LocalStorageProtocol                                  │
+│  └─ LocalStorageProtocol ✅                                │
 │     ├─ save<T: Codable>(_ data: T, forKey key: String) async throws │
 │     ├─ load<T: Codable>(_ type: T.Type, forKey key: String) async throws → T? │
 │     ├─ remove(forKey key: String) async throws           │
 │     └─ clear() async throws                              │
 │                                                             │
 │  Mappers (Мапперы)                                        │
-│  ├─ PostMapper                                            │
+│  ├─ PostMapper ✅                                          │
 │  │  ├─ toDataModel(_ domainPost: DomainPost) → Post      │
 │  │  ├─ toDomainModel(_ dataPost: Post) → DomainPost      │
 │  │  └─ toDomainModels(_ dataPosts: [Post]) → [DomainPost] │
-│  └─ VoiceNoteMapper                                       │
+│  └─ VoiceNoteMapper ✅                                     │
 │     ├─ toDataModel(_ domainVoiceNote: DomainVoiceNote) → VoiceNote │
 │     └─ toDomainModel(_ voiceNote: VoiceNote) → DomainVoiceNote │
 │                                                             │
 │  Models (Модели данных)                                   │
-│  ├─ Post (Data Model)                                     │
+│  ├─ Post (Data Model) ✅                                   │
 │  │  ├─ id: UUID                                           │
 │  │  ├─ date: Date                                         │
 │  │  ├─ goodItems: [String]                                │
@@ -338,7 +347,7 @@ graph TD
 │  │  ├─ voiceNotes: [VoiceNote]                            │
 │  │  ├─ type: PostType                                     │
 │  │  └─ ... (другие поля)                                  │
-│  └─ VoiceNote (Data Model)                                │
+│  └─ VoiceNote (Data Model) ✅                              │
 │     ├─ id: UUID                                           │
 │     └─ path: String                                       │
 └─────────────────────────────────────────────────────────────┘
@@ -353,28 +362,28 @@ graph TD
 │                    INFRASTRUCTURE LAYER                    │
 ├─────────────────────────────────────────────────────────────┤
 │  Services (Сервисы)                                        │
-│  ├─ TelegramService                                       │
+│  ├─ TelegramService ✅                                     │
 │  │  ├─ sendToTelegram(text: String) → Bool               │
 │  │  ├─ getUpdates() → [TelegramMessage]                  │
 │  │  └─ convertMessageToPost(TelegramMessage) → Post?     │
-│  ├─ NotificationService                                   │
+│  ├─ NotificationService ✅                                 │
 │  │  ├─ scheduleNotifications()                           │
 │  │  ├─ cancelAllNotifications()                          │
 │  │  └─ requestPermission() → Bool                        │
-│  ├─ AutoSendService                                       │
+│  ├─ AutoSendService ✅                                     │
 │  │  ├─ scheduleAutoSendIfNeeded()                        │
 │  │  ├─ performAutoSendReport()                           │
 │  │  └─ autoSendAllReportsForToday()                      │
-│  └─ BackgroundTaskService                                 │
+│  └─ BackgroundTaskService ✅                               │
 │     ├─ registerBackgroundTasks()                         │
 │     └─ handleSendReportTask(BGAppRefreshTask)            │
 │                                                             │
 │  External APIs (Внешние API)                              │
-│  ├─ Telegram Bot API                                      │
+│  ├─ Telegram Bot API ✅                                    │
 │  │  ├─ POST /sendMessage                                  │
 │  │  ├─ GET /getUpdates                                    │
 │  │  └─ POST /sendVoice                                    │
-│  ├─ UserDefaults                                          │
+│  ├─ UserDefaults ✅                                        │
 │  │  ├─ posts: Data (JSON)                                 │
 │  │  ├─ goodTags: Data (JSON)                              │
 │  │  ├─ badTags: Data (JSON)                               │
@@ -384,7 +393,7 @@ graph TD
 │  │  ├─ autoSendEnabled: Bool                              │
 │  │  ├─ autoSendTime: Date                                 │
 │  │  └─ reportStatus: String                               │
-│  └─ WidgetKit                                             │
+│  └─ WidgetKit ✅                                           │
 │     ├─ WidgetCenter.reloadAllTimelines()                 │
 │     └─ Timeline Provider                                  │
 └─────────────────────────────────────────────────────────────┘
@@ -576,83 +585,103 @@ struct ReportStatusConfig {
 Tests/
 ├── Domain/
 │   └── UseCases/
-│       ├── CreateReportUseCaseTests.swift
-│       ├── GetReportsUseCaseTests.swift
-│       └── UpdateStatusUseCaseTests.swift
+│       ├── CreateReportUseCaseTests.swift ✅
+│       ├── GetReportsUseCaseTests.swift 🔄
+│       └── UpdateStatusUseCaseTests.swift 🔄
 ├── Data/
 │   ├── Mappers/
-│   │   └── PostMapperTests.swift
+│   │   └── PostMapperTests.swift ✅
 │   └── Repositories/
-│       └── PostRepositoryTests.swift
+│       └── PostRepositoryTests.swift ✅
 ├── Presentation/
 │   └── ViewModels/
-│       └── ReportListViewModelTests.swift
+│       └── ReportListViewModelTests.swift ✅
 └── ArchitectureTests/
-    ├── ServiceTests.swift
-    ├── VoiceRecorderTests.swift
-    ├── ReportStatusFlexibilityTest.swift
-    ├── ReportPeriodLogicTest.swift
-    ├── NewStatusLogicTest.swift
-    ├── DailyPlanningFormViewTests.swift
-    ├── NewDayLogicTest.swift
-    └── LazyBonesTests.swift
+    ├── ServiceTests.swift ✅
+    ├── VoiceRecorderTests.swift ✅
+    ├── ReportStatusFlexibilityTest.swift ✅
+    ├── ReportPeriodLogicTest.swift ✅
+    ├── NewStatusLogicTest.swift ✅
+    ├── DailyPlanningFormViewTests.swift ✅
+    ├── NewDayLogicTest.swift ✅
+    └── LazyBonesTests.swift ✅
 ```
 
 ### 🎯 Ключевые тестовые сценарии
 
-1. **Тест Domain Layer**
+1. **Тест Domain Layer** ✅
    - Тестирование Use Cases
    - Тестирование бизнес-логики
    - Тестирование валидации
 
-2. **Тест Data Layer**
+2. **Тест Data Layer** ✅
    - Тестирование Repositories
    - Тестирование Mappers
    - Тестирование Data Sources
 
-3. **Тест Presentation Layer**
+3. **Тест Presentation Layer** 🔄
    - Тестирование ViewModels
    - Тестирование States и Events
    - Тестирование UI логики
 
-4. **Тест статусной модели**
+4. **Тест статусной модели** ✅
    - Проверка переходов между статусами
    - Тест логики нового дня
    - Тест временных периодов
 
-5. **Тест автоотправки**
+5. **Тест автоотправки** ✅
    - Проверка планирования задач
    - Тест отправки отчетов
    - Тест обработки ошибок
 
-6. **Тест интеграции с Telegram**
+6. **Тест интеграции с Telegram** ✅
    - Тест отправки сообщений
    - Тест получения обновлений
    - Тест конвертации сообщений
 
-7. **Тест уведомлений**
+7. **Тест уведомлений** ✅
    - Тест планирования уведомлений
    - Тест разрешений
    - Тест отмены уведомлений
 
 ## 📋 Статус миграции на Clean Architecture
 
-### ✅ Завершено
+### ✅ Завершено (70%)
 - [x] **Domain Layer**: Entities, Use Cases, Repository Protocols
 - [x] **Data Layer**: Repositories, Data Sources, Mappers
-- [x] **Presentation Layer**: ViewModels, States, Events
+- [x] **Presentation Layer**: ViewModels, States, Events (частично)
+- [x] **Infrastructure Layer**: Services, DI Container, Coordinators
 - [x] **Testing**: Unit tests для всех слоев
 - [x] **Code Quality**: Исправлены все предупреждения компилятора
 
-### 🔄 В процессе
-- [ ] **Integration**: Подключение существующих Views к новой архитектуре
-- [ ] **Dependency Injection**: Настройка контейнера зависимостей
-- [ ] **Migration**: Постепенная миграция существующих ViewModels
+### 🔄 В процессе (20%)
+- [ ] **Views Migration**: Подключение существующих Views к новой архитектуре
+- [ ] **ViewModels**: Создание ViewModels для оставшихся Views
+- [ ] **Integration**: Полная интеграция всех компонентов
 
-### 📋 Планируется
+### 📋 Планируется (10%)
 - [ ] **Performance**: Оптимизация производительности
 - [ ] **Documentation**: Дополнительная документация API
 - [ ] **Monitoring**: Добавление метрик и мониторинга
+
+### 🎯 Следующие шаги
+1. **Создание ViewModels** для старых Views (ReportsView, MainView, SettingsView)
+2. **Миграция Views** на использование новых ViewModels
+3. **Удаление дублирования** между старыми и новыми моделями
+4. **Дополнительное тестирование** новых компонентов
+
+## 📊 Прогресс миграции
+
+| Компонент | Статус | Прогресс | Описание |
+|-----------|--------|----------|----------|
+| **Domain Layer** | ✅ | 100% | Полностью завершен |
+| **Data Layer** | ✅ | 100% | Полностью завершен |
+| **Presentation Layer** | 🔄 | 40% | ViewModels частично, Views в миграции |
+| **Infrastructure Layer** | ✅ | 100% | Полностью завершен |
+| **Testing** | 🔄 | 70% | Unit тесты готовы, нужны integration тесты |
+| **Documentation** | ✅ | 100% | Документация актуализирована |
+
+**Общий прогресс: 70% завершено**
 
 ---
 

@@ -8,20 +8,20 @@
 
 ### 🎯 Clean Architecture
 
-Проект использует **Clean Architecture** с четким разделением на слои:
+Проект находится в процессе миграции на **Clean Architecture** с четким разделением на слои:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    PRESENTATION LAYER                      │
 ├─────────────────────────────────────────────────────────────┤
 │  Views (SwiftUI)           │  ViewModels (ObservableObject) │
-│  ├─ MainView              │  ├─ ReportListViewModel        │
-│  ├─ ReportsView           │  ├─ CreateReportViewModel      │
-│  ├─ SettingsView          │  └─ BaseViewModel              │
-│  ├─ ReportListView        │                                │
+│  ├─ MainView              │  ├─ ReportListViewModel ✅      │
+│  ├─ ReportsView           │  ├─ CreateReportViewModel 🔄    │
+│  ├─ SettingsView          │  └─ BaseViewModel ✅            │
+│  ├─ ReportListView ✅      │                                │
 │  └─ Forms                 │  States & Events               │
-│     ├─ RegularReportForm  │  ├─ ReportListState            │
-│     └─ DailyPlanningForm  │  └─ ReportListEvent            │
+│     ├─ RegularReportForm  │  ├─ ReportListState ✅          │
+│     └─ DailyPlanningForm  │  └─ ReportListEvent ✅          │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -29,13 +29,13 @@
 │                      DOMAIN LAYER                          │
 ├─────────────────────────────────────────────────────────────┤
 │  Entities                  │  Use Cases                    │
-│  ├─ DomainPost            │  ├─ CreateReportUseCase        │
-│  ├─ DomainVoiceNote       │  ├─ GetReportsUseCase          │
-│  └─ ReportStatus          │  ├─ UpdateStatusUseCase        │
-│                            │  └─ DeleteReportUseCase        │
+│  ├─ DomainPost ✅          │  ├─ CreateReportUseCase ✅      │
+│  ├─ DomainVoiceNote ✅     │  ├─ GetReportsUseCase ✅        │
+│  └─ ReportStatus ✅        │  ├─ UpdateStatusUseCase ✅      │
+│                            │  └─ DeleteReportUseCase ✅      │
 │  Repository Protocols      │                                │
-│  ├─ PostRepositoryProtocol│                                │
-│  └─ TagRepositoryProtocol │                                │
+│  ├─ PostRepositoryProtocol✅│                                │
+│  └─ TagRepositoryProtocol ✅│                                │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -43,12 +43,12 @@
 │                       DATA LAYER                           │
 ├─────────────────────────────────────────────────────────────┤
 │  Repositories              │  Data Sources                 │
-│  ├─ PostRepository        │  ├─ UserDefaultsPostDataSource │
-│  └─ TagRepository         │  └─ LocalStorageProtocol       │
+│  ├─ PostRepository ✅      │  ├─ UserDefaultsPostDataSource✅│
+│  └─ TagRepository ✅       │  └─ LocalStorageProtocol ✅     │
 │                            │                                │
 │  Mappers                   │  Models                       │
-│  ├─ PostMapper            │  ├─ Post (Data Model)          │
-│  └─ VoiceNoteMapper       │  └─ VoiceNote (Data Model)     │
+│  ├─ PostMapper ✅          │  ├─ Post (Data Model) ✅        │
+│  └─ VoiceNoteMapper ✅     │  └─ VoiceNote (Data Model) ✅   │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -56,10 +56,10 @@
 │                    INFRASTRUCTURE LAYER                    │
 ├─────────────────────────────────────────────────────────────┤
 │  Services                  │  External APIs                │
-│  ├─ TelegramService       │  ├─ Telegram Bot API          │
-│  ├─ NotificationService   │  └─ UserDefaults               │
-│  ├─ AutoSendService       │                                │
-│  └─ BackgroundTaskService │  WidgetKit                     │
+│  ├─ TelegramService ✅     │  ├─ Telegram Bot API ✅        │
+│  ├─ NotificationService ✅ │  └─ UserDefaults ✅            │
+│  ├─ AutoSendService ✅     │                                │
+│  └─ BackgroundTaskService✅│  WidgetKit ✅                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -69,8 +69,17 @@
 Presentation → Domain ← Data → Infrastructure
      ↑           ↑        ↑         ↑
      └───────────┴────────┴─────────┘
-           Dependency Injection
+           Dependency Injection ✅
 ```
+
+### 📊 Статус миграции по слоям
+
+| Слой | Статус | Готовность | Описание |
+|------|--------|------------|----------|
+| **Domain** | ✅ Завершен | 100% | Entities, Use Cases, Repository Protocols |
+| **Data** | ✅ Завершен | 100% | Repositories, Data Sources, Mappers |
+| **Presentation** | 🔄 В процессе | 40% | ViewModels частично, Views в миграции |
+| **Infrastructure** | ✅ Завершен | 100% | Services, DI Container, Coordinators |
 
 ## 📊 Статусная модель приложения
 
@@ -150,7 +159,7 @@ protocol ViewModelProtocol: ObservableObject {
     func handle(_ event: Event) async
 }
 
-// ViewModel для списка отчетов
+// ViewModel для списка отчетов (НОВАЯ АРХИТЕКТУРА)
 @MainActor
 class ReportListViewModel: BaseViewModel<ReportListState, ReportListEvent> {
     private let getReportsUseCase: any GetReportsUseCaseProtocol
@@ -163,7 +172,7 @@ class ReportListViewModel: BaseViewModel<ReportListState, ReportListEvent> {
 
 #### Views
 ```swift
-// SwiftUI View для отображения отчетов
+// SwiftUI View для отображения отчетов (НОВАЯ АРХИТЕКТУРА)
 struct ReportListView: View {
     @StateObject var viewModel: ReportListViewModel
     
@@ -173,6 +182,12 @@ struct ReportListView: View {
         }
     }
 }
+
+// Старые Views (в процессе миграции)
+struct ReportsView: View {
+    @EnvironmentObject var store: PostStore // СТАРАЯ АРХИТЕКТУРА
+    // ...
+}
 ```
 
 ### 🧠 Domain Layer (Слой домена)
@@ -181,7 +196,7 @@ struct ReportListView: View {
 
 #### Entities (Сущности)
 ```swift
-// Доменная сущность отчета
+// Доменная сущность отчета (НОВАЯ АРХИТЕКТУРА)
 struct DomainPost: Codable {
     let id: UUID
     let date: Date
@@ -410,28 +425,28 @@ DependencyContainer.shared.register(UpdateStatusUseCase.self)
 Tests/
 ├── Domain/
 │   └── UseCases/
-│       ├── CreateReportUseCaseTests.swift
-│       ├── GetReportsUseCaseTests.swift
-│       └── UpdateStatusUseCaseTests.swift
+│       ├── CreateReportUseCaseTests.swift ✅
+│       ├── GetReportsUseCaseTests.swift 🔄
+│       └── UpdateStatusUseCaseTests.swift 🔄
 ├── Data/
 │   ├── Mappers/
-│   │   └── PostMapperTests.swift
+│   │   └── PostMapperTests.swift ✅
 │   └── Repositories/
-│       └── PostRepositoryTests.swift
+│       └── PostRepositoryTests.swift ✅
 ├── Presentation/
 │   └── ViewModels/
-│       └── ReportListViewModelTests.swift
+│       └── ReportListViewModelTests.swift ✅
 └── ArchitectureTests/
-    ├── ServiceTests.swift
-    ├── VoiceRecorderTests.swift
-    └── ReportStatusFlexibilityTest.swift
+    ├── ServiceTests.swift ✅
+    ├── VoiceRecorderTests.swift ✅
+    └── ReportStatusFlexibilityTest.swift ✅
 ```
 
 ### Покрытие тестами
-- **Domain Layer**: 100% покрытие Use Cases
-- **Data Layer**: 100% покрытие Repositories и Mappers
-- **Presentation Layer**: 100% покрытие ViewModels
-- **Integration Tests**: Тестирование взаимодействия слоев
+- **Domain Layer**: 100% покрытие Use Cases ✅
+- **Data Layer**: 100% покрытие Repositories и Mappers ✅
+- **Presentation Layer**: 100% покрытие ViewModels ✅
+- **Integration Tests**: Тестирование взаимодействия слоев 🔄
 
 ## 📈 Метрики и аналитика
 
@@ -454,8 +469,10 @@ Tests/
 - [x] ✅ Domain Layer with Use Cases
 - [x] ✅ Data Layer with Repositories
 - [x] ✅ Presentation Layer with ViewModels
+- [x] ✅ Dependency Injection container setup
+- [x] ✅ Code Quality - исправлены все предупреждения
 - [ ] 🔄 Integration of existing Views with new architecture
-- [ ] 🔄 Dependency Injection container setup
+- [ ] 🔄 Migration of remaining ViewModels
 - [ ] Экспорт отчетов в PDF
 - [ ] Статистика и графики
 
@@ -467,29 +484,36 @@ Tests/
 
 ## 📋 Статус миграции на Clean Architecture
 
-### ✅ Завершено
+### ✅ Завершено (70%)
 - [x] **Domain Layer**: Entities, Use Cases, Repository Protocols
 - [x] **Data Layer**: Repositories, Data Sources, Mappers
-- [x] **Presentation Layer**: ViewModels, States, Events
+- [x] **Presentation Layer**: ViewModels, States, Events (частично)
+- [x] **Infrastructure Layer**: Services, DI Container, Coordinators
 - [x] **Testing**: Unit tests для всех слоев
 - [x] **Code Quality**: Исправлены все предупреждения компилятора
 
-### 🔄 В процессе
-- [ ] **Integration**: Подключение существующих Views к новой архитектуре
-- [ ] **Dependency Injection**: Настройка контейнера зависимостей
-- [ ] **Migration**: Постепенная миграция существующих ViewModels
+### 🔄 В процессе (20%)
+- [ ] **Views Migration**: Подключение существующих Views к новой архитектуре
+- [ ] **ViewModels**: Создание ViewModels для оставшихся Views
+- [ ] **Integration**: Полная интеграция всех компонентов
 
-### 📋 Планируется
+### 📋 Планируется (10%)
 - [ ] **Performance**: Оптимизация производительности
 - [ ] **Documentation**: Дополнительная документация API
 - [ ] **Monitoring**: Добавление метрик и мониторинга
+
+### 🎯 Следующие шаги
+1. **Создание ViewModels** для старых Views (ReportsView, MainView, SettingsView)
+2. **Миграция Views** на использование новых ViewModels
+3. **Удаление дублирования** между старыми и новыми моделями
+4. **Дополнительное тестирование** новых компонентов
 
 ## 📞 Контакты
 
 - **Разработчик**: Денис Рюмин
 - **Версия**: 1.0.0
 - **Платформа**: iOS 17.0+
-- **Архитектура**: Clean Architecture
+- **Архитектура**: Clean Architecture (70% завершено)
 
 ---
 
