@@ -2,7 +2,7 @@
 
 ## Обзор
 
-Статусная модель LazyBones - это централизованная система управления состоянием отчетов, которая определяет поведение UI, таймеров и автоматических процессов в приложении.
+Статусная модель LazyBones - это централизованная система управления состоянием отчетов, которая определяет поведение UI, таймеров и автоматических процессов в приложении. Система поддерживает **3 различных типа отчетов**, каждый со своей логикой и ViewModels.
 
 ## 🎯 Основные принципы
 
@@ -20,6 +20,149 @@
 - Четкое разделение ответственности между компонентами
 - Использование протоколов для тестируемости
 - Dependency Injection для гибкости
+
+## 📋 Типы отчетов
+
+### 1. 🗓️ Regular Reports (Обычные отчеты)
+- **Тип**: `.regular`
+- **Структура**: `goodItems` + `badItems` + `voiceNotes`
+- **Назначение**: Ежедневные отчеты о достижениях и неудачах
+- **ViewModel**: `RegularReportsViewModel`
+- **Функции**: Создание, редактирование, удаление, отправка
+
+### 2. 📋 Custom Reports (Кастомные отчеты)
+- **Тип**: `.custom`
+- **Структура**: `goodItems` (план) + `evaluationResults` + `isEvaluated`
+- **Назначение**: Планирование и оценка выполнения задач
+- **ViewModel**: `CustomReportsViewModel`
+- **Функции**: Создание, оценка выполнения, переоценка
+- **Особенность**: Система оценки выполнения плана
+
+### 3. 📨 External Reports (Внешние отчеты)
+- **Тип**: `.external`
+- **Источник**: Telegram Bot API
+- **Структура**: `externalText`, `authorUsername`, `externalMessageId`
+- **Назначение**: Отчеты, полученные из Telegram
+- **ViewModel**: `ExternalReportsViewModel`
+- **Функции**: Загрузка из Telegram, очистка истории
+
+## 🏗️ Архитектура ViewModels
+
+### Специализированные ViewModels
+
+```swift
+// Базовый протокол для всех отчетов
+protocol ReportViewModelProtocol: ObservableObject {
+    var reports: [DomainPost] { get }
+    var isLoading: Bool { get }
+    var error: Error? { get }
+    func loadReports() async
+    func deleteReport(_ report: DomainPost) async
+}
+
+// 1. Regular Reports ViewModel
+@MainActor
+class RegularReportsViewModel: BaseViewModel<RegularReportsState, RegularReportsEvent> {
+    private let createReportUseCase: any CreateReportUseCaseProtocol
+    private let getReportsUseCase: any GetReportsUseCaseProtocol
+    private let deleteReportUseCase: any DeleteReportUseCaseProtocol
+    
+    func createReport(goodItems: [String], badItems: [String]) async
+    func sendReport(_ report: DomainPost) async
+    func editReport(_ report: DomainPost) async
+}
+
+// 2. Custom Reports ViewModel
+@MainActor
+class CustomReportsViewModel: BaseViewModel<CustomReportsState, CustomReportsEvent> {
+    private let createReportUseCase: any CreateReportUseCaseProtocol
+    private let updateReportUseCase: any UpdateReportUseCaseProtocol
+    
+    func createCustomReport(plan: [String]) async
+    func evaluateReport(_ report: DomainPost, results: [Bool]) async
+    func allowReevaluation(_ report: DomainPost) async
+    func isEvaluationAllowed(_ report: DomainPost) -> Bool
+}
+
+// 3. External Reports ViewModel
+@MainActor
+class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalReportsEvent> {
+    private let telegramService: any TelegramServiceProtocol
+    
+    func reloadFromTelegram() async
+    func clearHistory() async
+    func openTelegramGroup() async
+    func parseTelegramMessage(_ message: TelegramMessage) async
+}
+
+// Объединяющий ViewModel
+@MainActor
+class ReportsViewModel: BaseViewModel<ReportsState, ReportsEvent> {
+    private let regularReportsVM: RegularReportsViewModel
+    private let customReportsVM: CustomReportsViewModel
+    private let externalReportsVM: ExternalReportsViewModel
+    
+    // Объединяет логику всех типов отчетов
+    func loadAllReports() async
+    func filterReports(by type: PostType?) async
+    func handleSelectionMode() async
+}
+```
+
+### States и Events для каждого типа
+
+```swift
+// Regular Reports
+struct RegularReportsState {
+    var reports: [DomainPost] = []
+    var isLoading = false
+    var error: Error? = nil
+    var canCreateReport = true
+    var canSendReport = false
+}
+
+enum RegularReportsEvent {
+    case loadReports
+    case createReport(goodItems: [String], badItems: [String])
+    case sendReport(DomainPost)
+    case deleteReport(DomainPost)
+    case editReport(DomainPost)
+}
+
+// Custom Reports
+struct CustomReportsState {
+    var reports: [DomainPost] = []
+    var isLoading = false
+    var error: Error? = nil
+    var allowReevaluation = false
+    var evaluationInProgress = false
+}
+
+enum CustomReportsEvent {
+    case loadReports
+    case createCustomReport(plan: [String])
+    case evaluateReport(DomainPost, results: [Bool])
+    case toggleReevaluation(DomainPost)
+    case deleteReport(DomainPost)
+}
+
+// External Reports
+struct ExternalReportsState {
+    var reports: [DomainPost] = []
+    var isLoading = false
+    var error: Error? = nil
+    var isRefreshing = false
+    var telegramConnected = false
+}
+
+enum ExternalReportsEvent {
+    case loadReports
+    case refreshFromTelegram
+    case clearHistory
+    case openTelegramGroup
+    case handleTelegramMessage(TelegramMessage)
+}
+```
 
 ## 📋 Статусы отчетов
 
@@ -95,7 +238,7 @@ enum ReportStatus: String, Codable, CaseIterable {
 
 ### Основные компоненты
 
-#### 1. PostStore
+#### 1. PostStore (Legacy - в процессе миграции)
 ```swift
 class PostStore: ObservableObject {
     @Published var reportStatus: ReportStatus = .notStarted
@@ -110,7 +253,31 @@ class PostStore: ObservableObject {
 }
 ```
 
-#### 2. PostTimerService
+#### 2. Специализированные ViewModels (Новая архитектура)
+```swift
+// RegularReportsViewModel
+class RegularReportsViewModel: BaseViewModel<RegularReportsState, RegularReportsEvent> {
+    func createReport(goodItems: [String], badItems: [String]) async {
+        // Создание обычного отчета
+    }
+}
+
+// CustomReportsViewModel
+class CustomReportsViewModel: BaseViewModel<CustomReportsState, CustomReportsEvent> {
+    func evaluateReport(_ report: DomainPost, results: [Bool]) async {
+        // Оценка выполнения плана
+    }
+}
+
+// ExternalReportsViewModel
+class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalReportsEvent> {
+    func reloadFromTelegram() async {
+        // Загрузка отчетов из Telegram
+    }
+}
+```
+
+#### 3. PostTimerService
 ```swift
 class PostTimerService {
     func updateReportStatus(_ status: ReportStatus) {
@@ -119,7 +286,7 @@ class PostTimerService {
 }
 ```
 
-#### 3. UI компоненты
+#### 4. UI компоненты
 ```swift
 struct MainStatusBarView: View {
     var reportStatusText: String {
@@ -132,17 +299,37 @@ struct MainStatusBarView: View {
 }
 ```
 
-### Схема взаимодействия
+### Схема взаимодействия (Обновленная)
 
 ```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   UI Views  │◄──►│  PostStore  │◄──►│   Services  │
-└─────────────┘    └─────────────┘    └─────────────┘
-       │                   │                   │
-       ▼                   ▼                   ▼
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   Widgets   │    │UserDefaults │    │ Telegram    │
-└─────────────┘    └─────────────┘    └─────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    PRESENTATION LAYER                      │
+├─────────────────────────────────────────────────────────────┤
+│  ReportsView                │  ReportsViewModel            │
+│  ├─ RegularReportsSection   │  ├─ RegularReportsViewModel  │
+│  ├─ CustomReportsSection    │  ├─ CustomReportsViewModel   │
+│  └─ ExternalReportsSection  │  └─ ExternalReportsViewModel │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      DOMAIN LAYER                          │
+├─────────────────────────────────────────────────────────────┤
+│  Use Cases                  │  Repository Protocols        │
+│  ├─ CreateReportUseCase     │  ├─ PostRepositoryProtocol   │
+│  ├─ GetReportsUseCase       │  └─ TagRepositoryProtocol    │
+│  ├─ UpdateReportUseCase     │                              │
+│  └─ DeleteReportUseCase     │                              │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                       DATA LAYER                           │
+├─────────────────────────────────────────────────────────────┤
+│  Repositories               │  Services                    │
+│  ├─ PostRepository          │  ├─ TelegramService          │
+│  └─ TagRepository           │  └─ PostTimerService         │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ## 🔧 Конфигурация
@@ -186,17 +373,52 @@ let customConfig = ReportStatusConfig(
 
 ## 🧪 Тестирование
 
-### Unit тесты
+### Unit тесты для ViewModels
 
 ```swift
-class ReportStatusFlexibilityTest: XCTestCase {
-    func testStatusCreation() {
-        let status = factory.createStatus(
-            hasRegularReport: false,
-            isReportPublished: false,
-            isPeriodActive: true
+// RegularReportsViewModelTests
+class RegularReportsViewModelTests: XCTestCase {
+    func testCreateRegularReport() async {
+        let viewModel = RegularReportsViewModel(
+            createReportUseCase: mockCreateUseCase,
+            getReportsUseCase: mockGetUseCase,
+            deleteReportUseCase: mockDeleteUseCase
         )
-        XCTAssertEqual(status, .notStarted)
+        
+        await viewModel.handle(.createReport(goodItems: ["Кодил"], badItems: ["Не гулял"]))
+        
+        XCTAssertEqual(viewModel.state.reports.count, 1)
+        XCTAssertEqual(viewModel.state.reports.first?.type, .regular)
+    }
+}
+
+// CustomReportsViewModelTests
+class CustomReportsViewModelTests: XCTestCase {
+    func testEvaluateCustomReport() async {
+        let viewModel = CustomReportsViewModel(
+            createReportUseCase: mockCreateUseCase,
+            updateReportUseCase: mockUpdateUseCase
+        )
+        
+        let report = DomainPost(type: .custom, goodItems: ["Пункт 1", "Пункт 2"])
+        await viewModel.handle(.evaluateReport(report, results: [true, false]))
+        
+        XCTAssertTrue(viewModel.state.reports.first?.isEvaluated == true)
+        XCTAssertEqual(viewModel.state.reports.first?.evaluationResults, [true, false])
+    }
+}
+
+// ExternalReportsViewModelTests
+class ExternalReportsViewModelTests: XCTestCase {
+    func testReloadFromTelegram() async {
+        let viewModel = ExternalReportsViewModel(
+            telegramService: mockTelegramService
+        )
+        
+        await viewModel.handle(.refreshFromTelegram)
+        
+        XCTAssertFalse(viewModel.state.isRefreshing)
+        XCTAssertEqual(viewModel.state.reports.count, 2) // mock data
     }
 }
 ```
@@ -231,9 +453,10 @@ class ReportStatusFlexibilityTest: XCTestCase {
    - Период активен или закончился
    - Есть отчеты для отправки
 
-2. **Отправка отчетов**
-   - Regular отчеты (если есть)
-   - Custom отчеты (если есть)
+2. **Отправка отчетов по типам**
+   - **Regular отчеты**: Отправляются как есть
+   - **Custom отчеты**: Отправляются с результатами оценки
+   - **External отчеты**: Не отправляются (уже из Telegram)
    - Сообщение "За сегодня не найдено ни одного отчета" (если нет отчетов)
 
 3. **Обновление статуса**
@@ -276,6 +499,38 @@ if reportStatus != newStatus {
 
 ## 📱 UI компоненты
 
+### ReportsView (Обновленная структура)
+
+```swift
+struct ReportsView: View {
+    @StateObject var viewModel: ReportsViewModel
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 16) {
+                    regularReportsSection    // RegularReportsViewModel
+                    customReportsSection     // CustomReportsViewModel
+                    externalReportsSection   // ExternalReportsViewModel
+                }
+            }
+        }
+    }
+    
+    private var regularReportsSection: some View {
+        // Использует RegularReportsViewModel
+    }
+    
+    private var customReportsSection: some View {
+        // Использует CustomReportsViewModel
+    }
+    
+    private var externalReportsSection: some View {
+        // Использует ExternalReportsViewModel
+    }
+}
+```
+
 ### MainStatusBarView
 
 Отображает:
@@ -314,11 +569,39 @@ print("Текущий статус: \(store.reportStatus.displayName)")
 // Проверка периода
 print("Период активен: \(store.isReportPeriodActive())")
 
-// Проверка отчетов
-print("Есть regular отчет: \(store.posts.contains { $0.type == .regular })")
+// Проверка отчетов по типам
+print("Regular отчеты: \(store.posts.filter { $0.type == .regular }.count)")
+print("Custom отчеты: \(store.posts.filter { $0.type == .custom }.count)")
+print("External отчеты: \(store.posts.filter { $0.type == .external }.count)")
 ```
 
 ## 📈 Расширение модели
+
+### Добавление нового типа отчета
+
+1. **Добавить в PostType enum**
+   ```swift
+   case newType = "new_type"
+   ```
+
+2. **Создать специализированный ViewModel**
+   ```swift
+   class NewTypeReportsViewModel: BaseViewModel<NewTypeReportsState, NewTypeReportsEvent> {
+       // Логика для нового типа отчетов
+   }
+   ```
+
+3. **Добавить в ReportsViewModel**
+   ```swift
+   private let newTypeReportsVM: NewTypeReportsViewModel
+   ```
+
+4. **Обновить UI**
+   ```swift
+   private var newTypeReportsSection: some View {
+       // UI для нового типа отчетов
+   }
+   ```
 
 ### Добавление нового статуса
 
@@ -402,11 +685,21 @@ let customTimeSettings = ReportStatusConfig.TimeSettings(
 - `LazyBones/Core/Services/PostTelegramService.swift` - автоотправка
 - `LazyBones/Views/Components/MainStatusBarView.swift` - отображение статуса
 
+### Новые ViewModels (в разработке)
+
+- `LazyBones/Presentation/ViewModels/RegularReportsViewModel.swift`
+- `LazyBones/Presentation/ViewModels/CustomReportsViewModel.swift`
+- `LazyBones/Presentation/ViewModels/ExternalReportsViewModel.swift`
+- `LazyBones/Presentation/ViewModels/ReportsViewModel.swift`
+
 ### Тесты
 
 - `Tests/ReportStatusFlexibilityTest.swift` - тесты гибкости
 - `Tests/NewDayLogicTest.swift` - тесты логики нового дня
 - `Tests/ReportPeriodLogicTest.swift` - тесты периодов
+- `Tests/Presentation/ViewModels/RegularReportsViewModelTests.swift`
+- `Tests/Presentation/ViewModels/CustomReportsViewModelTests.swift`
+- `Tests/Presentation/ViewModels/ExternalReportsViewModelTests.swift`
 
 ### Конфигурация
 
@@ -421,10 +714,11 @@ let customTimeSettings = ReportStatusConfig.TimeSettings(
 При работе со статусной моделью:
 
 1. **Всегда используйте `updateReportStatus()`** для изменения статуса
-2. **Тестируйте изменения** с помощью существующих тестов
-3. **Обновляйте документацию** при добавлении новых функций
-4. **Следуйте принципам** единого источника истины и реактивности
+2. **Создавайте специализированные ViewModels** для каждого типа отчета
+3. **Тестируйте изменения** с помощью существующих тестов
+4. **Обновляйте документацию** при добавлении новых функций
+5. **Следуйте принципам** единого источника истины и реактивности
 
 ---
 
-*Документация обновлена: 31 июля 2025* 
+*Документация обновлена: 3 августа 2025* 
