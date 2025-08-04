@@ -117,7 +117,7 @@ struct ReportsView: View {
                 isSelectable: isSelectionMode,
                 isSelected: selectedLocalReportIDs.contains(post.id),
                 onSelect: { toggleSelection(for: post.id) },
-                showEvaluateButton: Calendar.current.isDateInToday(post.date) && !isSelectionMode && (post.isEvaluated != true || allowCustomReportReevaluation),
+                showEvaluateButton: Calendar.current.isDateInToday(post.date) && !isSelectionMode && (post.isEvaluated != true || allowCustomReportReevaluation) && !post.goodItems.isEmpty,
                 isEvaluated: post.isEvaluated == true && !allowCustomReportReevaluation,
                 onEvaluate: {
                     evaluatingPost = post
@@ -301,7 +301,7 @@ struct CustomReportEvaluationView: View {
         self.post = post
         self.onComplete = onComplete
         // Инициализируем checked с правильным размером
-        _checked = State(initialValue: Array(repeating: false, count: post.goodItems.count))
+        _checked = State(initialValue: Array(repeating: false, count: max(1, post.goodItems.count)))
         _currentPost = State(initialValue: post)
     }
     
@@ -309,16 +309,39 @@ struct CustomReportEvaluationView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Оцените выполнение плана")
                 .font(.headline)
-            List {
-                ForEach(currentPost.goodItems.indices, id: \.self) { idx in
-                    HStack {
-                        Text(currentPost.goodItems[idx])
-                        Spacer()
-                        Toggle("", isOn: $checked[idx])
-                            .labelsHidden()
+            
+            if currentPost.goodItems.isEmpty {
+                // Показываем сообщение, если нет задач для оценки
+                VStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.largeTitle)
+                        .foregroundColor(.orange)
+                    
+                    Text("Нет задач для оценки")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                    
+                    Text("В этом отчете нет задач, которые можно оценить.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding()
+            } else {
+                // Показываем список задач для оценки
+                List {
+                    ForEach(currentPost.goodItems.indices, id: \.self) { idx in
+                        HStack {
+                            Text(currentPost.goodItems[idx])
+                            Spacer()
+                            Toggle("", isOn: $checked[idx])
+                                .labelsHidden()
+                        }
                     }
                 }
             }
+            
             Button("Завершить отчет") {
                 onComplete(checked)
                 dismiss()
@@ -331,14 +354,14 @@ struct CustomReportEvaluationView: View {
             // Обновляем currentPost и checked при появлении view
             currentPost = post
             if checked.count != post.goodItems.count {
-                checked = Array(repeating: false, count: post.goodItems.count)
+                checked = Array(repeating: false, count: max(1, post.goodItems.count))
             }
         }
         .onChange(of: post.goodItems.count) { oldCount, newCount in
             // Обновляем checked при изменении количества элементов
             currentPost = post
             if checked.count != newCount {
-                checked = Array(repeating: false, count: newCount)
+                checked = Array(repeating: false, count: max(1, newCount))
             }
         }
     }

@@ -73,21 +73,32 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
         state.error = nil
         
         do {
-            let input = GetReportsInput(
-                date: state.selectedDate,
-                type: .external,
-                includeExternal: true
-            )
-            let reports = try await getReportsUseCase.execute(input: input)
-            state.reports = reports
+            // Загружаем внешние отчеты напрямую из telegramIntegrationService
+            let externalPosts = telegramIntegrationService.externalPosts
+            state.reports = externalPosts.map { post in
+                // Конвертируем Post в DomainPost
+                return DomainPost(
+                    id: post.id,
+                    date: post.date,
+                    goodItems: post.goodItems,
+                    badItems: post.badItems,
+                    published: post.published,
+                    voiceNotes: post.voiceNotes.map { voiceNote in
+                        return DomainVoiceNote(
+                            id: voiceNote.id,
+                            url: URL(fileURLWithPath: voiceNote.path),
+                            duration: 0.0
+                        )
+                    },
+                    type: post.type
+                )
+            }
             
             // Проверяем подключение к Telegram
             let settings = telegramIntegrationService.loadTelegramSettings()
             state.telegramConnected = settings.token != nil && !settings.token!.isEmpty
             
             updateButtonStates()
-        } catch {
-            state.error = error
         }
         
         state.isLoading = false
@@ -98,11 +109,32 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
         state.error = nil
         
         // Используем completion-based API для совместимости
-        await withCheckedContinuation { continuation in
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             telegramIntegrationService.fetchExternalPosts { success in
                 Task { @MainActor in
                     if success {
-                        await self.loadReports()
+                        // Обновляем список отчетов из telegramIntegrationService
+                        self.state.reports = self.telegramIntegrationService.externalPosts.map { post in
+                            // Конвертируем Post в DomainPost
+                            return DomainPost(
+                                id: post.id,
+                                date: post.date,
+                                goodItems: post.goodItems,
+                                badItems: post.badItems,
+                                published: post.published,
+                                voiceNotes: post.voiceNotes.map { voiceNote in
+                                    return DomainVoiceNote(
+                                        id: voiceNote.id,
+                                        url: URL(fileURLWithPath: voiceNote.path),
+                                        duration: 0.0
+                                    )
+                                },
+                                type: post.type
+                            )
+                        }
+                        
+                        // Обновляем состояние кнопок
+                        self.updateButtonStates()
                     } else {
                         self.state.error = NSError(domain: "ExternalReports", code: 1, userInfo: [NSLocalizedDescriptionKey: "Ошибка загрузки из Telegram"])
                     }
@@ -117,7 +149,7 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
         state.isLoading = true
         state.error = nil
         
-        await withCheckedContinuation { continuation in
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             telegramIntegrationService.deleteAllBotMessages { success in
                 Task { @MainActor in
                     if success {

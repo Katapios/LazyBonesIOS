@@ -146,8 +146,8 @@ extension DependencyContainer {
         
         // Telegram Integration Service
         register(TelegramIntegrationServiceType.self, factory: {
-            let telegramService = self.resolve(TelegramServiceProtocol.self)
             let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
+            let telegramService = self.resolve(TelegramServiceProtocol.self)
             return TelegramIntegrationService(
                 userDefaultsManager: userDefaultsManager,
                 telegramService: telegramService
