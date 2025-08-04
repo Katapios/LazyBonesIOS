@@ -1,8 +1,8 @@
 # 📊 Актуальный статус проекта LazyBonesIOS
 
-## 🎯 Общий прогресс: 70% завершено
+## 🎯 Общий прогресс: 75% завершено
 
-*Обновлено: 3 августа 2025*
+*Обновлено: 4 августа 2025*
 
 ## 📋 Что уже сделано ✅
 
@@ -16,10 +16,10 @@
 - ✅ **Data Sources**: `UserDefaultsPostDataSource`, `PostDataSourceProtocol`
 - ✅ **Mappers**: `PostMapper`, `VoiceNoteMapper`
 
-### 🎨 Presentation Layer (40% завершено)
-- ✅ **ViewModels**: `ReportListViewModel` (новая архитектура)
+### 🎨 Presentation Layer (60% завершено)
+- ✅ **ViewModels**: `ReportListViewModel`, `RegularReportsViewModel` (новая архитектура)
 - ✅ **Views**: `ReportListView` (новая архитектура)
-- ✅ **States**: `ReportListState`, `ReportListEvent`
+- ✅ **States**: `ReportListState`, `ReportListEvent`, `RegularReportsState`, `RegularReportsEvent`
 - ✅ **Base Classes**: `BaseViewModel`, `ViewModelProtocol`, `LoadableViewModel`
 
 ### 🔧 Infrastructure Layer (100% завершено)
@@ -27,9 +27,10 @@
 - ✅ **DI Container**: `DependencyContainer` с полной регистрацией
 - ✅ **Coordinators**: `AppCoordinator`, `ReportsCoordinator` и другие
 
-### 🧪 Testing (70% завершено)
+### 🧪 Testing (80% завершено)
 - ✅ **Unit Tests**: Domain, Data, Presentation слои
 - ✅ **Architecture Tests**: Все основные тесты
+- ✅ **RegularReportsViewModel Tests**: Полное покрытие тестами
 - ✅ **Code Quality**: Все предупреждения исправлены
 
 ## 🔄 Что в процессе миграции
@@ -41,12 +42,14 @@
 - 🔄 **PostFormView** - использует старый `PostStore`
 - 🔄 **DailyReportView** - использует старый `PostStore`
 
-### 🔄 ViewModels (нужно создать для 3 типов отчетов)
+### 🔄 ViewModels (нужно создать для 2 оставшихся типов отчетов)
 
-#### 🗓️ Regular Reports ViewModel
-- 🔄 **RegularReportsViewModel** - для обычных отчетов
-- 🔄 **RegularReportsState** - состояние для обычных отчетов
-- 🔄 **RegularReportsEvent** - события для обычных отчетов
+#### ✅ Regular Reports ViewModel (ЗАВЕРШЕНО)
+- ✅ **RegularReportsViewModel** - для обычных отчетов
+- ✅ **RegularReportsState** - состояние для обычных отчетов
+- ✅ **RegularReportsEvent** - события для обычных отчетов
+- ✅ **UpdateReportUseCase** - для обновления отчетов
+- ✅ **Тесты** - полное покрытие тестами
 
 #### 📋 Custom Reports ViewModel
 - 🔄 **CustomReportsViewModel** - для кастомных отчетов с оценкой
@@ -75,29 +78,30 @@
 
 ## 🎯 Следующие шаги (маленькими шагами)
 
-### **ШАГ 1: Создание специализированных ViewModels**
+### **ШАГ 1: Создание оставшихся ViewModels**
 
-#### 1.1 RegularReportsViewModel (Приоритет: ВЫСОКИЙ)
+#### 1.1 CustomReportsViewModel (Приоритет: ВЫСОКИЙ)
 ```swift
-// Presentation/ViewModels/RegularReportsViewModel.swift
+// Presentation/ViewModels/CustomReportsViewModel.swift
 @MainActor
-class RegularReportsViewModel: BaseViewModel<RegularReportsState, RegularReportsEvent> {
+class CustomReportsViewModel: BaseViewModel<CustomReportsState, CustomReportsEvent> {
     private let createReportUseCase: any CreateReportUseCaseProtocol
     private let getReportsUseCase: any GetReportsUseCaseProtocol
     private let deleteReportUseCase: any DeleteReportUseCaseProtocol
+    private let updateReportUseCase: any UpdateReportUseCaseProtocol
     
     func createReport(goodItems: [String], badItems: [String]) async { /* ... */ }
-    func sendReport(_ report: DomainPost) async { /* ... */ }
+    func evaluateReport(_ report: DomainPost, results: [Bool]) async { /* ... */ }
     func editReport(_ report: DomainPost) async { /* ... */ }
 }
 
-// Presentation/ViewModels/States/RegularReportsState.swift
-struct RegularReportsState {
+// Presentation/ViewModels/States/CustomReportsState.swift
+struct CustomReportsState {
     var reports: [DomainPost] = []
     var isLoading = false
     var error: Error? = nil
     var canCreateReport = true
-    var canSendReport = false
+    var canEvaluateReport = false
 }
 
 // Presentation/ViewModels/Events/RegularReportsEvent.swift

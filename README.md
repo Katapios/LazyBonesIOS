@@ -16,12 +16,15 @@
 ├─────────────────────────────────────────────────────────────┤
 │  Views (SwiftUI)           │  ViewModels (ObservableObject) │
 │  ├─ MainView              │  ├─ ReportListViewModel ✅      │
-│  ├─ ReportsView           │  ├─ CreateReportViewModel 🔄    │
-│  ├─ SettingsView          │  └─ BaseViewModel ✅            │
+│  ├─ ReportsView           │  ├─ RegularReportsViewModel ✅  │
+│  ├─ SettingsView          │  ├─ CreateReportViewModel 🔄    │
+│  └─ Forms                 │  └─ BaseViewModel ✅            │
 │  ├─ ReportListView ✅      │                                │
 │  └─ Forms                 │  States & Events               │
 │     ├─ RegularReportForm  │  ├─ ReportListState ✅          │
-│     └─ DailyPlanningForm  │  └─ ReportListEvent ✅          │
+│     └─ DailyPlanningForm  │  ├─ RegularReportsState ✅      │
+│                            │  ├─ ReportListEvent ✅          │
+│                            │  └─ RegularReportsEvent ✅      │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -32,6 +35,7 @@
 │  ├─ DomainPost ✅          │  ├─ CreateReportUseCase ✅      │
 │  ├─ DomainVoiceNote ✅     │  ├─ GetReportsUseCase ✅        │
 │  └─ ReportStatus ✅        │  ├─ UpdateStatusUseCase ✅      │
+│                            │  ├─ UpdateReportUseCase ✅      │
 │                            │  └─ DeleteReportUseCase ✅      │
 │  Repository Protocols      │                                │
 │  ├─ PostRepositoryProtocol✅│                                │
@@ -78,7 +82,7 @@ Presentation → Domain ← Data → Infrastructure
 |------|--------|------------|----------|
 | **Domain** | ✅ Завершен | 100% | Entities, Use Cases, Repository Protocols |
 | **Data** | ✅ Завершен | 100% | Repositories, Data Sources, Mappers |
-| **Presentation** | 🔄 В процессе | 40% | ViewModels частично, Views в миграции |
+| **Presentation** | 🔄 В процессе | 60% | ViewModels частично, Views в миграции |
 | **Infrastructure** | ✅ Завершен | 100% | Services, DI Container, Coordinators |
 
 ## 📊 Статусная модель приложения

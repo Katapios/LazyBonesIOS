@@ -12,6 +12,7 @@
 - `AutoSendServiceTests` - тестирование логики автоотправки
 - `CreateReportUseCaseTests` - тестирование бизнес-логики
 - `PostRepositoryTests` - тестирование работы с данными
+- `RegularReportsViewModelTests` - тестирование ViewModel для обычных отчетов
 
 ### 2. Integration тесты
 **Назначение**: Тестирование взаимодействия между компонентами
@@ -73,7 +74,8 @@ Tests/
 │       └── CreateReportUseCaseTests.swift
 └── Presentation/                       # Тесты Presentation слоя
     └── ViewModels/
-        └── ReportListViewModelTests.swift
+        ├── ReportListViewModelTests.swift
+        └── RegularReportsViewModelTests.swift
 ```
 
 ## 🔧 Создание новых тестов
