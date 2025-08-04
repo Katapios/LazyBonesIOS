@@ -3,8 +3,6 @@ import SwiftUI
 /// Вкладка 'Отчёты': список всех постов с датами и чеклистами
 struct ReportsView: View {
     @EnvironmentObject var store: PostStore
-    @State private var isLoadingExternal = false
-    @State private var externalError: String? = nil
     @State private var isSelectionMode = false
     @State private var selectedLocalReportIDs: Set<UUID> = []
     @State private var showEvaluationSheet = false
@@ -19,9 +17,6 @@ struct ReportsView: View {
                     regularReportsSection
                     customReportsSection
                     externalReportsSection
-                    telegramWarning
-                    telegramClearButton
-                    errorSection
                 }
                 .padding(.top, 16)
                 .padding([.leading, .trailing, .bottom])
@@ -146,57 +141,14 @@ struct ReportsView: View {
     }
 
     private var externalReportsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("ИЗ TELEGRAM")
-                .font(.title3)
-                .foregroundColor(.accentColor)
-                .padding(.horizontal, 8)
-                .padding(.top, 8)
-            HStack(spacing: 12) {
-                Button(action: reloadExternalReports) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "arrow.clockwise")
-                        Text("Обновить")
-                    }
-                }
-                .buttonStyle(.bordered)
-                Link(destination: URL(string: "https://t.me/+Ny08CEMnQJplMGJi")!) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "paperplane.fill")
-                        Text("В группу")
-                    }
-                }
-                .buttonStyle(.bordered)
-                if isLoadingExternal {
-                    ProgressView().scaleEffect(0.7)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .center)
-            .padding(.vertical, 2)
-            if store.externalPosts.isEmpty && !isLoadingExternal {
-                Text("Нет внешних отчётов")
-                    .foregroundColor(.primary)
-                    .font(.caption)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 16)
-            }
-            ForEach(store.externalPosts) { post in
-                ReportCardView(post: post, isSelectable: false, isSelected: false, onSelect: nil)
-            }
-        }
+        ExternalReportsView(
+            getReportsUseCase: DependencyContainer.shared.resolve(GetReportsUseCase.self)!,
+            deleteReportUseCase: DependencyContainer.shared.resolve(DeleteReportUseCase.self)!,
+            telegramIntegrationService: DependencyContainer.shared.resolve(TelegramIntegrationServiceType.self)!
+        )
     }
 
-    private var errorSection: some View {
-        Group {
-            if let error = externalError {
-                Text(error)
-                    .foregroundColor(.primary)
-                    .font(.caption)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 16)
-            }
-        }
-    }
+
 
     private var toolbarContent: some ToolbarContent {
         Group {
@@ -242,33 +194,7 @@ struct ReportsView: View {
         }
     }
 
-    // MARK: - Telegram Warning Block
-    private var telegramWarning: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundColor(.orange)
-                Text("Техническое ограничение")
-                    .font(.caption)
-                    .foregroundColor(.orange)
-            }
-            Text("Бот не может видеть свои собственные сообщения через Telegram Bot API. Поэтому отправленные вами отчёты могут не отображаться в этом списке.")
-                .font(.caption2)
-                .foregroundColor(.secondary)
-        }
-    }
 
-    // MARK: - Telegram Clear Button
-    private var telegramClearButton: some View {
-        Button(action: clearExternalReports) {
-            Label("Очистить всю историю", systemImage: "trash.fill")
-                .foregroundColor(.red)
-                .frame(maxWidth: .infinity, alignment: .center)
-        }
-        .buttonStyle(.bordered)
-        .padding(.vertical, 2)
-        .help("Удалить ВСЕ сообщения бота из Telegram (включая невидимые)")
-    }
 
     // MARK: - Actions
     private func toggleSelection(for id: UUID) {
@@ -301,26 +227,7 @@ struct ReportsView: View {
             store.save() // если есть метод сохранения
         }
     }
-    private func reloadExternalReports() {
-        isLoadingExternal = true
-        externalError = nil
-        store.fetchExternalPosts { success in
-            isLoadingExternal = false
-            if !success {
-                externalError = "Ошибка загрузки из Telegram"
-            }
-        }
-    }
-    private func clearExternalReports() {
-        store.deleteAllBotMessages { success in
-            if success {
-                withAnimation {
-                    store.externalPosts.removeAll()
-                    store.saveExternalPosts()
-                }
-            }
-        }
-    }
+
 }
 
 extension String {

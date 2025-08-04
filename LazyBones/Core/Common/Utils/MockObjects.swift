@@ -39,6 +39,8 @@ class MockTelegramIntegrationService: TelegramIntegrationServiceProtocol {
     
     var fetchExternalPostsResult: Bool = true
     var deleteAllBotMessagesResult: Bool = true
+    var fetchExternalPostsCalled: Bool = false
+    var deleteAllBotMessagesCalled: Bool = false
     
     func saveTelegramSettings(token: String?, chatId: String?, botId: String?) {
         self.telegramToken = token
@@ -55,6 +57,7 @@ class MockTelegramIntegrationService: TelegramIntegrationServiceProtocol {
     }
     
     func fetchExternalPosts(completion: @escaping (Bool) -> Void) {
+        fetchExternalPostsCalled = true
         completion(fetchExternalPostsResult)
     }
     
@@ -71,6 +74,7 @@ class MockTelegramIntegrationService: TelegramIntegrationServiceProtocol {
     }
     
     func deleteAllBotMessages(completion: @escaping (Bool) -> Void) {
+        deleteAllBotMessagesCalled = true
         completion(deleteAllBotMessagesResult)
     }
     
