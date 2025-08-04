@@ -13,6 +13,7 @@
 - `CreateReportUseCaseTests` - тестирование бизнес-логики
 - `PostRepositoryTests` - тестирование работы с данными
 - `RegularReportsViewModelTests` - тестирование ViewModel для обычных отчетов
+- `CustomReportsViewModelTests` - тестирование ViewModel для кастомных отчетов
 
 ### 2. Integration тесты
 **Назначение**: Тестирование взаимодействия между компонентами
@@ -75,7 +76,8 @@ Tests/
 └── Presentation/                       # Тесты Presentation слоя
     └── ViewModels/
         ├── ReportListViewModelTests.swift
-        └── RegularReportsViewModelTests.swift
+        ├── RegularReportsViewModelTests.swift
+        └── CustomReportsViewModelTests.swift
 ```
 
 ## 🔧 Создание новых тестов

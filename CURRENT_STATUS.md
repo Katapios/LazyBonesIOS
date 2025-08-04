@@ -1,6 +1,6 @@
 # 📊 Актуальный статус проекта LazyBonesIOS
 
-## 🎯 Общий прогресс: 75% завершено
+## 🎯 Общий прогресс: 80% завершено
 
 *Обновлено: 4 августа 2025*
 
@@ -16,10 +16,10 @@
 - ✅ **Data Sources**: `UserDefaultsPostDataSource`, `PostDataSourceProtocol`
 - ✅ **Mappers**: `PostMapper`, `VoiceNoteMapper`
 
-### 🎨 Presentation Layer (60% завершено)
-- ✅ **ViewModels**: `ReportListViewModel`, `RegularReportsViewModel` (новая архитектура)
+### 🎨 Presentation Layer (70% завершено)
+- ✅ **ViewModels**: `ReportListViewModel`, `RegularReportsViewModel`, `CustomReportsViewModel` (новая архитектура)
 - ✅ **Views**: `ReportListView` (новая архитектура)
-- ✅ **States**: `ReportListState`, `ReportListEvent`, `RegularReportsState`, `RegularReportsEvent`
+- ✅ **States**: `ReportListState`, `ReportListEvent`, `RegularReportsState`, `RegularReportsEvent`, `CustomReportsState`, `CustomReportsEvent`
 - ✅ **Base Classes**: `BaseViewModel`, `ViewModelProtocol`, `LoadableViewModel`
 
 ### 🔧 Infrastructure Layer (100% завершено)
@@ -27,10 +27,11 @@
 - ✅ **DI Container**: `DependencyContainer` с полной регистрацией
 - ✅ **Coordinators**: `AppCoordinator`, `ReportsCoordinator` и другие
 
-### 🧪 Testing (80% завершено)
+### 🧪 Testing (85% завершено)
 - ✅ **Unit Tests**: Domain, Data, Presentation слои
 - ✅ **Architecture Tests**: Все основные тесты
 - ✅ **RegularReportsViewModel Tests**: Полное покрытие тестами
+- ✅ **CustomReportsViewModel Tests**: Полное покрытие тестами
 - ✅ **Code Quality**: Все предупреждения исправлены
 
 ## 🔄 Что в процессе миграции
@@ -42,13 +43,20 @@
 - 🔄 **PostFormView** - использует старый `PostStore`
 - 🔄 **DailyReportView** - использует старый `PostStore`
 
-### 🔄 ViewModels (нужно создать для 2 оставшихся типов отчетов)
+### 🔄 ViewModels (нужно создать для 1 оставшегося типа отчетов)
 
 #### ✅ Regular Reports ViewModel (ЗАВЕРШЕНО)
 - ✅ **RegularReportsViewModel** - для обычных отчетов
 - ✅ **RegularReportsState** - состояние для обычных отчетов
 - ✅ **RegularReportsEvent** - события для обычных отчетов
 - ✅ **UpdateReportUseCase** - для обновления отчетов
+- ✅ **Тесты** - полное покрытие тестами
+
+#### ✅ Custom Reports ViewModel (ЗАВЕРШЕНО)
+- ✅ **CustomReportsViewModel** - для кастомных отчетов с оценкой
+- ✅ **CustomReportsState** - состояние для кастомных отчетов
+- ✅ **CustomReportsEvent** - события для кастомных отчетов
+- ✅ **Поддержка оценки** - `evaluateReport`, `reEvaluateReport`
 - ✅ **Тесты** - полное покрытие тестами
 
 #### 📋 Custom Reports ViewModel

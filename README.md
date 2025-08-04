@@ -17,14 +17,17 @@
 │  Views (SwiftUI)           │  ViewModels (ObservableObject) │
 │  ├─ MainView              │  ├─ ReportListViewModel ✅      │
 │  ├─ ReportsView           │  ├─ RegularReportsViewModel ✅  │
-│  ├─ SettingsView          │  ├─ CreateReportViewModel 🔄    │
-│  └─ Forms                 │  └─ BaseViewModel ✅            │
+│  ├─ SettingsView          │  ├─ CustomReportsViewModel ✅   │
+│  └─ Forms                 │  ├─ CreateReportViewModel 🔄    │
+│                            │  └─ BaseViewModel ✅            │
 │  ├─ ReportListView ✅      │                                │
 │  └─ Forms                 │  States & Events               │
 │     ├─ RegularReportForm  │  ├─ ReportListState ✅          │
 │     └─ DailyPlanningForm  │  ├─ RegularReportsState ✅      │
+│                            │  ├─ CustomReportsState ✅       │
 │                            │  ├─ ReportListEvent ✅          │
-│                            │  └─ RegularReportsEvent ✅      │
+│                            │  ├─ RegularReportsEvent ✅      │
+│                            │  └─ CustomReportsEvent ✅       │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -82,7 +85,7 @@ Presentation → Domain ← Data → Infrastructure
 |------|--------|------------|----------|
 | **Domain** | ✅ Завершен | 100% | Entities, Use Cases, Repository Protocols |
 | **Data** | ✅ Завершен | 100% | Repositories, Data Sources, Mappers |
-| **Presentation** | 🔄 В процессе | 60% | ViewModels частично, Views в миграции |
+| **Presentation** | 🔄 В процессе | 70% | ViewModels частично, Views в миграции |
 | **Infrastructure** | ✅ Завершен | 100% | Services, DI Container, Coordinators |
 
 ## 📊 Статусная модель приложения
