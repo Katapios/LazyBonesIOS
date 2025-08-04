@@ -72,9 +72,11 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
         state.isLoading = true
         state.error = nil
         
-        do {
-            // Загружаем внешние отчеты напрямую из telegramIntegrationService
-            let externalPosts = telegramIntegrationService.externalPosts
+        // Загружаем сохраненные внешние сообщения
+        telegramIntegrationService.loadExternalPosts()
+        
+        // Загружаем внешние отчеты напрямую из telegramIntegrationService
+        let externalPosts = telegramIntegrationService.externalPosts
             state.reports = externalPosts.map { post in
                 // Конвертируем Post в DomainPost
                 return DomainPost(
@@ -99,7 +101,6 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
             state.telegramConnected = settings.token != nil && !settings.token!.isEmpty
             
             updateButtonStates()
-        }
         
         state.isLoading = false
     }
@@ -129,7 +130,17 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
                                         duration: 0.0
                                     )
                                 },
-                                type: post.type
+                                type: post.type,
+                                isEvaluated: post.isEvaluated,
+                                evaluationResults: post.evaluationResults,
+                                authorUsername: post.authorUsername,
+                                authorFirstName: post.authorFirstName,
+                                authorLastName: post.authorLastName,
+                                isExternal: post.isExternal,
+                                externalVoiceNoteURLs: post.externalVoiceNoteURLs,
+                                externalText: post.externalText,
+                                externalMessageId: post.externalMessageId,
+                                authorId: post.authorId
                             )
                         }
                         
@@ -153,10 +164,20 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
             telegramIntegrationService.deleteAllBotMessages { success in
                 Task { @MainActor in
                     if success {
+                        // Очищаем список отчетов в UI
                         self.state.reports.removeAll()
-                        self.telegramIntegrationService.saveExternalPosts()
+                        
+                        // Очищаем выбор, если был включен режим выбора
+                        self.state.selectedReportIDs.removeAll()
+                        self.state.isSelectionMode = false
+                        
+                        // Обновляем состояние кнопок
+                        self.updateButtonStates()
+                        
+                        Logger.info("Successfully cleared external reports history", log: Logger.telegram)
                     } else {
                         self.state.error = NSError(domain: "ExternalReports", code: 2, userInfo: [NSLocalizedDescriptionKey: "Ошибка очистки истории"])
+                        Logger.error("Failed to clear external reports history", log: Logger.telegram)
                     }
                     self.state.isLoading = false
                     continuation.resume()

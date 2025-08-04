@@ -136,10 +136,15 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
                     }
                 }
                 
-                // Обновляем externalPosts на главном потоке
-                let finalExternalPosts = newExternalPosts
+                // Добавляем новые сообщения к существующим на главном потоке
                 await MainActor.run {
-                    self.externalPosts = finalExternalPosts
+                    // Добавляем новые сообщения к существующим
+                    self.externalPosts.append(contentsOf: newExternalPosts)
+                    
+                    // Удаляем дубликаты по messageId
+                    let uniquePosts = self.removeDuplicatePosts(self.externalPosts)
+                    self.externalPosts = uniquePosts
+                    
                     self.saveExternalPosts()
                     
                     // Обновляем lastUpdateId
@@ -148,7 +153,7 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
                         self.userDefaultsManager.set(self.lastUpdateId, forKey: "lastUpdateId")
                     }
                     
-                    Logger.info("Fetched \(finalExternalPosts.count) external posts", log: Logger.telegram)
+                    Logger.info("Added \(newExternalPosts.count) new external posts, total: \(self.externalPosts.count)", log: Logger.telegram)
                     completion(true)
                 }
                 
@@ -182,9 +187,20 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
     }
     
     func deleteAllBotMessages(completion: @escaping (Bool) -> Void) {
-        // TODO: Реализовать с новым TelegramService
-        Logger.warning("deleteAllBotMessages not implemented yet", log: Logger.telegram)
-        completion(false)
+        Logger.info("Clearing all external posts history", log: Logger.telegram)
+        
+        // Очищаем все внешние сообщения
+        externalPosts.removeAll()
+        
+        // Сохраняем пустой список
+        saveExternalPosts()
+        
+        // Сбрасываем lastUpdateId для получения всех сообщений заново
+        lastUpdateId = 0
+        userDefaultsManager.set(0, forKey: "lastUpdateId")
+        
+        Logger.info("Successfully cleared all external posts history", log: Logger.telegram)
+        completion(true)
     }
     
     // MARK: - Message Conversion
@@ -192,11 +208,14 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
     func convertTelegramMessageToPost(_ message: TelegramMessage) -> Post? {
         // Если есть текст — обычный текстовый отчет
         if let text = message.text, !text.isEmpty {
+            // Парсим текст для извлечения структурированных данных
+            let (goodItems, badItems, remainingText) = parseReportText(text)
+            
             let post = Post(
                 id: UUID(),
                 date: Date(timeIntervalSince1970: TimeInterval(message.date ?? 0)),
-                goodItems: [],
-                badItems: [],
+                goodItems: goodItems,
+                badItems: badItems,
                 published: false,
                 voiceNotes: [],
                 type: .external,
@@ -207,7 +226,7 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
                 authorLastName: message.from?.lastName,
                 isExternal: true,
                 externalVoiceNoteURLs: nil,
-                externalText: text,
+                externalText: remainingText.isEmpty ? nil : remainingText,
                 externalMessageId: message.messageId,
                 authorId: message.from?.id
             )
@@ -295,6 +314,144 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
         
         // Если ничего не подошло — не создаём Post
         return nil
+    }
+    
+    // MARK: - Text Parsing
+    
+    /// Парсит текст отчета для извлечения структурированных данных
+    private func parseReportText(_ text: String) -> (goodItems: [String], badItems: [String], remainingText: String) {
+        var goodItems: [String] = []
+        var badItems: [String] = []
+        var remainingText = text
+        
+        // Паттерны для поиска секций
+        let goodPatterns = [
+            "я молодец:",
+            "я молодец",
+            "молодец:",
+            "молодец",
+            "хорошо:",
+            "хорошо",
+            "плюсы:",
+            "плюсы",
+            "+:",
+            "+"
+        ]
+        
+        let badPatterns = [
+            "я не молодец:",
+            "я не молодец",
+            "не молодец:",
+            "не молодец",
+            "плохо:",
+            "плохо",
+            "минусы:",
+            "минусы",
+            "-:",
+            "-"
+        ]
+        
+        // Разбиваем текст на строки
+        let lines = text.components(separatedBy: .newlines)
+        var currentSection: String? = nil
+        var currentItems: [String] = []
+        
+        for line in lines {
+            let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmedLine.isEmpty { continue }
+            
+            // Проверяем, является ли строка заголовком секции
+            let lowercasedLine = trimmedLine.lowercased()
+            
+            if goodPatterns.contains(where: { lowercasedLine.contains($0) }) {
+                // Сохраняем предыдущую секцию
+                if let section = currentSection, !currentItems.isEmpty {
+                    if section == "good" {
+                        goodItems.append(contentsOf: currentItems)
+                    } else if section == "bad" {
+                        badItems.append(contentsOf: currentItems)
+                    }
+                }
+                
+                // Начинаем новую секцию
+                currentSection = "good"
+                currentItems = []
+                continue
+            }
+            
+            if badPatterns.contains(where: { lowercasedLine.contains($0) }) {
+                // Сохраняем предыдущую секцию
+                if let section = currentSection, !currentItems.isEmpty {
+                    if section == "good" {
+                        goodItems.append(contentsOf: currentItems)
+                    } else if section == "bad" {
+                        badItems.append(contentsOf: currentItems)
+                    }
+                }
+                
+                // Начинаем новую секцию
+                currentSection = "bad"
+                currentItems = []
+                continue
+            }
+            
+            // Если это не заголовок, добавляем в текущую секцию
+            if currentSection != nil {
+                // Убираем номера и маркеры в начале строки
+                let cleanedItem = trimmedLine.replacingOccurrences(of: "^\\d+\\.\\s*", with: "", options: .regularExpression)
+                    .replacingOccurrences(of: "^[-•*]\\s*", with: "", options: .regularExpression)
+                
+                if !cleanedItem.isEmpty {
+                    currentItems.append(cleanedItem)
+                }
+            }
+        }
+        
+        // Сохраняем последнюю секцию
+        if let section = currentSection, !currentItems.isEmpty {
+            if section == "good" {
+                goodItems.append(contentsOf: currentItems)
+            } else if section == "bad" {
+                badItems.append(contentsOf: currentItems)
+            }
+        }
+        
+        // Убираем обработанные секции из оставшегося текста
+        var processedText = text
+        for pattern in goodPatterns + badPatterns {
+            processedText = processedText.replacingOccurrences(of: pattern, with: "", options: [.caseInsensitive, .regularExpression])
+        }
+        
+        // Убираем пустые строки и лишние пробелы
+        remainingText = processedText.components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        return (goodItems: goodItems, badItems: badItems, remainingText: remainingText)
+    }
+    
+    // MARK: - Utility Methods
+    
+    /// Удаляет дубликаты постов по externalMessageId
+    private func removeDuplicatePosts(_ posts: [Post]) -> [Post] {
+        var seenMessageIds: Set<Int> = []
+        var uniquePosts: [Post] = []
+        
+        for post in posts {
+            if let messageId = post.externalMessageId {
+                if !seenMessageIds.contains(messageId) {
+                    seenMessageIds.insert(messageId)
+                    uniquePosts.append(post)
+                }
+            } else {
+                // Если нет messageId, добавляем пост (может быть локальным)
+                uniquePosts.append(post)
+            }
+        }
+        
+        return uniquePosts
     }
     
     // MARK: - Combined Posts
