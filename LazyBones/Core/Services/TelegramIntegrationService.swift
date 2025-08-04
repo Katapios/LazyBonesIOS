@@ -105,14 +105,20 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
             return
         }
         
+        Logger.info("Telegram token found: \(String(token.prefix(10)))...", log: Logger.telegram)
+        Logger.info("Last update ID: \(lastUpdateId ?? 0)", log: Logger.telegram)
+        
         Task {
             do {
                 // Получаем TelegramService для обновлений
                 guard let telegramServiceForUpdates = telegramService else {
                     Logger.error("TelegramService not available", log: Logger.telegram)
+                    Logger.error("telegramService is nil", log: Logger.telegram)
                     completion(false)
                     return
                 }
+                
+                Logger.info("TelegramService is available", log: Logger.telegram)
                 
                 // Получаем обновления из Telegram
                 let updates = try await telegramServiceForUpdates.getUpdates(offset: lastUpdateId)
@@ -137,9 +143,10 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
                 }
                 
                 // Добавляем новые сообщения к существующим на главном потоке
+                let postsToAdd = newExternalPosts // Создаем копию для использования в MainActor
                 await MainActor.run {
                     // Добавляем новые сообщения к существующим
-                    self.externalPosts.append(contentsOf: newExternalPosts)
+                    self.externalPosts.append(contentsOf: postsToAdd)
                     
                     // Удаляем дубликаты по messageId
                     let uniquePosts = self.removeDuplicatePosts(self.externalPosts)
@@ -153,7 +160,7 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
                         self.userDefaultsManager.set(self.lastUpdateId, forKey: "lastUpdateId")
                     }
                     
-                    Logger.info("Added \(newExternalPosts.count) new external posts, total: \(self.externalPosts.count)", log: Logger.telegram)
+                    Logger.info("Added \(postsToAdd.count) new external posts, total: \(self.externalPosts.count)", log: Logger.telegram)
                     completion(true)
                 }
                 

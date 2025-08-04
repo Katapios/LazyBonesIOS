@@ -77,30 +77,42 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
         
         // Загружаем внешние отчеты напрямую из telegramIntegrationService
         let externalPosts = telegramIntegrationService.externalPosts
-            state.reports = externalPosts.map { post in
-                // Конвертируем Post в DomainPost
-                return DomainPost(
-                    id: post.id,
-                    date: post.date,
-                    goodItems: post.goodItems,
-                    badItems: post.badItems,
-                    published: post.published,
-                    voiceNotes: post.voiceNotes.map { voiceNote in
-                        return DomainVoiceNote(
-                            id: voiceNote.id,
-                            url: URL(fileURLWithPath: voiceNote.path),
-                            duration: 0.0
-                        )
-                    },
-                    type: post.type
-                )
-            }
-            
-            // Проверяем подключение к Telegram
-            let settings = telegramIntegrationService.loadTelegramSettings()
-            state.telegramConnected = settings.token != nil && !settings.token!.isEmpty
-            
-            updateButtonStates()
+        state.reports = externalPosts.map { post in
+            // Конвертируем Post в DomainPost
+            return DomainPost(
+                id: post.id,
+                date: post.date,
+                goodItems: post.goodItems,
+                badItems: post.badItems,
+                published: post.published,
+                voiceNotes: post.voiceNotes.map { voiceNote in
+                    return DomainVoiceNote(
+                        id: voiceNote.id,
+                        url: URL(fileURLWithPath: voiceNote.path),
+                        duration: 0.0
+                    )
+                },
+                type: post.type,
+                isEvaluated: post.isEvaluated,
+                evaluationResults: post.evaluationResults,
+                authorUsername: post.authorUsername,
+                authorFirstName: post.authorFirstName,
+                authorLastName: post.authorLastName,
+                isExternal: post.isExternal,
+                externalVoiceNoteURLs: post.externalVoiceNoteURLs,
+                externalText: post.externalText,
+                externalMessageId: post.externalMessageId,
+                authorId: post.authorId
+            )
+        }
+        
+        // Проверяем подключение к Telegram
+        let settings = telegramIntegrationService.loadTelegramSettings()
+        state.telegramConnected = settings.token != nil && !settings.token!.isEmpty
+        
+        updateButtonStates()
+        
+        Logger.info("Loaded \(state.reports.count) saved external reports", log: Logger.telegram)
         
         state.isLoading = false
     }
@@ -108,6 +120,14 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
     private func refreshFromTelegram() async {
         state.isRefreshing = true
         state.error = nil
+        
+        // Проверяем подключение к Telegram перед попыткой загрузки
+        let settings = telegramIntegrationService.loadTelegramSettings()
+        guard settings.token != nil && !settings.token!.isEmpty else {
+            state.error = NSError(domain: "ExternalReports", code: 3, userInfo: [NSLocalizedDescriptionKey: "Telegram не настроен. Проверьте настройки в разделе Settings."])
+            state.isRefreshing = false
+            return
+        }
         
         // Используем completion-based API для совместимости
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
@@ -146,8 +166,11 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
                         
                         // Обновляем состояние кнопок
                         self.updateButtonStates()
+                        
+                        Logger.info("Successfully refreshed \(self.state.reports.count) reports from Telegram", log: Logger.telegram)
                     } else {
-                        self.state.error = NSError(domain: "ExternalReports", code: 1, userInfo: [NSLocalizedDescriptionKey: "Ошибка загрузки из Telegram"])
+                        self.state.error = NSError(domain: "ExternalReports", code: 1, userInfo: [NSLocalizedDescriptionKey: "Ошибка загрузки из Telegram. Проверьте подключение к интернету и настройки Telegram."])
+                        Logger.error("Failed to refresh reports from Telegram", log: Logger.telegram)
                     }
                     self.state.isRefreshing = false
                     continuation.resume()
