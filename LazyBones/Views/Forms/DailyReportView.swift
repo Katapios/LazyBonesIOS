@@ -620,7 +620,7 @@ struct DailyReportView: View {
         dateFormatter.dateStyle = .full
         let dateStr = dateFormatter.string(from: post.date)
         let deviceName = store.getDeviceName()
-        var message = "\u{1F4C5} <b>Третий экран - отчет за \(dateStr)</b>\n"
+        var message = "\u{1F4C5} <b>Отчет за день - \(dateStr)</b>\n"
         message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
         if !post.goodItems.isEmpty {
             message += "<b>✅ Я молодец:</b>\n"
