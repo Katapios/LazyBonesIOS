@@ -2,12 +2,11 @@ import SwiftUI
 
 /// Вкладка 'Отчёты': список всех постов с датами и чеклистами
 struct ReportsView: View {
-    @EnvironmentObject var store: PostStore
-    @State private var isSelectionMode = false
-    @State private var selectedLocalReportIDs: Set<UUID> = []
-    @State private var showEvaluationSheet = false
-    @State private var evaluatingPost: Post? = nil
-    @AppStorage("allowCustomReportReevaluation") private var allowCustomReportReevaluation: Bool = false
+    @StateObject private var viewModel: ReportsViewModel
+    
+    init(store: PostStore) {
+        self._viewModel = StateObject(wrappedValue: ReportsViewModel(store: store))
+    }
 
     // ВАЖНО: Оборачивайте ReportsView в NavigationStack на уровне ContentView или App!
     var body: some View {
@@ -26,25 +25,23 @@ struct ReportsView: View {
             .safeAreaInset(edge: .top) { Spacer().frame(height: 8) }
             .scrollIndicators(.hidden)
             .toolbar { toolbarContent }
-            .sheet(isPresented: $showEvaluationSheet) { evaluationSheetContent }
+            .sheet(isPresented: $viewModel.showEvaluationSheet) { evaluationSheetContent }
         }
     }
 
     private var regularReportsSection: some View {
         Group {
-            if !store.posts.filter({ $0.type == .regular }).isEmpty {
+            if viewModel.hasRegularPosts {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("ЛОКАЛЬНЫЕ ОТЧЁТЫ")
                         .font(.title3)
                         .foregroundColor(.accentColor)
                         .padding(.horizontal, 8)
                         .padding(.top, 8)
-                    if isSelectionMode {
-                        let regularPosts = store.posts.filter { $0.type == .regular }
-                        let selectedRegular = regularPosts.filter { selectedLocalReportIDs.contains($0.id) }
-                        if selectedRegular.count == 0 || selectedRegular.count == regularPosts.count {
-                            Button(action: selectAllLocalReports) {
-                                Text(selectedRegular.count == regularPosts.count ? "Снять все" : "Выбрать все")
+                    if viewModel.isSelectionMode {
+                        if viewModel.canSelectAllRegular {
+                            Button(action: viewModel.selectAllRegularReports) {
+                                Text(viewModel.selectAllRegularText)
                                     .font(.caption)
                                     .frame(maxWidth: .infinity, alignment: .center)
                                     .foregroundColor(.primary)
@@ -53,12 +50,12 @@ struct ReportsView: View {
                             .padding(.vertical, 2)
                         }
                     }
-                    ForEach(store.posts.filter { $0.type == .regular }) { post in
+                    ForEach(viewModel.regularPosts) { post in
                         ReportCardView(
                             post: post,
-                            isSelectable: isSelectionMode,
-                            isSelected: selectedLocalReportIDs.contains(post.id),
-                            onSelect: { toggleSelection(for: post.id) }
+                            isSelectable: viewModel.isSelectionMode,
+                            isSelected: viewModel.selectedLocalReportIDs.contains(post.id),
+                            onSelect: { viewModel.toggleSelection(for: post.id) }
                         )
                     }
                 }
@@ -68,7 +65,7 @@ struct ReportsView: View {
 
     private var customReportsSection: some View {
         Group {
-            if store.posts.contains(where: { $0.type == .custom }) {
+            if viewModel.hasCustomPosts {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("КАСТОМНЫЕ ОТЧЁТЫ")
                         .font(.title3)
@@ -78,7 +75,7 @@ struct ReportsView: View {
                     
                     customSelectionButton
                     
-                    ForEach(store.posts.filter { $0.type == .custom }) { post in
+                    ForEach(viewModel.customPosts) { post in
                         customReportCard(for: post)
                     }
                 }
@@ -90,12 +87,10 @@ struct ReportsView: View {
     
     private var customSelectionButton: some View {
         Group {
-            if isSelectionMode {
-                let customPosts = store.posts.filter { $0.type == .custom }
-                let selectedCustom = customPosts.filter { selectedLocalReportIDs.contains($0.id) }
-                if selectedCustom.count == 0 || selectedCustom.count == customPosts.count {
-                    Button(action: selectAllCustomReports) {
-                        Text(selectedCustom.count == customPosts.count ? "Снять все" : "Выбрать все")
+            if viewModel.isSelectionMode {
+                if viewModel.canSelectAllCustom {
+                    Button(action: viewModel.selectAllCustomReports) {
+                        Text(viewModel.selectAllCustomText)
                             .font(.caption)
                             .frame(maxWidth: .infinity, alignment: .center)
                             .foregroundColor(.primary)
@@ -115,14 +110,13 @@ struct ReportsView: View {
         VStack(alignment: .leading, spacing: 4) {
             ReportCardView(
                 post: post,
-                isSelectable: isSelectionMode,
-                isSelected: selectedLocalReportIDs.contains(post.id),
-                onSelect: { toggleSelection(for: post.id) },
-                showEvaluateButton: Calendar.current.isDateInToday(post.date) && !isSelectionMode && (post.isEvaluated != true || allowCustomReportReevaluation) && !post.goodItems.isEmpty,
-                isEvaluated: post.isEvaluated == true && !allowCustomReportReevaluation,
+                isSelectable: viewModel.isSelectionMode,
+                isSelected: viewModel.selectedLocalReportIDs.contains(post.id),
+                onSelect: { viewModel.toggleSelection(for: post.id) },
+                showEvaluateButton: viewModel.canEvaluateReport(post),
+                isEvaluated: viewModel.isReportEvaluated(post),
                 onEvaluate: {
-                    evaluatingPost = post
-                    showEvaluationSheet = true
+                    viewModel.startEvaluation(for: post)
                 }
             )
             .overlay(
@@ -132,10 +126,10 @@ struct ReportsView: View {
                     .padding(.top, 2),
                 alignment: .bottomTrailing
             )
-            .onChange(of: store.posts.count) { _, _ in
-                if let evaluatingPost = evaluatingPost,
-                   let updatedPost = store.posts.first(where: { $0.id == evaluatingPost.id }) {
-                    self.evaluatingPost = updatedPost
+            .onChange(of: viewModel.posts.count) { _, _ in
+                if let evaluatingPost = viewModel.evaluatingPost,
+                   let updatedPost = viewModel.posts.first(where: { $0.id == evaluatingPost.id }) {
+                    viewModel.evaluatingPost = updatedPost
                 }
             }
         }
@@ -162,21 +156,20 @@ struct ReportsView: View {
     private var toolbarContent: some ToolbarContent {
         Group {
             ToolbarItem(placement: .navigationBarTrailing) {
-                if !store.posts.isEmpty {
-                    Button(isSelectionMode ? "Отмена" : "Выбрать") {
+                if !viewModel.posts.isEmpty {
+                    Button(viewModel.isSelectionMode ? "Отмена" : "Выбрать") {
                         withAnimation {
-                            isSelectionMode.toggle()
-                            if !isSelectionMode { selectedLocalReportIDs.removeAll() }
+                            viewModel.toggleSelectionMode()
                         }
                     }
                 } else {
                     EmptyView()
                 }
             }
-            if isSelectionMode && !selectedLocalReportIDs.isEmpty {
+            if viewModel.canDeleteReports {
                 ToolbarItem(placement: .bottomBar) {
-                    Button(role: .destructive, action: deleteSelectedReports) {
-                        Label("Удалить (\(selectedLocalReportIDs.count))", systemImage: "trash")
+                    Button(role: .destructive, action: viewModel.deleteSelectedReports) {
+                        Label("Удалить (\(viewModel.selectedReportsCount))", systemImage: "trash")
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -186,16 +179,9 @@ struct ReportsView: View {
 
     private var evaluationSheetContent: some View {
         Group {
-            if let post = evaluatingPost {
+            if let post = viewModel.evaluatingPost {
                 CustomReportEvaluationView(post: post) { checked in
-                    if let idx = store.posts.firstIndex(where: { $0.id == post.id }) {
-                        var updated = store.posts[idx]
-                        updated.evaluationResults = checked
-                        updated.isEvaluated = true
-                        store.posts[idx] = updated
-                        evaluatingPost = updated
-                        store.save()
-                    }
+                    viewModel.completeEvaluation(results: checked)
                 }
             } else {
                 EmptyView()
@@ -205,37 +191,7 @@ struct ReportsView: View {
 
 
 
-    // MARK: - Actions
-    private func toggleSelection(for id: UUID) {
-        if selectedLocalReportIDs.contains(id) {
-            selectedLocalReportIDs.remove(id)
-        } else {
-            selectedLocalReportIDs.insert(id)
-        }
-    }
-    private func selectAllLocalReports() {
-        if selectedLocalReportIDs.count == store.posts.filter({ $0.type == .regular }).count {
-            selectedLocalReportIDs.removeAll()
-        } else {
-            selectedLocalReportIDs = Set(store.posts.filter({ $0.type == .regular }).map { $0.id })
-        }
-    }
-    private func selectAllCustomReports() {
-        let customPosts = store.posts.filter { $0.type == .custom }
-        if selectedLocalReportIDs.count == customPosts.count {
-            selectedLocalReportIDs.removeAll()
-        } else {
-            selectedLocalReportIDs = Set(customPosts.map { $0.id })
-        }
-    }
-    private func deleteSelectedReports() {
-        withAnimation {
-            store.posts.removeAll { selectedLocalReportIDs.contains($0.id) }
-            selectedLocalReportIDs.removeAll()
-            isSelectionMode = false
-            store.save() // если есть метод сохранения
-        }
-    }
+
 
 }
 
@@ -387,5 +343,5 @@ struct CustomReportEvaluationView: View {
         ]
         return s
     }()
-    ReportsView().environmentObject(store)
+    ReportsView(store: store)
 } 

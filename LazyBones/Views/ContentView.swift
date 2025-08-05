@@ -48,7 +48,7 @@ struct ContentView: View {
             .tag(AppCoordinator.Tab.tags)
             
             NavigationStack(path: $appCoordinator.navigationPath) {
-                ReportsView()
+                ReportsView(store: store)
             }
             .tabItem {
                 Label(AppCoordinator.Tab.reports.title, systemImage: AppCoordinator.Tab.reports.icon)
