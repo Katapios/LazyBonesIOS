@@ -4,22 +4,22 @@
 
 **LazyBones** - это iOS приложение для создания и отправки ежедневных отчетов о продуктивности. Пользователи могут вести учет своих достижений и неудач, планировать задачи и автоматически отправлять отчеты в Telegram.
 
-**✅ Проект полностью реализован на Clean Architecture с современными практиками разработки.**
+**✅ Проект находится в процессе миграции на Clean Architecture с современными практиками разработки.**
 
 ## 🏗️ Архитектура приложения
 
-### 🎯 Clean Architecture - ЗАВЕРШЕНО ✅
+### 🎯 Clean Architecture - В ПРОЦЕССЕ 🔄
 
-Проект **полностью мигрирован** на **Clean Architecture** с четким разделением на слои:
+Проект находится в **процессе миграции** на **Clean Architecture** с четким разделением на слои:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    PRESENTATION LAYER                      │
 ├─────────────────────────────────────────────────────────────┤
 │  Views (SwiftUI)           │  ViewModels (ObservableObject) │
-│  ├─ MainView ✅            │  ├─ ReportListViewModel ✅      │
-│  ├─ ReportsView ✅         │  ├─ RegularReportsViewModel ✅  │
-│  ├─ SettingsView ✅        │  ├─ CustomReportsViewModel ✅   │
+│  ├─ MainView 🔄            │  ├─ ReportListViewModel ✅      │
+│  ├─ ReportsView 🔄         │  ├─ RegularReportsViewModel ✅  │
+│  ├─ SettingsView 🔄        │  ├─ CustomReportsViewModel ✅   │
 │  └─ Forms                 │  ├─ CreateReportViewModel 🔄    │
 │                            │  └─ BaseViewModel ✅            │
 │  ├─ ReportListView ✅      │                                │
@@ -87,7 +87,7 @@ Presentation → Domain ← Data → Infrastructure
 |------|--------|------------|----------|
 | **Domain** | ✅ Завершен | 100% | Entities, Use Cases, Repository Protocols |
 | **Data** | ✅ Завершен | 100% | Repositories, Data Sources, Mappers |
-| **Presentation** | ✅ Завершен | 100% | ViewModels, Views, States, Events |
+| **Presentation** | 🔄 В процессе | 70% | ViewModels готовы, Views в миграции |
 | **Infrastructure** | ✅ Завершен | 100% | Services, DI Container, Coordinators |
 
 ## 📊 Статусная модель приложения
@@ -474,14 +474,15 @@ Tests/
 ## 🚀 Возможности для развития
 
 ### Краткосрочные
-- [x] ✅ Clean Architecture implementation
+- [x] ✅ Clean Architecture implementation (частично)
 - [x] ✅ Domain Layer with Use Cases
 - [x] ✅ Data Layer with Repositories
-- [x] ✅ Presentation Layer with ViewModels
+- [x] ✅ Presentation Layer with ViewModels (частично)
 - [x] ✅ Dependency Injection container setup
 - [x] ✅ Code Quality - исправлены все предупреждения
-- [x] ✅ Integration of existing Views with new architecture
-- [x] ✅ Migration of remaining ViewModels
+- [ ] 🔄 Integration of existing Views with new architecture
+- [ ] 🔄 Migration of remaining ViewModels
+- [ ] 🔄 PostStore refactoring and removal
 - [ ] 🔄 Экспорт отчетов в PDF
 - [ ] 🔄 Статистика и графики
 
@@ -493,22 +494,20 @@ Tests/
 
 ## 📋 Статус миграции на Clean Architecture
 
-### ✅ Завершено (100%)
+### ✅ Завершено (75%)
 - [x] **Domain Layer**: Entities, Use Cases, Repository Protocols
 - [x] **Data Layer**: Repositories, Data Sources, Mappers
-- [x] **Presentation Layer**: ViewModels, States, Events (100% завершено)
+- [x] **Presentation Layer**: ViewModels, States, Events (частично завершено)
 - [x] **Infrastructure Layer**: Services, DI Container, Coordinators
 - [x] **Testing**: Unit tests для всех слоев
 - [x] **Code Quality**: Исправлены все предупреждения компилятора
 - [x] **External Reports**: Полная миграция на Clean Architecture
 - [x] **Telegram Integration**: Исправлены критические проблемы с загрузкой сообщений
-- [x] **Regular Reports**: Полная миграция на Clean Architecture
-- [x] **Custom Reports**: Полная миграция на Clean Architecture
-- [x] **Views Integration**: Все Views интегрированы с новой архитектурой
 
-### 🔄 В процессе (0%)
-- [x] **Views Migration**: Подключение оставшихся Views к новой архитектуре
-- [x] **ViewModels**: Создание ViewModels для оставшихся Views
+### 🔄 В процессе (25%)
+- [ ] **Views Migration**: Подключение оставшихся Views к новой архитектуре
+- [ ] **PostStore Refactoring**: Замена PostStore на Use Cases
+- [ ] **ViewModels Integration**: Создание ViewModels для оставшихся Views
 
 ### 📋 Планируется (0%)
 - [ ] **Performance**: Оптимизация производительности
@@ -516,21 +515,20 @@ Tests/
 - [ ] **Monitoring**: Добавление метрик и мониторинга
 
 ### 🎯 Следующие шаги
-1. ✅ **Создание ViewModels** для старых Views (ReportsView, MainView, SettingsView)
-2. ✅ **Миграция Views** на использование новых ViewModels
-3. ✅ **Удаление дублирования** между старыми и новыми моделями
-4. ✅ **Дополнительное тестирование** новых компонентов
+1. 🔄 **Создание ViewModels** для старых Views (ReportsView, MainView, SettingsView)
+2. 🔄 **Миграция Views** на использование новых ViewModels
+3. 🔄 **Удаление PostStore** и замена на Use Cases
+4. 🔄 **Дополнительное тестирование** новых компонентов
 5. 🔄 **Финальная очистка**: Удаление устаревшего кода и оптимизация
 
 ## 🐛 Последние исправления
 
-### 2025-08-05: Завершение миграции на Clean Architecture
-- ✅ **Миграция завершена на 100%**
-  - Все слои архитектуры полностью реализованы
-  - Все ViewModels созданы и интегрированы
-  - Все Views подключены к новой архитектуре
-  - Dependency Injection полностью настроен
-  - Тестирование покрывает все компоненты
+### 2025-08-05: Обновление статуса миграции
+- 🔄 **Реальная оценка прогресса миграции**
+  - Обнаружено, что миграция не завершена на 100%
+  - PostStore все еще активно используется в Views
+  - Views (MainView, ReportsView, SettingsView) не мигрированы на новые ViewModels
+  - Обновлена документация в соответствии с реальным состоянием
 
 ### 2025-08-04: Критическое исправление проблемы с загрузкой внешних сообщений из Telegram
 - ✅ **Исправлена критическая проблема с DI контейнером и TelegramService**
@@ -549,9 +547,9 @@ Tests/
 - **Разработчик**: Денис Рюмин
 - **Версия**: 1.0.0
 - **Платформа**: iOS 17.0+
-- **Архитектура**: Clean Architecture (100% завершено)
+- **Архитектура**: Clean Architecture (75% завершено)
 
 ---
 
 *Документация обновлена: 5 августа 2025*
-*Статус: Clean Architecture - 100% завершено*
+*Статус: Clean Architecture - 75% завершено*
