@@ -2,34 +2,26 @@ import SwiftUI
 
 /// Главная вкладка: таймер, статус и кнопка создания/редактирования отчёта
 struct MainView: View {
-    @EnvironmentObject var store: PostStore
+    @StateObject private var viewModel: MainViewModel
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var appCoordinator: AppCoordinator
-
-    var postForToday: Post? {
-        store.posts.first(where: {
-            Calendar.current.isDateInToday($0.date)
-        })
-    }
     
-    var isReportPeriodActive: Bool {
-        return store.isReportPeriodActive()
+    init(store: PostStore) {
+        self._viewModel = StateObject(wrappedValue: MainViewModel(store: store))
     }
 
     var body: some View {
         VStack(spacing: 14) {
-            MainStatusBarView()
-            MercuryThermometerView(goodCount: goodCountToday, badCount: badCountToday)
+            MainStatusBarView().environmentObject(viewModel)
+            MercuryThermometerView(goodCount: viewModel.goodCountToday, badCount: viewModel.badCountToday)
             LargeButtonView(
-                title: postForToday != nil
-                    ? "Редактировать отчёт" : "Создать отчёт",
-                icon: postForToday != nil
-                    ? "pencil.circle.fill" : "plus.circle.fill",
-                color: (store.reportStatus == .sent || store.reportStatus == .notCreated || store.reportStatus == .notSent) ? .gray : .black,
+                title: viewModel.buttonTitle,
+                icon: viewModel.buttonIcon,
+                color: viewModel.buttonColor,
                 action: { 
                     appCoordinator.switchToTab(.planning)
                 },
-                isEnabled: store.reportStatus == .notStarted || store.reportStatus == .inProgress
+                isEnabled: viewModel.canEditReport
             )
             .padding(.horizontal)
             .padding(.vertical, 40)
@@ -39,50 +31,15 @@ struct MainView: View {
         .padding()
         .onAppear {
             // Проверяем новый день при появлении экрана
-            store.checkForNewDay()
+            viewModel.checkForNewDay()
         }
         .onChange(of: Calendar.current.startOfDay(for: Date())) { oldDay, newDay in
             // Проверяем новый день при смене дня
-            store.checkForNewDay()
+            viewModel.checkForNewDay()
         }
     }
 
-    // Количество good и bad пунктов за сегодня
-    var goodCountToday: Int {
-        var total = 0
-        // Обычный отчет за сегодня
-        if let regular = store.posts.first(where: { $0.type == .regular && Calendar.current.isDateInToday($0.date) }) {
-            total += regular.goodItems.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
-        }
-        // Кастомный оцененный отчет за сегодня
-        if let custom = store.posts.first(where: { $0.type == .custom && Calendar.current.isDateInToday($0.date) && $0.isEvaluated == true }),
-           let results = custom.evaluationResults {
-            total += results.filter { $0 }.count
-        }
-        return total
-    }
-    var badCountToday: Int {
-        var total = 0
-        // Обычный отчет за сегодня
-        if let regular = store.posts.first(where: { $0.type == .regular && Calendar.current.isDateInToday($0.date) }) {
-            total += regular.badItems.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
-        }
-        // Кастомный оцененный отчет за сегодня
-        if let custom = store.posts.first(where: { $0.type == .custom && Calendar.current.isDateInToday($0.date) && $0.isEvaluated == true }),
-           let results = custom.evaluationResults {
-            total += results.filter { !$0 }.count
-        }
-        return total
-    }
 
-    // Новый геттер: только время без подписи
-    var timerTimeTextOnly: String {
-        let value = store.timeLeft
-        if let range = value.range(of: ": ") {
-            return String(value[range.upperBound...])
-        }
-        return value
-    }
 }
 
 // Модный анимированный градиентный таймер-кольцо (ещё компактнее)
@@ -160,5 +117,5 @@ struct GradientRingTimerView: View {
         ]
         return s
     }()
-    MainView().environmentObject(store)
+    MainView(store: store)
 }
