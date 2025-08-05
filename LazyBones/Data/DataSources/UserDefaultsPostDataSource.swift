@@ -4,10 +4,10 @@ import Foundation
 class UserDefaultsPostDataSource: PostDataSourceProtocol {
     
     private let userDefaults: UserDefaults
-    private let postsKey = "savedPosts"
+    private let postsKey = "posts"
     
-    init(userDefaults: UserDefaults = .standard) {
-        self.userDefaults = userDefaults
+    init(userDefaults: UserDefaults? = AppConfig.sharedUserDefaults) {
+        self.userDefaults = userDefaults ?? .standard
     }
     
     func save(_ posts: [Post]) async throws {

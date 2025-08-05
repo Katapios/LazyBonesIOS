@@ -17,6 +17,7 @@ struct ReportsView: View {
                     regularReportsSection
                     customReportsSection
                     externalReportsSection
+                    iCloudReportsSection
                 }
                 .padding(.top, 16)
                 .padding([.leading, .trailing, .bottom])
@@ -145,6 +146,14 @@ struct ReportsView: View {
             getReportsUseCase: DependencyContainer.shared.resolve(GetReportsUseCase.self)!,
             deleteReportUseCase: DependencyContainer.shared.resolve(DeleteReportUseCase.self)!,
             telegramIntegrationService: DependencyContainer.shared.resolve(TelegramIntegrationServiceType.self)!
+        )
+    }
+    
+    private var iCloudReportsSection: some View {
+        ICloudReportsView(
+            viewModel: ICloudReportsViewModel(
+                iCloudService: DependencyContainer.shared.resolve(ICloudServiceProtocol.self)!
+            )
         )
     }
 

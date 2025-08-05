@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 // Импорты для сервисов
 import Combine
@@ -219,6 +220,9 @@ extension DependencyContainer {
             return SettingsRepository(userDefaultsManager: userDefaultsManager)
         })
         
+        // iCloud Services
+        registerICloudServices()
+        
         Logger.info("Core services registered successfully", log: Logger.general)
     }
     
@@ -238,5 +242,65 @@ extension DependencyContainer {
         // так как они требуют MainActor и асинхронной инициализации
         
         Logger.info("Report ViewModels registration completed", log: Logger.general)
+    }
+    
+    /// Зарегистрировать iCloud сервисы
+    private func registerICloudServices() {
+        Logger.info("Registering iCloud services", log: Logger.general)
+        
+        // ICloud File Manager
+        register(ICloudFileManager.self, factory: {
+            return ICloudFileManager()
+        })
+        
+        // Report Formatter
+        register(ReportFormatterProtocol.self, factory: {
+            let deviceName = UIDevice.current.name
+            let deviceIdentifier = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+            return ReportFormatter(deviceName: deviceName, deviceIdentifier: deviceIdentifier)
+        })
+        
+        // ICloud Report Repository
+        register(ICloudReportRepositoryProtocol.self, factory: {
+            let fileManager = self.resolve(ICloudFileManager.self)!
+            let formatter = self.resolve(ReportFormatterProtocol.self)!
+            return ICloudReportRepository(fileManager: fileManager, reportFormatter: formatter)
+        })
+        
+        // Export Reports Use Case
+        register(ExportReportsUseCase.self, factory: {
+            let postRepository = self.resolve(PostRepository.self)!
+            let iCloudRepository = self.resolve(ICloudReportRepositoryProtocol.self)!
+            let formatter = self.resolve(ReportFormatterProtocol.self)!
+            return ExportReportsUseCase(
+                postRepository: postRepository,
+                iCloudReportRepository: iCloudRepository,
+                reportFormatter: formatter
+            )
+        })
+        
+        // Import iCloud Reports Use Case
+        register(ImportICloudReportsUseCase.self, factory: {
+            let iCloudRepository = self.resolve(ICloudReportRepositoryProtocol.self)!
+            let formatter = self.resolve(ReportFormatterProtocol.self)!
+            return ImportICloudReportsUseCase(
+                iCloudReportRepository: iCloudRepository,
+                reportFormatter: formatter
+            )
+        })
+        
+        // ICloud Service
+        register(ICloudServiceProtocol.self, factory: {
+            let exportUseCase = self.resolve(ExportReportsUseCase.self)!
+            let importUseCase = self.resolve(ImportICloudReportsUseCase.self)!
+            let iCloudRepository = self.resolve(ICloudReportRepositoryProtocol.self)!
+            return ICloudService(
+                exportUseCase: exportUseCase,
+                importUseCase: importUseCase,
+                iCloudReportRepository: iCloudRepository
+            )
+        })
+        
+        Logger.info("iCloud services registered successfully", log: Logger.general)
     }
 } 

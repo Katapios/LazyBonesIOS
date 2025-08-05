@@ -66,4 +66,5 @@ enum PostType: String, Codable, CaseIterable {
     case regular // обычный отчет
     case custom // кастомный отчет (план/теги)
     case external // внешний отчет из Telegram
+    case iCloud // отчет из iCloud
 } 

@@ -6,6 +6,9 @@ import BackgroundTasks // Added for BGTaskScheduler
 import ObjectiveC
 import Combine
 
+// Импорт для использования Domain entities
+// Убираем @_exported импорты, так как они вызывают ошибки компиляции
+
 
 
 // Импорт для использования ReportStatus из нового модуля

@@ -15,12 +15,17 @@ struct SettingsView: View {
     @State private var showUnlockAlert = false
     // Новый раздел для проверки background fetch
     @State private var isBackgroundFetchTestEnabled: Bool = false
+    // Состояние для экспорта в iCloud
+    @State private var isExportingToICloud = false
+    @State private var exportResult: String? = nil
+    @State private var isICloudAvailable = false
     var body: some View {
         Form {
             deviceNameSection
             telegramSection
             notificationSection
             autoSendSection
+            iCloudSection
             dataSection
         }
         .navigationTitle("Настройки")
@@ -53,6 +58,7 @@ struct SettingsView: View {
             telegramChatId = store.telegramChatId ?? ""
             telegramBotId = store.telegramBotId ?? ""
             isBackgroundFetchTestEnabled = loadBackgroundFetchTestEnabled()
+            checkICloudAvailability()
         }
         .onChange(of: isBackgroundFetchTestEnabled) { _, newValue in
             saveBackgroundFetchTestEnabled(newValue)
@@ -188,6 +194,68 @@ struct SettingsView: View {
         }
     }
     
+    private var iCloudSection: some View {
+        Section(header: Text("iCloud экспорт")) {
+            if !isICloudAvailable {
+                // iCloud недоступен
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle")
+                            .foregroundColor(.orange)
+                        Text("iCloud недоступен")
+                            .font(.headline)
+                            .foregroundColor(.orange)
+                    }
+                    
+                    Text("Для синхронизации отчетов с другими пользователями необходимо:")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("• Войти в iCloud на устройстве")
+                        Text("• Включить iCloud Drive")
+                        Text("• Разрешить доступ к iCloud в настройках приложения")
+                    }
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 4)
+            } else {
+                // iCloud доступен
+                Button {
+                    exportToICloud()
+                } label: {
+                    HStack {
+                        if isExportingToICloud {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        } else {
+                            Image(systemName: "icloud.and.arrow.up")
+                        }
+                        Text(isExportingToICloud ? "Экспорт..." : "Экспортировать отчеты в iCloud")
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.blue)
+                .padding(.vertical, 4)
+                .disabled(isExportingToICloud)
+                
+                if let result = exportResult {
+                    Text(result)
+                        .font(.caption)
+                        .foregroundColor(result.contains("✅") ? .green : .red)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                
+                Text("Отчеты за сегодня будут сохранены в папку LazyBonesReports в iCloud Drive в формате, как в Telegram")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+    
     func saveDeviceName() {
         let userDefaults = AppConfig.sharedUserDefaults
         userDefaults.set(deviceName, forKey: "deviceName")
@@ -203,6 +271,87 @@ struct SettingsView: View {
         let name = userDefaults.string(forKey: "deviceName") ?? ""
         deviceName = name
     }
+    
+    func exportToICloud() {
+        isExportingToICloud = true
+        exportResult = nil
+        
+        Task {
+            let iCloudService = DependencyContainer.shared.resolve(ICloudServiceProtocol.self)!
+            
+            // Сначала запрашиваем разрешения на доступ к файлам
+            let hasFileAccess = await iCloudService.requestFileAccessPermissions()
+            
+            if !hasFileAccess {
+                await MainActor.run {
+                    exportResult = "❌ Нет разрешения на доступ к файлам. Проверьте настройки приложения."
+                    isExportingToICloud = false
+                }
+                return
+            }
+            
+            // Затем запрашиваем доступ к iCloud
+            let hasICloudAccess = await iCloudService.requestICloudAccess()
+            
+            if !hasICloudAccess {
+                await MainActor.run {
+                    exportResult = "❌ Нет доступа к iCloud Drive. Проверьте настройки iCloud."
+                    isExportingToICloud = false
+                }
+                return
+            }
+            
+            do {
+                let output = try await iCloudService.exportReports(
+                    reportType: .today,
+                    startDate: nil,
+                    endDate: nil,
+                    includeDeviceInfo: true,
+                    format: .telegram
+                )
+                
+                await MainActor.run {
+                    if output.success {
+                        exportResult = "✅ Экспорт успешен: \(output.exportedCount) отчетов"
+                    } else {
+                        exportResult = "❌ Ошибка: \(output.error?.localizedDescription ?? "Неизвестная ошибка")"
+                    }
+                    isExportingToICloud = false
+                }
+            } catch {
+                await MainActor.run {
+                    if let exportError = error as? ExportReportsError {
+                        switch exportError {
+                        case .noReportsToExport:
+                            exportResult = "⚠️ Нет отчетов за сегодня для экспорта"
+                        case .iCloudNotAvailable:
+                            exportResult = "❌ iCloud недоступен"
+                        case .fileAccessDenied:
+                            exportResult = "❌ Нет доступа к файлу"
+                        case .formattingError:
+                            exportResult = "❌ Ошибка форматирования"
+                        case .unknown:
+                            exportResult = "❌ Неизвестная ошибка"
+                        }
+                    } else {
+                        exportResult = "❌ Ошибка: \(error.localizedDescription)"
+                    }
+                    isExportingToICloud = false
+                }
+            }
+        }
+    }
+    
+    func checkICloudAvailability() {
+        Task {
+            let iCloudService = DependencyContainer.shared.resolve(ICloudServiceProtocol.self)!
+            let available = await iCloudService.isICloudAvailable()
+            await MainActor.run {
+                isICloudAvailable = available
+            }
+        }
+    }
+    
     func checkTelegramConnection() {
         guard let token = telegramToken.isEmpty ? nil : telegramToken,
               let chatId = telegramChatId.isEmpty ? nil : telegramChatId,
