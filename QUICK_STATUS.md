@@ -1,6 +1,6 @@
 # 🚀 LazyBones - Статус миграции на Clean Architecture
 
-## 📊 Прогресс: 65% завершено
+## 📊 Прогресс: 75% завершено
 
 **Дата**: 5 августа 2025  
 **Статус**: Частичная миграция - Domain/Data готовы, Presentation в процессе
@@ -22,11 +22,13 @@
 - `DependencyContainer` настроен
 - `AppCoordinator` работает
 
-### Presentation Layer (30%)
+### Presentation Layer (40%)
 - ✅ ViewModels с новой архитектурой: `RegularReportsViewModel`, `CustomReportsViewModel`, `ExternalReportsViewModel`
+- ✅ MainViewModelNew - новый с Clean Architecture (готов к использованию)
+- ✅ MainViewNew - новый View с Clean Architecture
 - ✅ Единственный View с новой архитектурой: `ExternalReportsView`
-- ❌ ViewModels-адаптеры: `MainViewModel`, `ReportsViewModel`, `SettingsViewModel` (оборачивают PostStore)
-- ❌ Views используют PostStore: `MainView`, `ReportsView`, `SettingsView`
+- ❌ ViewModels-адаптеры: `MainViewModel` (старый), `ReportsViewModel`, `SettingsViewModel` (оборачивают PostStore)
+- ❌ Views используют PostStore: `MainView` (старый), `ReportsView`, `SettingsView`
 
 ## 🚨 Критические проблемы
 
@@ -125,13 +127,14 @@ struct ContentView: View {
 ## 📋 Быстрый чек-лист
 
 ### Создать ViewModels (1-2 недели)
-- [ ] `MainViewModel` с `BaseViewModel<MainState, MainEvent>`
+- [x] `MainViewModelNew` с `BaseViewModel<MainState, MainEvent>` ✅
 - [ ] `ReportsViewModel` с `BaseViewModel<ReportsState, ReportsEvent>`
 - [ ] `SettingsViewModel` с `BaseViewModel<SettingsState, SettingsEvent>`
 - [ ] `TagManagerViewModel` с `BaseViewModel<TagManagerState, TagManagerEvent>`
 
 ### Мигрировать Views (1-2 недели)
-- [ ] `MainView` - убрать `store: PostStore`
+- [x] `MainViewNew` - новый с Clean Architecture ✅
+- [ ] `MainView` - заменить на MainViewNew
 - [ ] `ReportsView` - убрать `store: PostStore`
 - [ ] `SettingsView` - убрать `store: PostStore`
 - [ ] `TagManagerView` - убрать `store: PostStore`
@@ -165,7 +168,7 @@ struct ContentView: View {
 - `MainViewModel.swift` - оборачивает PostStore
 - `ReportsViewModel.swift` - оборачивает PostStore
 
-## ⏱️ Время до завершения: 3-4 недели
+## ⏱️ Время до завершения: 2-3 недели
 
 ---
 

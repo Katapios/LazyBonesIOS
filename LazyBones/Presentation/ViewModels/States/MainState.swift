@@ -1,38 +1,76 @@
 import Foundation
 import SwiftUI
 
-/// Состояние главного экрана
+/// Состояние для главного экрана
 struct MainState {
-    // MARK: - Report Status
+    /// Текущий статус отчета
     var reportStatus: ReportStatus = .notStarted
-    var isReportPeriodActive: Bool = false
+    
+    /// Текущее время
     var currentTime: Date = Date()
     
-    // MARK: - Today's Report
-    var hasReportForToday: Bool = false
-    var canEditReport: Bool = true
+    /// Время до следующего события
+    var timeLeft: String = ""
     
-    // MARK: - Progress Counters
+    /// Прогресс времени (0.0 - 1.0)
+    var timeProgress: Double = 0.0
+    
+    /// Подпись таймера
+    var timerLabel: String = ""
+    
+    /// Только время (без подписи)
+    var timerTimeTextOnly: String = ""
+    
+    /// Отчет за сегодня
+    var todayReport: DomainPost?
+    
+    /// Количество хороших дел за сегодня
     var goodCountToday: Int = 0
+    
+    /// Количество плохих дел за сегодня
     var badCountToday: Int = 0
     
-    // MARK: - Timer
-    var timeLeft: String = ""
-    var timerLabel: String = "До старта"
-    var timerProgress: Double = 0.0
-    
-    // MARK: - Button State
-    var buttonTitle: String = "Создать отчёт"
-    var buttonIcon: String = "plus.circle.fill"
-    var buttonColor: Color = .black
-    
-    // MARK: - Settings
+    /// Настройки уведомлений
     var notificationStartHour: Int = 8
     var notificationEndHour: Int = 22
-    var currentDay: Date = Calendar.current.startOfDay(for: Date())
+    
+    /// Текущий день
+    var currentDay: Date = Date()
+    
+    /// Ошибка
+    var error: Error? = nil
+    
+    /// Загрузка
+    var isLoading: Bool = false
     
     // MARK: - Computed Properties
     
+    /// Есть ли отчет за сегодня
+    var hasReportForToday: Bool {
+        return todayReport != nil
+    }
+    
+    /// Можно ли редактировать отчет
+    var canEditReport: Bool {
+        return reportStatus == .notStarted || reportStatus == .inProgress
+    }
+    
+    /// Заголовок кнопки
+    var buttonTitle: String {
+        return hasReportForToday ? "Редактировать отчёт" : "Создать отчёт"
+    }
+    
+    /// Иконка кнопки
+    var buttonIcon: String {
+        return hasReportForToday ? "pencil.circle.fill" : "plus.circle.fill"
+    }
+    
+    /// Цвет кнопки
+    var buttonColor: Color {
+        return (reportStatus == .sent || reportStatus == .notCreated || reportStatus == .notSent) ? .gray : .black
+    }
+    
+    /// Текст статуса
     var reportStatusText: String {
         switch reportStatus {
         case .done: return "Отчёт отправлен"
@@ -44,6 +82,7 @@ struct MainState {
         }
     }
     
+    /// Цвет статуса
     var reportStatusColor: Color {
         switch reportStatus {
         case .done: return .black
@@ -55,15 +94,8 @@ struct MainState {
         }
     }
     
-    var timerTimeTextOnly: String {
-        let value = timeLeft
-        if let range = value.range(of: ": ") {
-            return String(value[range.upperBound...])
-        }
-        return value
-    }
-    
-    var timerTimeTextOnlyForStatus: String {
+    /// Активен ли период для создания отчетов
+    var isReportPeriodActive: Bool {
         let calendar = Calendar.current
         let now = currentTime
         let start = calendar.date(
@@ -79,34 +111,27 @@ struct MainState {
             of: now
         )!
         
-        // Проверяем, не наступил ли новый день
-        let today = calendar.startOfDay(for: now)
-        if !calendar.isDate(currentDay, inSameDayAs: today) {
-            return "00:00:00"
-        }
-        
-        if reportStatus == .sent || reportStatus == .notCreated || reportStatus == .notSent {
-            let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
-            let nextStart = calendar.date(bySettingHour: notificationStartHour, minute: 0, second: 0, of: tomorrow)!
-            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: nextStart)
-            return String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
-        } else if now < start {
-            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: start)
-            return String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
-        } else if now >= start && now < end {
-            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: end)
-            return String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
-        } else {
-            return "00:00:00"
-        }
+        return now >= start && now < end
     }
 }
 
-/// События главного экрана
+/// События для главного экрана
 enum MainEvent {
-    case loadTodayReport
+    /// Загрузить данные
+    case loadData
+    
+    /// Обновить статус
     case updateStatus
+    
+    /// Проверить новый день
     case checkForNewDay
-    case updateTimer
-    case switchToPlanningTab
+    
+    /// Обновить время
+    case updateTime
+    
+    /// Переключиться на вкладку планирования
+    case switchToPlanning
+    
+    /// Очистить ошибку
+    case clearError
 } 

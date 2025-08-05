@@ -191,19 +191,19 @@ extension DependencyContainer {
             return DeleteReportUseCase(postRepository: postRepository)
         })
         
-                        register(UpdateStatusUseCase.self, factory: {
-                    let postRepository = self.resolve(PostRepository.self)!
-                    let settingsRepository = self.resolve(SettingsRepository.self)!
-                    return UpdateStatusUseCase(
-                        postRepository: postRepository,
-                        settingsRepository: settingsRepository
-                    )
-                })
+        register(UpdateStatusUseCase.self, factory: {
+            let postRepository = self.resolve(PostRepository.self)!
+            let settingsRepository = self.resolve(SettingsRepository.self)!
+            return UpdateStatusUseCase(
+                postRepository: postRepository,
+                settingsRepository: settingsRepository
+            )
+        })
 
-                register(UpdateReportUseCase.self, factory: {
-                    let postRepository = self.resolve(PostRepository.self)!
-                    return UpdateReportUseCase(postRepository: postRepository)
-                })
+        register(UpdateReportUseCase.self, factory: {
+            let postRepository = self.resolve(PostRepository.self)!
+            return UpdateReportUseCase(postRepository: postRepository)
+        })
         
         // Repositories
         register(PostRepository.self, factory: {
@@ -218,6 +218,41 @@ extension DependencyContainer {
         register(SettingsRepository.self, factory: {
             let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
             return SettingsRepository(userDefaultsManager: userDefaultsManager)
+        })
+        
+        // Timer Service
+        register(PostTimerServiceProtocol.self, factory: {
+            let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
+            return PostTimerService(
+                userDefaultsManager: userDefaultsManager
+            ) { timeLeft, progress in
+                // Callback для обновления времени
+                Logger.debug("Timer updated: \(timeLeft), progress: \(progress)", log: Logger.timer)
+            }
+        })
+        
+        // Protocol registrations for DI
+        register(PostRepositoryProtocol.self, factory: {
+            return self.resolve(PostRepository.self)!
+        })
+        
+        register(SettingsRepositoryProtocol.self, factory: {
+            return self.resolve(SettingsRepository.self)!
+        })
+        
+        // Регистрируем конкретные типы вместо протоколов для избежания предупреждений Swift 6
+        register(GetReportsUseCase.self, factory: {
+            let postRepository = self.resolve(PostRepository.self)!
+            return GetReportsUseCase(postRepository: postRepository)
+        })
+        
+        register(UpdateStatusUseCase.self, factory: {
+            let postRepository = self.resolve(PostRepository.self)!
+            let settingsRepository = self.resolve(SettingsRepository.self)!
+            return UpdateStatusUseCase(
+                postRepository: postRepository,
+                settingsRepository: settingsRepository
+            )
         })
         
         // iCloud Services
