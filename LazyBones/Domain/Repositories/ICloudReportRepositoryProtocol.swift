@@ -40,4 +40,8 @@ protocol ICloudReportRepositoryProtocol {
     /// Запросить разрешения на доступ к файлам
     /// - Returns: true если разрешения получены
     func requestFileAccessPermissions() async -> Bool
+    
+    /// Создать тестовый файл в доступном месте
+    /// - Returns: true если файл создан
+    func createTestFileInAccessibleLocation() async -> Bool
 } 

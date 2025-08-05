@@ -40,6 +40,8 @@ class ICloudFileManager {
     
     /// Получить URL папки LazyBonesReports в iCloud Drive
     private func getICloudFolderURL() throws -> URL {
+        Logger.info("ICloudFileManager: Starting getICloudFolderURL", log: Logger.general)
+        
         // Сначала пробуем получить URL через ubiquity container
         if let iCloudURL = FileManager.default.url(forUbiquityContainerIdentifier: nil) {
             let documentsURL = iCloudURL.appendingPathComponent("Documents")
@@ -49,15 +51,49 @@ class ICloudFileManager {
             return folderURL
         }
         
+        Logger.info("ICloudFileManager: Ubiquity container not available, trying Documents directory", log: Logger.general)
+        
         // Fallback: используем Documents Directory (доступно в iCloud Drive)
         guard let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
             Logger.error("ICloudFileManager: Cannot access Documents directory", log: Logger.general)
             throw ICloudFileError.accessDenied
         }
         
+        // Попробуем использовать Desktop Directory для лучшей видимости в Finder
+        if let desktopURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first {
+            Logger.info("ICloudFileManager: Desktop directory available: \(desktopURL.path)", log: Logger.general)
+            
+            // Проверяем, можем ли мы писать в Desktop
+            let testFileURL = desktopURL.appendingPathComponent(".test")
+            do {
+                try "test".write(to: testFileURL, atomically: true, encoding: .utf8)
+                try FileManager.default.removeItem(at: testFileURL)
+                Logger.info("ICloudFileManager: Desktop directory is writable", log: Logger.general)
+                let folderURL = desktopURL.appendingPathComponent(folderName)
+                Logger.info("ICloudFileManager: Using Desktop directory for folder: \(folderURL.path)", log: Logger.general)
+                return folderURL
+            } catch {
+                Logger.warning("ICloudFileManager: Desktop directory is not writable: \(error)", log: Logger.general)
+            }
+        }
+        
+        Logger.info("ICloudFileManager: Using Documents directory as fallback", log: Logger.general)
         let folderURL = documentsURL.appendingPathComponent(folderName)
         
         Logger.info("ICloudFileManager: Using Documents directory URL: \(folderURL.path)", log: Logger.general)
+        
+        // Проверяем, существует ли Documents directory
+        let documentsExists = FileManager.default.fileExists(atPath: documentsURL.path)
+        Logger.info("ICloudFileManager: Documents directory exists: \(documentsExists)", log: Logger.general)
+        
+        // Показываем содержимое Documents directory
+        do {
+            let documentsContents = try FileManager.default.contentsOfDirectory(at: documentsURL, includingPropertiesForKeys: nil)
+            Logger.info("ICloudFileManager: Documents directory contents: \(documentsContents.map { $0.lastPathComponent })", log: Logger.general)
+        } catch {
+            Logger.error("ICloudFileManager: Cannot read Documents directory contents: \(error)", log: Logger.general)
+        }
+        
         return folderURL
     }
     
@@ -69,15 +105,32 @@ class ICloudFileManager {
     
     /// Создать папку если она не существует
     private func createFolderIfNeeded() throws {
-        let folderURL = try getICloudFolderURL()
+        Logger.info("ICloudFileManager: Starting createFolderIfNeeded", log: Logger.general)
         
-        if !FileManager.default.fileExists(atPath: folderURL.path) {
+        let folderURL = try getICloudFolderURL()
+        let folderExists = FileManager.default.fileExists(atPath: folderURL.path)
+        
+        Logger.info("ICloudFileManager: Folder exists before creation: \(folderExists)", log: Logger.general)
+        
+        if !folderExists {
+            Logger.info("ICloudFileManager: Creating folder at: \(folderURL.path)", log: Logger.general)
+            
             try FileManager.default.createDirectory(
                 at: folderURL,
                 withIntermediateDirectories: true,
                 attributes: nil
             )
-            Logger.info("Created iCloud folder: \(folderURL.path)", log: Logger.general)
+            
+            let folderCreated = FileManager.default.fileExists(atPath: folderURL.path)
+            Logger.info("ICloudFileManager: Folder created successfully: \(folderCreated)", log: Logger.general)
+            
+            if folderCreated {
+                Logger.info("ICloudFileManager: Created iCloud folder: \(folderURL.path)", log: Logger.general)
+            } else {
+                Logger.error("ICloudFileManager: Failed to create folder", log: Logger.general)
+            }
+        } else {
+            Logger.info("ICloudFileManager: Folder already exists: \(folderURL.path)", log: Logger.general)
         }
     }
     
@@ -153,6 +206,53 @@ class ICloudFileManager {
             Logger.error("ICloudFileManager: File access permissions denied: \(error)", log: Logger.general)
             return false
         }
+    }
+    
+    /// Создать файл в более доступном месте для тестирования
+    func createTestFileInAccessibleLocation() async -> Bool {
+        Logger.info("ICloudFileManager: Creating test file in accessible location", log: Logger.general)
+        
+        // Попробуем Documents Directory (самый надежный вариант)
+        if let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            let testFileURL = documentsURL.appendingPathComponent("LazyBonesTest.txt")
+            
+            do {
+                try "Test file created by LazyBones app".write(to: testFileURL, atomically: true, encoding: .utf8)
+                Logger.info("ICloudFileManager: Created test file in Documents: \(testFileURL.path)", log: Logger.general)
+                return true
+            } catch {
+                Logger.error("ICloudFileManager: Failed to create test file in Documents: \(error)", log: Logger.general)
+            }
+        }
+        
+        // Попробуем Desktop Directory
+        if let desktopURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first {
+            let testFileURL = desktopURL.appendingPathComponent("LazyBonesTest.txt")
+            
+            do {
+                try "Test file created by LazyBones app".write(to: testFileURL, atomically: true, encoding: .utf8)
+                Logger.info("ICloudFileManager: Created test file on Desktop: \(testFileURL.path)", log: Logger.general)
+                return true
+            } catch {
+                Logger.error("ICloudFileManager: Failed to create test file on Desktop: \(error)", log: Logger.general)
+            }
+        }
+        
+        // Попробуем Downloads Directory
+        if let downloadsURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first {
+            let testFileURL = downloadsURL.appendingPathComponent("LazyBonesTest.txt")
+            
+            do {
+                try "Test file created by LazyBones app".write(to: testFileURL, atomically: true, encoding: .utf8)
+                Logger.info("ICloudFileManager: Created test file in Downloads: \(testFileURL.path)", log: Logger.general)
+                return true
+            } catch {
+                Logger.error("ICloudFileManager: Failed to create test file in Downloads: \(error)", log: Logger.general)
+            }
+        }
+        
+        Logger.error("ICloudFileManager: Could not create test file in any accessible location", log: Logger.general)
+        return false
     }
     
     /// Сохранить контент в файл
@@ -260,6 +360,23 @@ class ICloudFileManager {
             info += "📄 Файл: \(fileURL.path)\n"
             info += "✅ Папка существует: \(folderExists)\n"
             info += "✅ Файл существует: \(fileExists)\n"
+            
+            // Добавляем инструкции по поиску файла
+            info += "\n🔍 Как найти файл в приложении 'Файлы':\n"
+            if folderURL.path.contains("Documents") {
+                info += "1. Откройте приложение 'Файлы'\n"
+                info += "2. Перейдите в 'На устройстве'\n"
+                info += "3. Найдите папку 'LazyBones'\n"
+                info += "4. Откройте папку 'Documents'\n"
+                info += "5. Найдите папку 'LazyBonesReports'\n"
+            } else if folderURL.path.contains("Desktop") {
+                info += "1. Откройте приложение 'Файлы'\n"
+                info += "2. Перейдите в 'На устройстве'\n"
+                info += "3. Найдите папку 'LazyBones'\n"
+                info += "4. Откройте папку 'Desktop'\n"
+                info += "5. Найдите папку 'LazyBonesReports'\n"
+            }
+            info += "\n"
             
             // Проверяем Documents Directory
             if let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {

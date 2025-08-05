@@ -37,6 +37,9 @@ protocol ICloudServiceProtocol {
     
     /// Запросить разрешения на доступ к файлам
     func requestFileAccessPermissions() async -> Bool
+    
+    /// Создать тестовый файл в доступном месте
+    func createTestFileInAccessibleLocation() async -> Bool
 }
 
 /// Основной сервис для работы с iCloud отчетами
@@ -146,5 +149,9 @@ class ICloudService: ICloudServiceProtocol {
     
     func requestFileAccessPermissions() async -> Bool {
         return await iCloudReportRepository.requestFileAccessPermissions()
+    }
+    
+    func createTestFileInAccessibleLocation() async -> Bool {
+        return await iCloudReportRepository.createTestFileInAccessibleLocation()
     }
 } 

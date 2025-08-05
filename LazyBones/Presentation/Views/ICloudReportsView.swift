@@ -342,4 +342,8 @@ class MockICloudService: ICloudServiceProtocol {
     func requestFileAccessPermissions() async -> Bool {
         return true // Mock всегда возвращает true
     }
+    
+    func createTestFileInAccessibleLocation() async -> Bool {
+        return true // Mock всегда возвращает true
+    }
 } 

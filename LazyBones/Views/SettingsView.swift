@@ -252,6 +252,19 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                
+                Button {
+                    createTestFile()
+                } label: {
+                    HStack {
+                        Image(systemName: "doc.badge.plus")
+                        Text("Создать тестовый файл")
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                .padding(.vertical, 4)
             }
         }
     }
@@ -337,6 +350,22 @@ struct SettingsView: View {
                         exportResult = "❌ Ошибка: \(error.localizedDescription)"
                     }
                     isExportingToICloud = false
+                }
+            }
+        }
+    }
+    
+    func createTestFile() {
+        Task {
+            let iCloudService = DependencyContainer.shared.resolve(ICloudServiceProtocol.self)!
+            
+            let success = await iCloudService.createTestFileInAccessibleLocation()
+            
+            await MainActor.run {
+                if success {
+                    exportResult = "✅ Тестовый файл создан! Проверьте Desktop или Downloads"
+                } else {
+                    exportResult = "❌ Не удалось создать тестовый файл"
                 }
             }
         }

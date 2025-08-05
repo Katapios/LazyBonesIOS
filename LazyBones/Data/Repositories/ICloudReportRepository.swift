@@ -83,4 +83,8 @@ class ICloudReportRepository: ICloudReportRepositoryProtocol {
     func requestFileAccessPermissions() async -> Bool {
         return await fileManager.requestFileAccessPermissions()
     }
+    
+    func createTestFileInAccessibleLocation() async -> Bool {
+        return await fileManager.createTestFileInAccessibleLocation()
+    }
 } 
