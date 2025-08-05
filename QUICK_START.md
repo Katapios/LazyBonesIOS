@@ -1,41 +1,13 @@
-# 📱 LazyBones - Приложение для ежедневных отчетов
+# 🚀 Быстрый старт - LazyBones
 
-**LazyBones** - iOS приложение для создания и отправки ежедневных отчетов о продуктивности с интеграцией Telegram.
-
-**🔄 Статус**: Миграция на Clean Architecture - 65% завершено
-
-## 🏗️ Архитектура
-
-### ✅ Готово (100%)
-- **Domain Layer**: Entities, Use Cases, Repository Protocols
-- **Data Layer**: Repositories, Data Sources, Mappers  
-- **Infrastructure Layer**: Services, DI Container, Coordinators
-
-### 🔄 В процессе (30%)
-- **Presentation Layer**: ViewModels готовы частично, Views в миграции
-
-## 🚨 Критические проблемы
-
-### PostStore как глобальное состояние
-```swift
-// ContentView.swift - корень проблемы
-@StateObject var store = PostStore() // Глобальное состояние
-MainView(store: store) // Передача PostStore
-```
-
-### Смешанная архитектура
-```swift
-// НОВАЯ архитектура:
-ExternalReportsView(viewModel: ExternalReportsViewModel) // ✅
-
-// СТАРАЯ архитектура:
-MainView(store: PostStore) // ❌
-```
+## 📊 Статус проекта
+**Миграция на Clean Architecture: 65% завершено**
 
 ## 🎯 Что нужно сделать
 
 ### 1. Создать настоящие ViewModels
 ```swift
+// MainViewModel с новой архитектурой
 @MainActor
 class MainViewModel: BaseViewModel<MainState, MainEvent> {
     private let updateStatusUseCase: any UpdateStatusUseCaseProtocol
@@ -52,6 +24,7 @@ class MainViewModel: BaseViewModel<MainState, MainEvent> {
 
 ### 2. Мигрировать Views
 ```swift
+// MainView с новой архитектурой
 struct MainView: View {
     @StateObject private var viewModel: MainViewModel
     
@@ -104,31 +77,27 @@ struct MainView: View {
 - `MainViewModel.swift` - оборачивает PostStore
 - `ReportsViewModel.swift` - оборачивает PostStore
 
-## 🧪 Тестирование
+## 🚨 Критические проблемы
 
-**Покрытие тестами**: ~90%
-- ✅ Unit тесты для Domain/Data слоев
-- ✅ Unit тесты для ViewModels с новой архитектурой
-- ✅ Integration тесты
-
-## 🚀 Установка
-
-```bash
-git clone https://github.com/your-username/LazyBonesIOS.git
-cd LazyBonesIOS
-open LazyBones.xcodeproj
+### PostStore как глобальное состояние
+```swift
+// ContentView.swift - корень проблемы
+@StateObject var store = PostStore() // Глобальное состояние
+MainView(store: store) // Передача PostStore
 ```
 
-## 📱 Основные функции
+### Смешанная архитектура
+```swift
+// НОВАЯ архитектура:
+ExternalReportsView(viewModel: ExternalReportsViewModel) // ✅
 
-- 📝 Создание ежедневных отчетов
-- 📋 Планирование и оценка задач
-- 📨 Интеграция с Telegram
-- 🔔 Автоматические уведомления
-- ☁️ iCloud синхронизация
+// СТАРАЯ архитектура:
+MainView(store: PostStore) // ❌
+```
 
 ## ⏱️ Время до завершения: 3-4 недели
 
 ---
 
-**🔄 Проект в активной разработке. Миграция на Clean Architecture: 65% завершено.**
+*Быстрый старт*  
+*Обновлено: 5 августа 2025* 
