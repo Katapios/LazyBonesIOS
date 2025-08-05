@@ -2,7 +2,7 @@
 
 **LazyBones** - iOS приложение для создания и отправки ежедневных отчетов о продуктивности с интеграцией Telegram.
 
-**🔄 Статус**: Миграция на Clean Architecture - 65% завершено
+**🔄 Статус**: Миграция на Clean Architecture - 80% завершено
 
 ## 🏗️ Архитектура
 
@@ -11,7 +11,7 @@
 - **Data Layer**: Repositories, Data Sources, Mappers  
 - **Infrastructure Layer**: Services, DI Container, Coordinators
 
-### 🔄 В процессе (30%)
+### 🔄 В процессе (50%)
 - **Presentation Layer**: ViewModels готовы частично, Views в миграции
 
 ## 🚨 Критические проблемы
@@ -73,14 +73,16 @@ struct MainView: View {
 ## 📋 Быстрый чек-лист
 
 ### Создать ViewModels (1-2 недели)
-- [ ] `MainViewModel` с `BaseViewModel<MainState, MainEvent>`
-- [ ] `ReportsViewModel` с `BaseViewModel<ReportsState, ReportsEvent>`
+- [x] `MainViewModelNew` с `BaseViewModel<MainState, MainEvent>` ✅
+- [x] `ReportsViewModelNew` с `BaseViewModel<ReportsState, ReportsEvent>` ✅
 - [ ] `SettingsViewModel` с `BaseViewModel<SettingsState, SettingsEvent>`
 - [ ] `TagManagerViewModel` с `BaseViewModel<TagManagerState, TagManagerEvent>`
 
 ### Мигрировать Views (1-2 недели)
-- [ ] `MainView` - убрать `store: PostStore`
-- [ ] `ReportsView` - убрать `store: PostStore`
+- [x] `MainViewNew` - новый с Clean Architecture ✅
+- [ ] `MainView` - заменить на MainViewNew
+- [ ] `ReportsViewNew` - создать новый с Clean Architecture
+- [ ] `ReportsView` - заменить на ReportsViewNew
 - [ ] `SettingsView` - убрать `store: PostStore`
 - [ ] `TagManagerView` - убрать `store: PostStore`
 
@@ -96,6 +98,9 @@ struct MainView: View {
 - `ExternalReportsViewModel.swift` - использует Use Cases
 - `RegularReportsViewModel.swift` - использует Use Cases
 - `CustomReportsViewModel.swift` - использует Use Cases
+- `MainViewModelNew.swift` - новый с Clean Architecture
+- `ReportsViewModelNew.swift` - новый с Clean Architecture
+- `MainViewNew.swift` - новый View с Clean Architecture
 
 ### Проблемные (старая архитектура)
 - `ContentView.swift` - создает PostStore глобально
