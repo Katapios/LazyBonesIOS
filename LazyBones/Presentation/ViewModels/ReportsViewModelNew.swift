@@ -86,6 +86,14 @@ class ReportsViewModelNew: BaseViewModel<ReportsState, ReportsEvent>, LoadableVi
     
     // MARK: - Public Methods
     
+    /// Переключить режим выбора
+    func toggleSelectionMode() {
+        state.isSelectionMode.toggle()
+        if !state.isSelectionMode {
+            state.selectedLocalReportIDs.removeAll()
+        }
+    }
+    
     /// Проверить, можно ли оценить отчет
     func canEvaluateReport(_ post: DomainPost) -> Bool {
         Calendar.current.isDateInToday(post.date) && 

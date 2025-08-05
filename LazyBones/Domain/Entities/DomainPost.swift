@@ -1,7 +1,7 @@
 import Foundation
 
 /// Domain Entity - Отчет пользователя
-struct DomainPost: Codable {
+struct DomainPost: Codable, Identifiable {
     let id: UUID
     let date: Date
     var goodItems: [String]
