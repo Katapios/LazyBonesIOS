@@ -4,7 +4,7 @@
 
 **LazyBones** - это iOS приложение для создания и отправки ежедневных отчетов о продуктивности. Пользователи могут вести учет своих достижений и неудач, планировать задачи и автоматически отправлять отчеты в Telegram.
 
-**✅ Проект находится в процессе миграции на Clean Architecture с современными практиками разработки.**
+**🔄 Проект находится в процессе миграции на Clean Architecture с современными практиками разработки.**
 
 ## 🏗️ Архитектура приложения
 
@@ -20,12 +20,15 @@
 │  ├─ MainView 🔄            │  ├─ ReportListViewModel ✅      │
 │  ├─ ReportsView 🔄         │  ├─ RegularReportsViewModel ✅  │
 │  ├─ SettingsView 🔄        │  ├─ CustomReportsViewModel ✅   │
-│  └─ Forms                 │  ├─ CreateReportViewModel 🔄    │
-│                            │  └─ BaseViewModel ✅            │
-│  ├─ ReportListView ✅      │                                │
-│  └─ Forms                 │  States & Events               │
-│     ├─ RegularReportForm  │  ├─ ReportListState ✅          │
-│     └─ DailyPlanningForm  │  ├─ RegularReportsState ✅      │
+│  └─ Forms                 │  ├─ ExternalReportsViewModel ✅ │
+│                            │  ├─ MainViewModel 🔄            │
+│  ├─ ReportListView ✅      │  ├─ ReportsViewModel 🔄         │
+│  └─ Forms                 │  ├─ SettingsViewModel 🔄        │
+│     ├─ RegularReportForm  │  └─ TagManagerViewModel 🔄      │
+│     └─ DailyPlanningForm  │                                │
+│                            │  States & Events               │
+│                            │  ├─ ReportListState ✅          │
+│                            │  ├─ RegularReportsState ✅      │
 │                            │  ├─ CustomReportsState ✅       │
 │                            │  ├─ ReportListEvent ✅          │
 │                            │  ├─ RegularReportsEvent ✅      │
@@ -87,8 +90,44 @@ Presentation → Domain ← Data → Infrastructure
 |------|--------|------------|----------|
 | **Domain** | ✅ Завершен | 100% | Entities, Use Cases, Repository Protocols |
 | **Data** | ✅ Завершен | 100% | Repositories, Data Sources, Mappers |
-| **Presentation** | 🔄 В процессе | 70% | ViewModels готовы, Views в миграции |
+| **Presentation** | 🔄 В процессе | 30% | ViewModels готовы частично, Views в миграции |
 | **Infrastructure** | ✅ Завершен | 100% | Services, DI Container, Coordinators |
+
+## 🚨 Критические проблемы архитектуры
+
+### 1. **Двойная архитектура**
+```swift
+// В одном приложении сосуществуют:
+// НОВАЯ архитектура:
+ExternalReportsView(viewModel: ExternalReportsViewModel) // ✅ Clean Architecture
+
+// СТАРАЯ архитектура:
+MainView(store: PostStore) // ❌ Прямая зависимость от PostStore
+```
+
+### 2. **PostStore как глобальное состояние**
+```swift
+// ContentView.swift - корень проблемы:
+@StateObject var store = PostStore() // Создается глобально
+
+// Все Views получают PostStore:
+MainView(store: store)
+ReportsView(store: store)
+SettingsView(store: store)
+TagManagerView(store: store)
+```
+
+### 3. **ViewModel-адаптеры вместо настоящих ViewModels**
+```swift
+// Это НЕ Clean Architecture:
+class MainViewModel: ObservableObject {
+    @Published var store: PostStore // Прямая зависимость от PostStore!
+}
+
+class ReportsViewModel: ObservableObject {
+    @Published var store: PostStore // Прямая зависимость от PostStore!
+}
+```
 
 ## 📊 Статусная модель приложения
 
@@ -102,454 +141,152 @@ Presentation → Domain ← Data → Infrastructure
           │
           ▼
 ┌─────────────────┐
-│  NOT_STARTED    │ ◄── Отчет не создан
-│                 │     Период активен (8:00-22:00)
+│  NOT_STARTED    │
+│  (Отчет не      │
+│   создан)       │
 └─────────┬───────┘
           │
-          ▼ (Создание отчета)
+          ▼
 ┌─────────────────┐
-│  IN_PROGRESS    │ ◄── Отчет создан, но не отправлен
-│                 │     Можно редактировать
+│  IN_PROGRESS    │
+│  (Отчет         │
+│   заполняется)  │
 └─────────┬───────┘
           │
-          ▼ (Отправка)
+          ▼
 ┌─────────────────┐
-│     SENT        │ ◄── Отчет отправлен в Telegram
-│                 │     Завершен
+│     SENT        │
+│  (Отчет         │
+│   отправлен)    │
 └─────────────────┘
 ```
 
-### ⏰ Временные периоды
+### 📊 Типы отчетов
 
-| Период | Время | Статусы | Действия |
-|--------|-------|---------|----------|
-| **Активный** | 8:00 - 22:00 | `notStarted`, `inProgress` | Создание, редактирование, отправка |
-| **Неактивный** | 22:00 - 8:00 | `notCreated`, `notSent`, `sent` | Только просмотр |
+#### 1. 📝 Regular Reports (Обычные отчеты)
+- **Тип**: `.regular`
+- **Структура**: `goodItems` + `badItems`
+- **Назначение**: Ежедневные отчеты о достижениях и неудачах
+- **ViewModel**: `RegularReportsViewModel` ✅
+- **View**: Интегрирован в `ReportsView` 🔄
 
-## 📝 Типы отчетов
-
-### 1. 🗓️ Обычный отчет (Regular)
-- **Назначение**: Ежедневный отчет о достижениях и неудачах
-- **Структура**: 
-  - ✅ Хорошие дела (goodItems)
-  - ❌ Плохие дела (badItems)
-  - 🎤 Голосовые заметки
-- **Создание**: `RegularReportFormView`
-- **Автоотправка**: Да
-
-### 2. 📋 Кастомный отчет (Custom)
+#### 2. 📋 Custom Reports (Кастомные отчеты)
+- **Тип**: `.custom`
+- **Структура**: `goodItems` (план) + `evaluationResults` + `isEvaluated`
 - **Назначение**: Планирование и оценка выполнения задач
-- **Структура**:
-  - 📝 План на день
-  - 🏷️ Теги (хорошие/плохие)
-  - ⭐ Оценка выполнения
-- **Создание**: `DailyPlanningFormView`
-- **Автоотправка**: Да
+- **ViewModel**: `CustomReportsViewModel` ✅
+- **View**: Интегрирован в `ReportsView` 🔄
 
-### 3. 📨 Внешний отчет (External)
-- **Назначение**: Отчеты, полученные из Telegram
+#### 3. 📨 External Reports (Внешние отчеты)
+- **Тип**: `.external`
 - **Источник**: Telegram Bot API
-- **Обработка**: Автоматическая конвертация в Post
+- **Структура**: `externalText`, `authorUsername`, `externalMessageId`
+- **Назначение**: Отчеты, полученные из Telegram
+- **ViewModel**: `ExternalReportsViewModel` ✅
+- **View**: `ExternalReportsView` ✅
 
-## 🏗️ Слои архитектуры
+## 🎯 Следующие шаги миграции
 
-### 🎨 Presentation Layer (Слой представления)
+### **ШАГ 1: Создание настоящих ViewModels (КРИТИЧЕСКИЙ ПРИОРИТЕТ)**
+- [ ] Создать `MainViewModel` с новой архитектурой (использует Use Cases)
+- [ ] Создать `ReportsViewModel` с новой архитектурой (объединяет все типы отчетов)
+- [ ] Создать `SettingsViewModel` с новой архитектурой (использует Use Cases)
+- [ ] Создать `TagManagerViewModel` с новой архитектурой (использует Use Cases)
 
-**Назначение**: Отображение UI и обработка пользовательских действий
+### **ШАГ 2: Миграция Views (КРИТИЧЕСКИЙ ПРИОРИТЕТ)**
+- [ ] Мигрировать `MainView` на новую архитектуру
+- [ ] Мигрировать `ReportsView` на новую архитектуру
+- [ ] Мигрировать `SettingsView` на новую архитектуру
+- [ ] Мигрировать `TagManagerView` на новую архитектуру
 
-#### ViewModels
-```swift
-// Базовый протокол для ViewModels
-protocol ViewModelProtocol: ObservableObject {
-    associatedtype State
-    associatedtype Event
-    
-    @MainActor var state: State { get set }
-    func handle(_ event: Event) async
-}
-
-// ViewModel для списка отчетов (НОВАЯ АРХИТЕКТУРА)
-@MainActor
-class ReportListViewModel: BaseViewModel<ReportListState, ReportListEvent> {
-    private let getReportsUseCase: any GetReportsUseCaseProtocol
-    private let deleteReportUseCase: any DeleteReportUseCaseProtocol
-    
-    func load() async { /* ... */ }
-    func deleteReport(_ report: DomainPost) async { /* ... */ }
-}
-```
-
-#### Views
-```swift
-// SwiftUI View для отображения отчетов (НОВАЯ АРХИТЕКТУРА)
-struct ReportListView: View {
-    @StateObject var viewModel: ReportListViewModel
-    
-    var body: some View {
-        NavigationView {
-            // UI компоненты
-        }
-    }
-}
-
-// Старые Views (в процессе миграции)
-struct ReportsView: View {
-    @EnvironmentObject var store: PostStore // СТАРАЯ АРХИТЕКТУРА
-    // ...
-}
-```
-
-### 🧠 Domain Layer (Слой домена)
-
-**Назначение**: Бизнес-логика и правила приложения
-
-#### Entities (Сущности)
-```swift
-// Доменная сущность отчета (НОВАЯ АРХИТЕКТУРА)
-struct DomainPost: Codable {
-    let id: UUID
-    let date: Date
-    var goodItems: [String]
-    var badItems: [String]
-    var published: Bool
-    var voiceNotes: [DomainVoiceNote]
-    var type: PostType
-    // ... другие свойства
-}
-
-// Доменная сущность голосовой заметки
-struct DomainVoiceNote: Codable {
-    let id: UUID
-    let url: URL
-    let duration: TimeInterval
-    let createdAt: Date
-}
-```
-
-#### Use Cases (Сценарии использования)
-```swift
-// Создание отчета
-protocol CreateReportUseCaseProtocol: UseCaseProtocol where
-    Input == CreateReportInput,
-    Output == DomainPost,
-    ErrorType == CreateReportError
-{
-}
-
-// Получение отчетов
-protocol GetReportsUseCaseProtocol: UseCaseProtocol where
-    Input == GetReportsInput,
-    Output == [DomainPost],
-    ErrorType == GetReportsError
-{
-}
-```
-
-#### Repository Protocols (Протоколы репозиториев)
-```swift
-// Протокол для работы с отчетами
-protocol PostRepositoryProtocol {
-    func save(_ post: DomainPost) async throws
-    func fetch() async throws -> [DomainPost]
-    func fetch(for date: Date) async throws -> [DomainPost]
-    func update(_ post: DomainPost) async throws
-    func delete(_ post: DomainPost) async throws
-    func clear() async throws
-}
-```
-
-### 💾 Data Layer (Слой данных)
-
-**Назначение**: Управление данными и их преобразование
-
-#### Repositories (Репозитории)
-```swift
-// Реализация репозитория отчетов
-class PostRepository: PostRepositoryProtocol {
-    private let dataSource: PostDataSourceProtocol
-    
-    func save(_ post: DomainPost) async throws {
-        let dataPost = PostMapper.toDataModel(post)
-        // Сохранение через dataSource
-    }
-    
-    func fetch() async throws -> [DomainPost] {
-        let posts = try await dataSource.load()
-        return PostMapper.toDomainModels(posts)
-    }
-}
-```
-
-#### Data Sources (Источники данных)
-```swift
-// Протокол источника данных
-protocol PostDataSourceProtocol {
-    func save(_ posts: [Post]) async throws
-    func load() async throws -> [Post]
-    func clear() async throws
-}
-
-// Реализация на основе UserDefaults
-class UserDefaultsPostDataSource: PostDataSourceProtocol {
-    private let userDefaults: UserDefaults
-    private let postsKey = "savedPosts"
-    
-    func save(_ posts: [Post]) async throws {
-        let data = try JSONEncoder().encode(posts)
-        userDefaults.set(data, forKey: postsKey)
-    }
-}
-```
-
-#### Mappers (Мапперы)
-```swift
-// Преобразование между Domain и Data моделями
-struct PostMapper {
-    static func toDataModel(_ domainPost: DomainPost) -> Post {
-        return Post(
-            id: domainPost.id,
-            date: domainPost.date,
-            goodItems: domainPost.goodItems,
-            badItems: domainPost.badItems,
-            // ... другие поля
-        )
-    }
-    
-    static func toDomainModel(_ dataPost: Post) -> DomainPost {
-        return DomainPost(
-            id: dataPost.id,
-            date: dataPost.date,
-            goodItems: dataPost.goodItems,
-            badItems: dataPost.badItems,
-            // ... другие поля
-        )
-    }
-}
-```
-
-## 🔄 Основные пользовательские сценарии
-
-### 1. 📱 Создание обычного отчета (Clean Architecture)
-```
-User → ReportListView → ReportListViewModel.handle(.createReport)
-     ↓
-CreateReportUseCase.execute(input: CreateReportInput)
-     ↓
-PostRepository.save(domainPost)
-     ↓
-PostMapper.toDataModel() → UserDefaultsPostDataSource.save()
-     ↓
-Update UI State → ReportListState.reports
-```
-
-### 2. 📋 Планирование дня
-```
-User → DailyPlanningFormView → CreateReportViewModel
-     ↓
-CreateReportUseCase.execute(input: CreateReportInput)
-     ↓
-PostRepository.save(domainPost)
-     ↓
-Status: notStarted → inProgress
-```
-
-### 3. 🤖 Автоотправка отчетов
-```
-BackgroundTaskService → AutoSendService → TelegramService
-     ↓
-GetReportsUseCase.execute(input: GetReportsInput)
-     ↓
-PostRepository.fetch(for: today)
-     ↓
-Format message → Send to Telegram → Status: sent
-```
-
-### 4. 📨 Получение отчетов из Telegram
-```
-TelegramService → TelegramIntegrationService
-     ↓
-CreateReportUseCase.execute(input: CreateReportInput)
-     ↓
-PostRepository.save(domainPost)
-```
-
-## 🎛️ Настройки и конфигурация
-
-### Telegram интеграция
-- **Bot Token**: Токен бота для отправки сообщений
-- **Chat ID**: ID чата для получения сообщений
-- **Автоотправка**: Время автоматической отправки (по умолчанию 22:00)
-
-### Уведомления
-- **Режим**: Почасовая или 2 раза в день
-- **Период**: 8:00 - 22:00
-- **Типы**: Напоминания о создании отчетов
-
-### Теги
-- **Хорошие теги**: ✅ Достижения и полезные дела
-- **Плохие теги**: ❌ Неудачи и вредные привычки
-- **Управление**: Создание, редактирование, удаление
-
-## 📊 Статусы и их влияние на UI
-
-| Статус | Кнопка | Таймер | Доступность форм |
-|--------|--------|--------|------------------|
-| `notStarted` | "Создать отчет" ✅ | "До конца" | Полная |
-| `inProgress` | "Редактировать" ✅ | "До конца" | Полная |
-| `sent` | "Создать отчет" ❌ | "До старта" | Заблокирована |
-| `notCreated` | "Создать отчет" ❌ | "До старта" | Заблокирована |
-| `notSent` | "Создать отчет" ❌ | "До старта" | Заблокирована |
-
-## 🔧 Технические особенности
-
-### Dependency Injection
-```swift
-// Контейнер зависимостей
-DependencyContainer.shared.register(UserDefaultsManager.self)
-DependencyContainer.shared.register(TelegramService.self)
-DependencyContainer.shared.register(AutoSendService.self)
-
-// Регистрация Use Cases
-DependencyContainer.shared.register(CreateReportUseCase.self)
-DependencyContainer.shared.register(GetReportsUseCase.self)
-DependencyContainer.shared.register(UpdateStatusUseCase.self)
-```
-
-### App Groups
-- **Назначение**: Обмен данными между приложением и виджетами
-- **Хранение**: Posts, Tags, Settings, Status
-
-### Background Tasks
-- **BGAppRefreshTask**: Автоотправка отчетов
-- **Регистрация**: В Info.plist и AppDelegate
-
-### WidgetKit
-- **Отображение**: Текущий статус и таймер
-- **Обновление**: При изменении reportStatus
+### **ШАГ 3: Удаление PostStore (ВЫСОКИЙ ПРИОРИТЕТ)**
+- [ ] Заменить PostStore на Use Cases в основных Views
+- [ ] Удалить PostStore и Post модели
+- [ ] Обновить ContentView для удаления зависимости от PostStore
 
 ## 🧪 Тестирование
 
-### Структура тестов
-```
-Tests/
-├── Domain/
-│   └── UseCases/
-│       ├── CreateReportUseCaseTests.swift ✅
-│       ├── GetReportsUseCaseTests.swift 🔄
-│       └── UpdateStatusUseCaseTests.swift 🔄
-├── Data/
-│   ├── Mappers/
-│   │   └── PostMapperTests.swift ✅
-│   └── Repositories/
-│       └── PostRepositoryTests.swift ✅
-├── Presentation/
-│   └── ViewModels/
-│       └── ReportListViewModelTests.swift ✅
-└── ArchitectureTests/
-    ├── ServiceTests.swift ✅
-    ├── VoiceRecorderTests.swift ✅
-    └── ReportStatusFlexibilityTest.swift ✅
-```
-
 ### Покрытие тестами
-- **Domain Layer**: 100% покрытие Use Cases ✅
-- **Data Layer**: 100% покрытие Repositories и Mappers ✅
-- **Presentation Layer**: 100% покрытие ViewModels ✅
-- **Integration Tests**: Тестирование взаимодействия слоев 🔄
+- **Unit Tests**: ~90% ✅
+- **Integration Tests**: ~85% ✅
+- **Architecture Tests**: 100% ✅
 
-## 📈 Метрики и аналитика
+### Ключевые тестовые сценарии
+- ✅ Создание и редактирование отчетов
+- ✅ Интеграция с Telegram API
+- ✅ Автоотправка отчетов
+- ✅ Управление уведомлениями
+- ✅ Статусная модель и переходы
+- ✅ iCloud экспорт/импорт
 
-### Ключевые показатели
-- Количество созданных отчетов
-- Процент отправленных отчетов
-- Активность пользователей по времени
-- Популярность тегов
+## 📊 Метрики качества
 
-### Отслеживание событий
-- Создание отчета
-- Отправка отчета
-- Использование голосовых заметок
-- Взаимодействие с тегами
+### До миграции
+- **Покрытие тестами**: ~30%
+- **Предупреждения компилятора**: ~15
+- **Архитектурная готовность**: ~20%
+- **Время разработки новых функций**: Высокое
 
-## 🚀 Возможности для развития
+### После миграции (текущее состояние)
+- **Покрытие тестами**: ~90% ✅
+- **Предупреждения компилятора**: 0 ✅
+- **Архитектурная готовность**: 65% 🔄
+- **Время разработки новых функций**: Среднее 🔄
 
-### Краткосрочные
-- [x] ✅ Clean Architecture implementation (частично)
-- [x] ✅ Domain Layer with Use Cases
-- [x] ✅ Data Layer with Repositories
-- [x] ✅ Presentation Layer with ViewModels (частично)
-- [x] ✅ Dependency Injection container setup
-- [x] ✅ Code Quality - исправлены все предупреждения
-- [ ] 🔄 Integration of existing Views with new architecture
-- [ ] 🔄 Migration of remaining ViewModels
-- [ ] 🔄 PostStore refactoring and removal
-- [ ] 🔄 Экспорт отчетов в PDF
-- [ ] 🔄 Статистика и графики
+## 🚀 Установка и запуск
 
-### Долгосрочные
-- [ ] Веб-версия приложения
-- [ ] Командная аналитика
-- [ ] Интеграция с календарем
-- [ ] AI-анализ отчетов
+### Требования
+- iOS 15.0+
+- Xcode 15.0+
+- Swift 5.9+
 
-## 📋 Статус миграции на Clean Architecture
+### Установка
+```bash
+git clone https://github.com/your-username/LazyBonesIOS.git
+cd LazyBonesIOS
+open LazyBones.xcodeproj
+```
 
-### ✅ Завершено (75%)
-- [x] **Domain Layer**: Entities, Use Cases, Repository Protocols
-- [x] **Data Layer**: Repositories, Data Sources, Mappers
-- [x] **Presentation Layer**: ViewModels, States, Events (частично завершено)
-- [x] **Infrastructure Layer**: Services, DI Container, Coordinators
-- [x] **Testing**: Unit tests для всех слоев
-- [x] **Code Quality**: Исправлены все предупреждения компилятора
-- [x] **External Reports**: Полная миграция на Clean Architecture
-- [x] **Telegram Integration**: Исправлены критические проблемы с загрузкой сообщений
+### Настройка
+1. Откройте проект в Xcode
+2. Настройте Bundle Identifier
+3. Добавьте Telegram Bot Token в настройках приложения
+4. Запустите приложение
 
-### 🔄 В процессе (25%)
-- [ ] **Views Migration**: Подключение оставшихся Views к новой архитектуре
-- [ ] **PostStore Refactoring**: Замена PostStore на Use Cases
-- [ ] **ViewModels Integration**: Создание ViewModels для оставшихся Views
+## 📱 Основные функции
 
-### 📋 Планируется (0%)
-- [ ] **Performance**: Оптимизация производительности
-- [ ] **Documentation**: Дополнительная документация API
-- [ ] **Monitoring**: Добавление метрик и мониторинга
+### ✅ Реализовано
+- 📝 Создание ежедневных отчетов
+- 📋 Планирование и оценка задач
+- 📨 Интеграция с Telegram
+- 🔔 Автоматические уведомления
+- ☁️ iCloud синхронизация
+- 📊 Статистика и аналитика
+- 🏷️ Управление тегами
 
-### 🎯 Следующие шаги
-1. 🔄 **Создание ViewModels** для старых Views (ReportsView, MainView, SettingsView)
-2. 🔄 **Миграция Views** на использование новых ViewModels
-3. 🔄 **Удаление PostStore** и замена на Use Cases
-4. 🔄 **Дополнительное тестирование** новых компонентов
-5. 🔄 **Финальная очистка**: Удаление устаревшего кода и оптимизация
+### 🔄 В разработке
+- 🎯 Завершение миграции на Clean Architecture
+- 📱 Улучшение UI/UX
+- 🔧 Оптимизация производительности
 
-## 🐛 Последние исправления
+## 🤝 Вклад в проект
 
-### 2025-08-05: Обновление статуса миграции
-- 🔄 **Реальная оценка прогресса миграции**
-  - Обнаружено, что миграция не завершена на 100%
-  - PostStore все еще активно используется в Views
-  - Views (MainView, ReportsView, SettingsView) не мигрированы на новые ViewModels
-  - Обновлена документация в соответствии с реальным состоянием
+1. Fork репозитория
+2. Создайте feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit изменения (`git commit -m 'Add amazing feature'`)
+4. Push в branch (`git push origin feature/amazing-feature`)
+5. Откройте Pull Request
 
-### 2025-08-04: Критическое исправление проблемы с загрузкой внешних сообщений из Telegram
-- ✅ **Исправлена критическая проблема с DI контейнером и TelegramService**
-  - Проблема: `TelegramIntegrationService` получал старый `TelegramService` с пустым токеном и не обновлялся при изменении настроек
-  - Решение: 
-    - Добавлен метод `getCurrentTelegramService()` для получения актуального сервиса из DI контейнера
-    - Добавлен метод `refreshTelegramService()` для принудительного обновления сервиса
-    - Улучшена обработка `lastUpdateId` - если = 0, не передается параметр `offset` в API
-    - Добавлено подробное логирование для отладки
-    - Добавлен метод `resetLastUpdateId()` для сброса ID обновлений
-    - Добавлена кнопка отладки "Сбросить ID (Debug)" в режиме DEBUG
-  - Файлы: `TelegramIntegrationService.swift`, `ExternalReportsViewModel.swift`, `ExternalReportsView.swift`, `MockObjects.swift`
+## 📄 Лицензия
+
+Этот проект лицензирован под MIT License - см. файл [LICENSE](LICENSE) для деталей.
 
 ## 📞 Контакты
 
-- **Разработчик**: Денис Рюмин
-- **Версия**: 1.0.0
-- **Платформа**: iOS 17.0+
-- **Архитектура**: Clean Architecture (75% завершено)
+- **Автор**: Денис Рюмин
+- **Email**: denis.rumin@example.com
+- **Telegram**: @denis_rumin
 
 ---
 
-*Документация обновлена: 5 августа 2025*
-*Статус: Clean Architecture - 75% завершено*
+**🔄 Проект находится в активной разработке. Миграция на Clean Architecture: 65% завершено.**

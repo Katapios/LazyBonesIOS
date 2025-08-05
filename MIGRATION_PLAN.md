@@ -25,20 +25,31 @@ LazyBones/
 │   ├── DataSources/ ← ✅ UserDefaultsPostDataSource
 │   └── Mappers/     ← ✅ PostMapper, VoiceNoteMapper
 ├── Presentation/    ← 🔄 Слой представления (частично)
-│   ├── ViewModels/  ← ✅ ReportListViewModel (новая архитектура)
-│   └── Views/       ← ✅ ReportListView (новая архитектура)
+│   ├── ViewModels/  ← 🔄 Смешанная архитектура
+│   │   ├─ ✅ RegularReportsViewModel (новая архитектура)
+│   │   ├─ ✅ CustomReportsViewModel (новая архитектура)
+│   │   ├─ ✅ ExternalReportsViewModel (новая архитектура)
+│   │   ├─ ✅ ReportListViewModel (новая архитектура)
+│   │   ├─ 🔄 MainViewModel (адаптер PostStore)
+│   │   ├─ 🔄 ReportsViewModel (адаптер PostStore)
+│   │   ├─ 🔄 SettingsViewModel (адаптер PostStore)
+│   │   └─ 🔄 TagManagerViewModel (адаптер PostStore)
+│   └── Views/       ← 🔄 Смешанная архитектура
+│       ├─ ✅ ExternalReportsView (новая архитектура)
+│       ├─ 🔄 MainView (использует PostStore)
+│       ├─ 🔄 ReportsView (использует PostStore)
+│       └─ 🔄 SettingsView (использует PostStore)
 ├── Application/     ← ✅ Координаторы
 │   └── Coordinators/← ✅ AppCoordinator, ReportsCoordinator
 ├── Core/            ← ✅ Инфраструктура
 │   ├── Services/    ← ✅ Все сервисы
 │   └── Common/      ← ✅ DI Container, Utils
-└── Views/           ← 🔄 Старые Views (в процессе миграции)
-    ├── MainView     ← 🔄 Использует PostStore
-    ├── ReportsView  ← 🔄 Использует PostStore
-    └── SettingsView ← 🔄 Использует PostStore
+└── Models/          ← 🔄 Старые модели (PostStore, Post)
+    ├── PostStore    ← 🔄 Глобальное состояние (нужно удалить)
+    └── Post         ← 🔄 Старая модель (нужно удалить)
 ```
 
-### ✅ Целевая архитектура (75% достигнуто)
+### ✅ Целевая архитектура (65% достигнуто)
 ```
 LazyBones/
 ├── Domain/          ← ✅ Бизнес-логика
@@ -49,7 +60,7 @@ LazyBones/
 
 ## 📊 Статус выполнения
 
-### ✅ Завершено (75%)
+### ✅ Завершено (65%)
 
 #### **ФАЗА 1: Подготовка и планирование** ✅
 - [x] Инвентаризация всех компонентов
@@ -69,7 +80,7 @@ LazyBones/
 - [x] Создание Repository реализации
 - [x] Создание Mappers
 
-#### **ФАЗА 4: Presentation Layer** ✅ (70%)
+#### **ФАЗА 4: Presentation Layer** 🔄 (30% завершено)
 - [x] Создание базовых ViewModels (ReportListViewModel)
 - [x] Создание базовых Views (ReportListView)
 - [x] Создание States и Events
@@ -80,24 +91,27 @@ LazyBones/
 - [x] Создание UpdateReportUseCase
 - [x] Миграция External Reports на новую архитектуру
 - [x] Исправление критических проблем с загрузкой сообщений из Telegram
+- [x] Создание ExternalReportsView (единственный View с новой архитектурой)
 
 #### **ФАЗА 5: Infrastructure Layer** ✅
 - [x] Миграция сервисов
 - [x] Обновление DI контейнера
 - [x] Настройка зависимостей
 
-### 🔄 В процессе (25%)
+### 🔄 В процессе (35%)
 
-#### **ФАЗА 6: Миграция оставшихся Views** 🔄
-- [ ] Обновление Regular Reports Views
-- [ ] Обновление Custom Reports Views
-- [ ] Миграция MainView, ReportsView, SettingsView
-- [ ] Протестировать UI
+#### **ФАЗА 6: Миграция основных Views** 🔄 (КРИТИЧЕСКИЙ ПРИОРИТЕТ)
+- [ ] Создание настоящих ViewModels для основных Views
+- [ ] Миграция MainView на новую архитектуру
+- [ ] Миграция ReportsView на новую архитектуру
+- [ ] Миграция SettingsView на новую архитектуру
+- [ ] Миграция TagManagerView на новую архитектуру
 
-#### **ФАЗА 7: Рефакторинг PostStore** 🔄
-- [ ] Замена PostStore на Use Cases
+#### **ФАЗА 7: Рефакторинг PostStore** 🔄 (ВЫСОКИЙ ПРИОРИТЕТ)
+- [ ] Замена PostStore на Use Cases в основных Views
 - [ ] Удаление дублирующего кода
 - [ ] Обновление зависимостей
+- [ ] Удаление PostStore и Post моделей
 
 #### **ФАЗА 8: Тестирование** ✅
 - [x] Unit тесты для Domain Layer
@@ -107,31 +121,44 @@ LazyBones/
 - [x] Unit тесты для CustomReportsViewModel
 - [x] Unit тесты для ExternalReportsViewModel
 
-## 🎯 Следующие шаги (маленькими шагами)
+## 🚨 Критические проблемы
 
-### **ШАГ 1: Создание ViewModels для старых Views**
-
-#### 1.1 ReportsView → ReportsViewModel
-**Приоритет: ВЫСОКИЙ**
-
+### 1. **Двойная архитектура**
 ```swift
-// Presentation/ViewModels/ReportsViewModel.swift
-@MainActor
-class ReportsViewModel: BaseViewModel<ReportsState, ReportsEvent> {
-    private let getReportsUseCase: any GetReportsUseCaseProtocol
-    private let createReportUseCase: any CreateReportUseCaseProtocol
+// В одном приложении сосуществуют:
+// НОВАЯ архитектура:
+ExternalReportsView(viewModel: ExternalReportsViewModel) // ✅ Clean Architecture
+
+// СТАРАЯ архитектура:
+MainView(store: PostStore) // ❌ Прямая зависимость от PostStore
+```
+
+### 2. **PostStore как глобальное состояние**
+```swift
+// ContentView.swift
+@StateObject var store = PostStore() // Глобальное состояние
+.environmentObject(store) // Передается через Environment
+```
+
+### 3. **ViewModel-адаптеры вместо настоящих ViewModels**
+```swift
+// Вместо:
+class MainViewModel: BaseViewModel<MainState, MainEvent> {
     private let updateStatusUseCase: any UpdateStatusUseCaseProtocol
-    
-    // Миграция с PostStore на Use Cases
-    func loadReports() async { /* ... */ }
-    func createReport(goodItems: [String], badItems: [String]) async { /* ... */ }
-    func deleteReport(_ report: DomainPost) async { /* ... */ }
+    // ...
+}
+
+// Используется:
+class MainViewModel: ObservableObject {
+    @Published var store: PostStore // ❌ Адаптер, не ViewModel
 }
 ```
 
-#### 1.2 MainView → MainViewModel
-**Приоритет: ВЫСОКИЙ**
+## 🎯 Следующие шаги (маленькими шагами)
 
+### **ШАГ 1: Создание настоящих ViewModels (Приоритет: ВЫСОКИЙ)**
+
+#### 1.1 MainViewModel с новой архитектурой
 ```swift
 // Presentation/ViewModels/MainViewModel.swift
 @MainActor
@@ -139,15 +166,80 @@ class MainViewModel: BaseViewModel<MainState, MainEvent> {
     private let updateStatusUseCase: any UpdateStatusUseCaseProtocol
     private let getReportsUseCase: any GetReportsUseCaseProtocol
     
-    // Миграция статусной логики
-    func updateStatus() async { /* ... */ }
-    func loadTodayReport() async { /* ... */ }
+    init(updateStatusUseCase: any UpdateStatusUseCaseProtocol,
+         getReportsUseCase: any GetReportsUseCaseProtocol) {
+        self.updateStatusUseCase = updateStatusUseCase
+        self.getReportsUseCase = getReportsUseCase
+        super.init(initialState: MainState())
+    }
+    
+    override func handle(_ event: MainEvent) async {
+        switch event {
+        case .loadTodayReport:
+            await loadTodayReport()
+        case .updateStatus:
+            await updateStatus()
+        case .createReport:
+            await createReport()
+        }
+    }
+    
+    private func loadTodayReport() async {
+        state.isLoading = true
+        do {
+            let input = GetReportsInput(date: Date(), type: .regular)
+            let reports = try await getReportsUseCase.execute(input: input)
+            state.todayReport = reports.first
+        } catch {
+            state.error = error
+        }
+        state.isLoading = false
+    }
 }
 ```
 
-#### 1.3 SettingsView → SettingsViewModel
-**Приоритет: СРЕДНИЙ**
+#### 1.2 ReportsViewModel с новой архитектурой
+```swift
+// Presentation/ViewModels/ReportsViewModel.swift
+@MainActor
+class ReportsViewModel: BaseViewModel<ReportsState, ReportsEvent> {
+    private let regularReportsVM: RegularReportsViewModel
+    private let customReportsVM: CustomReportsViewModel
+    private let externalReportsVM: ExternalReportsViewModel
+    
+    init(regularReportsVM: RegularReportsViewModel,
+         customReportsVM: CustomReportsViewModel,
+         externalReportsVM: ExternalReportsViewModel) {
+        self.regularReportsVM = regularReportsVM
+        self.customReportsVM = customReportsVM
+        self.externalReportsVM = externalReportsVM
+        super.init(initialState: ReportsState())
+    }
+    
+    override func handle(_ event: ReportsEvent) async {
+        switch event {
+        case .loadAllReports:
+            await loadAllReports()
+        case .toggleSelectionMode:
+            state.isSelectionMode.toggle()
+        case .deleteSelectedReports:
+            await deleteSelectedReports()
+        }
+    }
+    
+    private func loadAllReports() async {
+        await regularReportsVM.handle(.loadReports)
+        await customReportsVM.handle(.loadReports)
+        await externalReportsVM.handle(.loadReports)
+        
+        state.regularReports = regularReportsVM.state.reports
+        state.customReports = customReportsVM.state.reports
+        state.externalReports = externalReportsVM.state.reports
+    }
+}
+```
 
+#### 1.3 SettingsViewModel с новой архитектурой
 ```swift
 // Presentation/ViewModels/SettingsViewModel.swift
 @MainActor
@@ -155,68 +247,127 @@ class SettingsViewModel: BaseViewModel<SettingsState, SettingsEvent> {
     private let userDefaultsManager: UserDefaultsManagerProtocol
     private let notificationService: NotificationManagerServiceType
     
-    // Миграция настроек
-    func loadSettings() async { /* ... */ }
-    func saveTelegramSettings(token: String, chatId: String) async { /* ... */ }
+    init(userDefaultsManager: UserDefaultsManagerProtocol,
+         notificationService: NotificationManagerServiceType) {
+        self.userDefaultsManager = userDefaultsManager
+        self.notificationService = notificationService
+        super.init(initialState: SettingsState())
+    }
+    
+    override func handle(_ event: SettingsEvent) async {
+        switch event {
+        case .loadSettings:
+            await loadSettings()
+        case .saveTelegramSettings(let token, let chatId):
+            await saveTelegramSettings(token: token, chatId: chatId)
+        case .toggleNotifications(let enabled):
+            await toggleNotifications(enabled: enabled)
+        }
+    }
 }
 ```
 
 ### **ШАГ 2: Миграция Views на новые ViewModels**
 
-#### 2.1 ReportsView миграция
+#### 2.1 MainView миграция
 ```swift
 // Старая архитектура
-struct ReportsView: View {
-    @EnvironmentObject var store: PostStore
-    // ...
-}
-
-// Новая архитектура
-struct ReportsView: View {
-    @StateObject var viewModel: ReportsViewModel
-    // ...
-}
-```
-
-#### 2.2 MainView миграция
-```swift
-// Старая архитектура
-struct MainView: View {
-    @EnvironmentObject var store: PostStore
-    // ...
-}
-
-// Новая архитектура
 struct MainView: View {
     @StateObject var viewModel: MainViewModel
-    // ...
+    init(store: PostStore) {
+        self._viewModel = StateObject(wrappedValue: MainViewModel(store: store))
+    }
+}
+
+// Новая архитектура
+struct MainView: View {
+    @StateObject private var viewModel: MainViewModel
+    
+    init() {
+        let container = DependencyContainer.shared
+        self._viewModel = StateObject(wrappedValue: MainViewModel(
+            updateStatusUseCase: container.resolve(UpdateStatusUseCaseProtocol.self)!,
+            getReportsUseCase: container.resolve(GetReportsUseCaseProtocol.self)!
+        ))
+    }
 }
 ```
 
-### **ШАГ 3: Удаление дублирования**
+#### 2.2 ReportsView миграция
+```swift
+// Старая архитектура
+struct ReportsView: View {
+    @StateObject var viewModel: ReportsViewModel
+    init(store: PostStore) {
+        self._viewModel = StateObject(wrappedValue: ReportsViewModel(store: store))
+    }
+}
 
-#### 3.1 Удаление старых моделей
+// Новая архитектура
+struct ReportsView: View {
+    @StateObject private var viewModel: ReportsViewModel
+    
+    init() {
+        let container = DependencyContainer.shared
+        self._viewModel = StateObject(wrappedValue: ReportsViewModel(
+            regularReportsVM: container.resolve(RegularReportsViewModel.self)!,
+            customReportsVM: container.resolve(CustomReportsViewModel.self)!,
+            externalReportsVM: container.resolve(ExternalReportsViewModel.self)!
+        ))
+    }
+}
+```
+
+### **ШАГ 3: Обновление ContentView**
+
+```swift
+struct ContentView: View {
+    @StateObject var appCoordinator: AppCoordinator
+    // УДАЛИТЬ: @StateObject var store = PostStore()
+    
+    init() {
+        let dependencyContainer = DependencyContainer.shared
+        self._appCoordinator = StateObject(wrappedValue: AppCoordinator(dependencyContainer: dependencyContainer))
+    }
+    
+    var body: some View {
+        TabView(selection: $appCoordinator.currentTab) {
+            NavigationStack(path: $appCoordinator.navigationPath) {
+                MainView() // БЕЗ store!
+            }
+            .tabItem {
+                Label(AppCoordinator.Tab.main.title, systemImage: AppCoordinator.Tab.main.icon)
+            }
+            .tag(AppCoordinator.Tab.main)
+            
+            NavigationStack(path: $appCoordinator.navigationPath) {
+                ReportsView() // БЕЗ store!
+            }
+            .tabItem {
+                Label(AppCoordinator.Tab.reports.title, systemImage: AppCoordinator.Tab.reports.icon)
+            }
+            .tag(AppCoordinator.Tab.reports)
+            
+            // ... остальные табы
+        }
+        // УДАЛИТЬ: .environmentObject(store)
+        .environmentObject(appCoordinator)
+    }
+}
+```
+
+### **ШАГ 4: Удаление дублирования**
+
+#### 4.1 Удаление старых моделей
 - [ ] Удалить `Post` модель (оставить только `DomainPost`)
 - [ ] Удалить `PostStore` (заменить на Use Cases)
 - [ ] Обновить все импорты
 
-#### 3.2 Обновление DI контейнера
+#### 4.2 Обновление DI контейнера
 ```swift
 // Добавить регистрацию новых ViewModels
 extension DependencyContainer {
     func registerViewModels() {
-        register(ReportsViewModel.self) { container in
-            let getReportsUseCase = container.resolve(GetReportsUseCaseProtocol.self)!
-            let createReportUseCase = container.resolve(CreateReportUseCaseProtocol.self)!
-            let updateStatusUseCase = container.resolve(UpdateStatusUseCaseProtocol.self)!
-            
-            return ReportsViewModel(
-                getReportsUseCase: getReportsUseCase,
-                createReportUseCase: createReportUseCase,
-                updateStatusUseCase: updateStatusUseCase
-            )
-        }
-        
         register(MainViewModel.self) { container in
             let updateStatusUseCase = container.resolve(UpdateStatusUseCaseProtocol.self)!
             let getReportsUseCase = container.resolve(GetReportsUseCaseProtocol.self)!
@@ -226,48 +377,70 @@ extension DependencyContainer {
                 getReportsUseCase: getReportsUseCase
             )
         }
+        
+        register(ReportsViewModel.self) { container in
+            let regularReportsVM = container.resolve(RegularReportsViewModel.self)!
+            let customReportsVM = container.resolve(CustomReportsViewModel.self)!
+            let externalReportsVM = container.resolve(ExternalReportsViewModel.self)!
+            
+            return ReportsViewModel(
+                regularReportsVM: regularReportsVM,
+                customReportsVM: customReportsVM,
+                externalReportsVM: externalReportsVM
+            )
+        }
+        
+        register(SettingsViewModel.self) { container in
+            let userDefaultsManager = container.resolve(UserDefaultsManagerProtocol.self)!
+            let notificationService = container.resolve(NotificationManagerServiceType.self)!
+            
+            return SettingsViewModel(
+                userDefaultsManager: userDefaultsManager,
+                notificationService: notificationService
+            )
+        }
     }
 }
 ```
 
-### **ШАГ 4: Дополнительное тестирование**
+### **ШАГ 5: Дополнительное тестирование**
 
-#### 4.1 Создание тестов для новых ViewModels
+#### 5.1 Создание тестов для новых ViewModels
 ```swift
-// Tests/Presentation/ViewModels/ReportsViewModelTests.swift
+// Tests/Presentation/ViewModels/MainViewModelTests.swift
 @MainActor
-class ReportsViewModelTests: XCTestCase {
-    var viewModel: ReportsViewModel!
+class MainViewModelTests: XCTestCase {
+    var viewModel: MainViewModel!
+    var mockUpdateStatusUseCase: MockUpdateStatusUseCase!
     var mockGetReportsUseCase: MockGetReportsUseCase!
-    var mockCreateReportUseCase: MockCreateReportUseCase!
     
     override func setUp() {
         super.setUp()
+        mockUpdateStatusUseCase = MockUpdateStatusUseCase()
         mockGetReportsUseCase = MockGetReportsUseCase()
-        mockCreateReportUseCase = MockCreateReportUseCase()
-        viewModel = ReportsViewModel(
-            getReportsUseCase: mockGetReportsUseCase,
-            createReportUseCase: mockCreateReportUseCase,
-            updateStatusUseCase: MockUpdateStatusUseCase()
+        viewModel = MainViewModel(
+            updateStatusUseCase: mockUpdateStatusUseCase,
+            getReportsUseCase: mockGetReportsUseCase
         )
     }
     
-    func testLoadReports_Success() async {
+    func testLoadTodayReport_Success() async {
         // Given
-        let expectedReports = [DomainPost(id: UUID(), date: Date(), goodItems: ["Кодил"], badItems: [], published: true, voiceNotes: [], type: .regular)]
-        mockGetReportsUseCase.result = expectedReports
+        let expectedReport = DomainPost(id: UUID(), date: Date(), goodItems: ["Кодил"], badItems: [], published: true, voiceNotes: [], type: .regular)
+        mockGetReportsUseCase.result = [expectedReport]
         
         // When
-        await viewModel.handle(.loadReports)
+        await viewModel.handle(.loadTodayReport)
         
         // Then
-        XCTAssertEqual(viewModel.state.reports.count, 1)
-        XCTAssertEqual(viewModel.state.reports.first?.goodItems, ["Кодил"])
+        XCTAssertEqual(viewModel.state.todayReport?.id, expectedReport.id)
+        XCTAssertFalse(viewModel.state.isLoading)
+        XCTAssertNil(viewModel.state.error)
     }
 }
 ```
 
-#### 4.2 Integration тесты
+#### 5.2 Integration тесты
 ```swift
 // Tests/Integration/ReportFlowTests.swift
 class ReportFlowTests: XCTestCase {
@@ -285,11 +458,12 @@ class ReportFlowTests: XCTestCase {
         let viewModel = dependencyContainer.resolve(ReportsViewModel.self)!
         
         // When
-        await viewModel.handle(.createReport(goodItems: ["Кодил"], badItems: ["Не гулял"]))
+        await viewModel.handle(.loadAllReports)
         
         // Then
-        XCTAssertEqual(viewModel.state.reports.count, 1)
-        XCTAssertEqual(viewModel.state.reportStatus, .inProgress)
+        XCTAssertFalse(viewModel.state.regularReports.isEmpty)
+        XCTAssertFalse(viewModel.state.customReports.isEmpty)
+        XCTAssertFalse(viewModel.state.externalReports.isEmpty)
     }
 }
 ```
@@ -318,7 +492,8 @@ class ReportFlowTests: XCTestCase {
 - [x] Создать ViewModels для всех типов отчетов
 - [x] Мигрировать External Reports на новую архитектуру
 - [x] Исправить критические проблемы с Telegram интеграцией
-- [ ] Обновить оставшиеся Views
+- [ ] Создать настоящие ViewModels для основных Views
+- [ ] Мигрировать основные Views на новую архитектуру
 
 ### ✅ Фаза 5: Infrastructure Layer
 - [x] Мигрировать сервисы
@@ -327,13 +502,14 @@ class ReportFlowTests: XCTestCase {
 
 ### 🔄 Фаза 6: Views
 - [x] Обновить External Reports Views
-- [ ] Обновить оставшиеся Views
+- [ ] Обновить основные Views
 - [ ] Протестировать UI
 
 ### 🔄 Фаза 7: PostStore Refactoring
 - [ ] Заменить PostStore на Use Cases
 - [ ] Удалить дублирующий код
 - [ ] Обновить зависимости
+- [ ] Удалить PostStore и Post модели
 
 ### ✅ Фаза 8: Тестирование
 - [x] Написать unit тесты
@@ -367,7 +543,7 @@ class ReportFlowTests: XCTestCase {
 
 ## 🎯 Следующие шаги
 
-1. **Создать ViewModels** для ReportsView, MainView, SettingsView
+1. **Создать настоящие ViewModels** для MainView, ReportsView, SettingsView
 2. **Мигрировать Views** на использование новых ViewModels
 3. **Удалить PostStore** и заменить на Use Cases
 4. **Дополнительное тестирование** новых компонентов
@@ -379,15 +555,15 @@ class ReportFlowTests: XCTestCase {
 |-----------|--------|----------|----------|
 | **Domain Layer** | ✅ | 100% | Полностью завершен |
 | **Data Layer** | ✅ | 100% | Полностью завершен |
-| **Presentation Layer** | 🔄 | 70% | ViewModels готовы, Views в миграции |
+| **Presentation Layer** | 🔄 | 30% | ViewModels готовы частично, Views в миграции |
 | **Infrastructure Layer** | ✅ | 100% | Полностью завершен |
 | **Testing** | 🔄 | 70% | Unit тесты готовы, нужны integration тесты |
 | **Documentation** | ✅ | 100% | Документация актуализирована |
 
-**Общий прогресс: 75% завершено**
+**Общий прогресс: 65% завершено**
 
 ---
 
 *План миграции создан: 3 августа 2025*
 *Последнее обновление: 5 августа 2025*
-*Статус: 75% завершено* 
+*Статус: 65% завершено* 
