@@ -220,6 +220,10 @@ extension DependencyContainer {
             return SettingsRepository(userDefaultsManager: userDefaultsManager)
         })
         
+        register(TagRepository.self, factory: {
+            return TagRepository(userDefaults: .standard)
+        })
+        
         // Timer Service
         register(PostTimerServiceProtocol.self, factory: {
             let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
