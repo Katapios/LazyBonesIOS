@@ -26,6 +26,12 @@ struct ReportsView: View {
             .scrollIndicators(.hidden)
             .toolbar { toolbarContent }
             .sheet(isPresented: $viewModel.showEvaluationSheet) { evaluationSheetContent }
+            .onAppear {
+                viewModel.loadReports()
+            }
+            .onChange(of: viewModel.store.posts.count) { _, _ in
+                viewModel.refreshUI()
+            }
         }
     }
 

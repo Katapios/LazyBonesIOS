@@ -75,6 +75,12 @@ class ReportsViewModel: ObservableObject {
     /// Загрузить отчеты
     func loadReports() {
         store.load()
+        objectWillChange.send()
+    }
+    
+    /// Принудительно обновить UI
+    func refreshUI() {
+        objectWillChange.send()
     }
     
     /// Обновить отчеты
