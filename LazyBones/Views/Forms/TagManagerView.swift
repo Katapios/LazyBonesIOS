@@ -1,50 +1,48 @@
 import SwiftUI
 
 struct TagManagerView: View {
-    @EnvironmentObject var store: PostStore
-    @State private var tagCategory: Int = 0 // 0 — good, 1 — bad
-    @State private var newTag: String = ""
-    @State private var editingTagIndex: Int? = nil
-    @State private var editingTagText: String = ""
-    @State private var showDeleteTagAlert = false
-    @State private var tagToDelete: String? = nil
+    @StateObject private var viewModel: TagManagerViewModel
+    
+    init(store: PostStore) {
+        self._viewModel = StateObject(wrappedValue: TagManagerViewModel(store: store))
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Picker("Категория тегов", selection: $tagCategory) {
+            Picker("Категория тегов", selection: $viewModel.tagCategory) {
                 Text("Хорошие").tag(0)
                 Text("Плохие").tag(1)
             }
             .pickerStyle(SegmentedPickerStyle())
             HStack {
-                TextField("Добавить тег", text: $newTag)
+                TextField("Добавить тег", text: $viewModel.newTag)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
-                Button(action: addTag) {
+                Button(action: viewModel.addTag) {
                     Image(systemName: "plus.circle.fill")
                         .font(.title2)
-                }.disabled(newTag.trimmingCharacters(in: .whitespaces).isEmpty)
+                }.disabled(viewModel.isNewTagEmpty)
             }
             List {
-                ForEach(currentTags.indices, id: \ .self) { idx in
+                ForEach(viewModel.currentTags.indices, id: \ .self) { idx in
                     HStack {
-                        if editingTagIndex == idx {
-                            TextField("Тег", text: $editingTagText)
+                        if viewModel.editingTagIndex == idx {
+                            TextField("Тег", text: $viewModel.editingTagText)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
                             Button("OK") {
-                                finishEditTag()
-                                editingTagIndex = nil
+                                viewModel.finishEditTag()
+                                viewModel.editingTagIndex = nil
                             }
                             .buttonStyle(PlainButtonStyle())
                         } else {
-                            Text(currentTags[idx])
+                            Text(viewModel.currentTags[idx])
                             Spacer()
-                            Button(action: { startEditTag(idx) }) {
+                            Button(action: { viewModel.startEditTag(idx) }) {
                                 Image(systemName: "pencil")
                             }
                             .buttonStyle(PlainButtonStyle())
                         }
-                        if editingTagIndex != idx {
-                            Button(action: { tagToDelete = currentTags[idx]; showDeleteTagAlert = true }) {
+                        if viewModel.editingTagIndex != idx {
+                            Button(action: { viewModel.prepareDeleteTag(viewModel.currentTags[idx]) }) {
                                 Image(systemName: "trash")
                                     .foregroundColor(.red)
                             }
@@ -57,61 +55,13 @@ struct TagManagerView: View {
         .padding(.horizontal)
         .navigationTitle("Теги")
         .hideKeyboardOnTap()
-        .alert("Удалить тег?", isPresented: $showDeleteTagAlert) {
-            Button("Удалить", role: .destructive) { deleteTag() }
-            Button("Отмена", role: .cancel) { tagToDelete = nil }
+        .alert("Удалить тег?", isPresented: $viewModel.showDeleteTagAlert) {
+            Button("Удалить", role: .destructive) { viewModel.deleteTag() }
+            Button("Отмена", role: .cancel) { viewModel.cancelDeleteTag() }
         }
-    }
-    private var currentTags: [String] {
-        tagCategory == 0 ? store.goodTags : store.badTags
-    }
-    func addTag() {
-        let trimmed = newTag.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
-        if tagCategory == 0 {
-            store.addGoodTag(trimmed)
-        } else {
-            store.addBadTag(trimmed)
-        }
-        newTag = ""
-        
-        // Принудительно обновляем теги для синхронизации с UI
-        store.loadTags()
-    }
-    func startEditTag(_ idx: Int) {
-        editingTagIndex = idx
-        editingTagText = currentTags[idx]
-    }
-    func finishEditTag() {
-        guard let idx = editingTagIndex else { return }
-        let trimmed = editingTagText.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
-        let old = currentTags[idx]
-        if tagCategory == 0 {
-            store.updateGoodTag(old: old, new: trimmed)
-        } else {
-            store.updateBadTag(old: old, new: trimmed)
-        }
-        editingTagIndex = nil
-        editingTagText = ""
-        
-        // Принудительно обновляем теги для синхронизации с UI
-        store.loadTags()
-    }
-    func deleteTag() {
-        guard let tag = tagToDelete else { return }
-        if tagCategory == 0 {
-            store.removeGoodTag(tag)
-        } else {
-            store.removeBadTag(tag)
-        }
-        tagToDelete = nil
-        
-        // Принудительно обновляем теги для синхронизации с UI
-        store.loadTags()
     }
 }
 
 #Preview {
-    TagManagerView().environmentObject(PostStore())
+    TagManagerView(store: PostStore())
 } 
