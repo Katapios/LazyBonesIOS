@@ -137,7 +137,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
                 localService: LocalReportService.shared,
                 timerService: PostTimerService(userDefaultsManager: UserDefaultsManager.shared) { _, _ in },
                 notificationService: PostNotificationService(notificationService: NotificationService(), userDefaultsManager: UserDefaultsManager.shared),
-                postsProvider: PostStore.shared
+                postsProvider: self
             )
             return
         }

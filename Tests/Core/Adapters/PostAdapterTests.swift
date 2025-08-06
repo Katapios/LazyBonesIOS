@@ -304,4 +304,78 @@ final class PostAdapterTests: XCTestCase {
         XCTAssertNil(convertedBack.isEvaluated)
         XCTAssertNil(convertedBack.evaluationResults)
     }
+    
+    // MARK: - VoiceNoteAdapter Tests
+    
+    func testVoiceNoteToDomainConversion() {
+        // Given
+        let voiceNote = VoiceNote(
+            id: UUID(),
+            path: "/path/to/voice.m4a"
+        )
+        
+        // When
+        let domainVoiceNote = VoiceNoteAdapter.toDomain(voiceNote)
+        
+        // Then
+        XCTAssertEqual(domainVoiceNote.id, voiceNote.id)
+        XCTAssertEqual(domainVoiceNote.url.path, voiceNote.path)
+        XCTAssertEqual(domainVoiceNote.duration, 0.0) // Legacy doesn't have duration
+    }
+    
+    func testDomainVoiceNoteToLegacyConversion() {
+        // Given
+        let domainVoiceNote = DomainVoiceNote(
+            id: UUID(),
+            url: URL(fileURLWithPath: "/path/to/voice.m4a"),
+            duration: 30.5
+        )
+        
+        // When
+        let voiceNote = VoiceNoteAdapter.toLegacy(domainVoiceNote)
+        
+        // Then
+        XCTAssertEqual(voiceNote.id, domainVoiceNote.id)
+        XCTAssertEqual(voiceNote.path, domainVoiceNote.url.path)
+        // Note: duration is lost in legacy conversion
+    }
+    
+    func testVoiceNoteRoundTripConversion() {
+        // Given
+        let originalVoiceNote = VoiceNote(
+            id: UUID(),
+            path: "/path/to/voice.m4a"
+        )
+        
+        // When
+        let domainVoiceNote = VoiceNoteAdapter.toDomain(originalVoiceNote)
+        let convertedBack = VoiceNoteAdapter.toLegacy(domainVoiceNote)
+        
+        // Then
+        XCTAssertEqual(convertedBack.id, originalVoiceNote.id)
+        XCTAssertEqual(convertedBack.path, originalVoiceNote.path)
+    }
+    
+    func testVoiceNoteArrayConversion() {
+        // Given
+        let voiceNotes = [
+            VoiceNote(id: UUID(), path: "/path/to/voice1.m4a"),
+            VoiceNote(id: UUID(), path: "/path/to/voice2.m4a")
+        ]
+        
+        // When
+        let domainVoiceNotes = voiceNotes.map { VoiceNoteAdapter.toDomain($0) }
+        let convertedBack = domainVoiceNotes.map { VoiceNoteAdapter.toLegacy($0) }
+        
+        // Then
+        XCTAssertEqual(domainVoiceNotes.count, voiceNotes.count)
+        XCTAssertEqual(convertedBack.count, voiceNotes.count)
+        
+        for (index, original) in voiceNotes.enumerated() {
+            XCTAssertEqual(domainVoiceNotes[index].id, original.id)
+            XCTAssertEqual(domainVoiceNotes[index].url.path, original.path)
+            XCTAssertEqual(convertedBack[index].id, original.id)
+            XCTAssertEqual(convertedBack[index].path, original.path)
+        }
+    }
 }

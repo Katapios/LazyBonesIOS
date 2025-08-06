@@ -23,6 +23,7 @@ class DependencyContainer {
         Logger.debug("Registered singleton: \(key)", log: Logger.general)
     }
     
+
     /// Зарегистрировать фабрику для создания сервиса
     func register<T>(_ type: T.Type, factory: @escaping () -> T) {
         let key = String(describing: type)
@@ -106,10 +107,11 @@ extension DependencyContainer {
         // UserDefaults Manager
         register(UserDefaultsManager.self, instance: UserDefaultsManager.shared)
         
-        // Posts Provider (PostStore)
-        register(PostsProviderProtocol.self, factory: {
-            return PostStore.shared
-        })
+        // Posts Provider (PostStoreAdapter)
+        let postStoreAdapter = PostStoreAdapter()
+        register(PostsProviderProtocol.self, instance: postStoreAdapter)
+        // Регистрируем как any DomainPostsProviderProtocol для совместимости с Swift
+        register((any DomainPostsProviderProtocol).self, instance: postStoreAdapter)
         
         // Notification Service
         register(NotificationServiceProtocol.self, factory: {
