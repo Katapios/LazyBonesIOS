@@ -86,7 +86,9 @@ struct GradientRingTimerView: View {
                     .monospacedDigit()
                     .foregroundColor(.primary)
                     .lineLimit(1)
-                    .frame(maxWidth: ringSize * 0.8)
+                    .frame(width: ringSize * 0.8, height: timeFontSize * 1.2, alignment: .center)
+                    .contentTransition(.numericText())
+                    .animation(.easeInOut(duration: 0.3), value: timeText)
                 if let label = label {
                     Text(label)
                         .font(labelFontSize != nil ? .system(size: labelFontSize!, weight: .bold) : .caption2)
@@ -96,6 +98,7 @@ struct GradientRingTimerView: View {
                 }
             }
             .frame(width: ringSize * 0.85)
+            .drawingGroup()
         }
         .padding(.vertical, 2)
     }
