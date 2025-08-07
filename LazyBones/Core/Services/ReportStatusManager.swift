@@ -89,7 +89,7 @@ class ReportStatusManager: ReportStatusManagerProtocol {
         )
         
         // Принудительно сбрасываем статус, если нет отчетов за сегодня
-        if regular == nil && (reportStatus == .sent || reportStatus == .done) {
+        if regular == nil && reportStatus == .sent {
             reportStatus = .notStarted
             saveStatus()
             updateDependencies(.notStarted)

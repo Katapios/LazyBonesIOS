@@ -136,7 +136,7 @@ class UpdateStatusUseCase: UpdateStatusUseCaseProtocol {
     private func shouldResetOnNewDay(_ status: ReportStatus) -> Bool {
         // Сбрасываем статус на новый день для определенных статусов
         switch status {
-        case .sent, .done, .notSent:
+        case .sent, .notSent:
             return true
         case .notStarted, .inProgress, .notCreated:
             return false

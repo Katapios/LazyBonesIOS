@@ -69,7 +69,7 @@ class ReportStatusFactory {
         switch status {
         case .notStarted, .notCreated, .notSent:
             return "gray"
-        case .inProgress, .sent, .done:
+        case .inProgress, .sent:
             return "black"
         }
     }
@@ -79,6 +79,6 @@ class ReportStatusFactory {
         let config = configProvider.config
         guard config.statusSettings.autoResetOnNewDay else { return false }
         
-        return status == .sent || status == .notCreated || status == .notSent || status == .done
+        return status == .sent || status == .notCreated || status == .notSent
     }
 } 

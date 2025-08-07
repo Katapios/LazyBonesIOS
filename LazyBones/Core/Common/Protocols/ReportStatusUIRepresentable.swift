@@ -23,7 +23,7 @@ extension ReportStatus: ReportStatusUIRepresentable {
         switch self {
         case .notStarted, .notCreated, .notSent:
             return .gray
-        case .inProgress, .sent, .done:
+        case .inProgress, .sent:
             return .black
         }
     }
@@ -32,7 +32,7 @@ extension ReportStatus: ReportStatusUIRepresentable {
         switch self {
         case .notStarted, .inProgress:
             return true
-        case .sent, .notCreated, .notSent, .done:
+        case .sent, .notCreated, .notSent:
             return false
         }
     }
@@ -47,8 +47,6 @@ extension ReportStatus: ReportStatusUIRepresentable {
             return "До старта"
         case .notStarted, .inProgress:
             return "До конца"
-        case .done:
-            return "Завершено"
         }
     }
     
@@ -59,12 +57,12 @@ extension ReportStatus: ReportStatusUIRepresentable {
     
     var progress: Double {
         switch self {
-        case .sent, .notCreated, .notSent:
+        case .sent:
+            return 1.0
+        case .notCreated, .notSent:
             return 0.0
         case .notStarted, .inProgress:
             return 0.5 // Будет вычисляться динамически
-        case .done:
-            return 1.0
         }
     }
 }

@@ -4,10 +4,13 @@ import Foundation
 enum ReportStatus: String, Codable {
     case notStarted = "notStarted"
     case inProgress = "inProgress"
-    case done = "done"
+    case sent = "sent"
     case notCreated = "notCreated"
     case notSent = "notSent"
-    case sent = "sent"
+    
+    // MARK: - Legacy Support (deprecated)
+    @available(*, deprecated, renamed: "sent", message: "Use .sent instead of .done")
+    static let done: ReportStatus = .sent
     
     var displayName: String {
         switch self {
@@ -15,14 +18,12 @@ enum ReportStatus: String, Codable {
             return "Заполни отчет"
         case .inProgress:
             return "Отчет заполняется..."
-        case .done:
-            return "Завершен"
+        case .sent:
+            return "Отчет отправлен"
         case .notCreated:
             return "Отчёт не создан"
         case .notSent:
             return "Отчёт не отправлен"
-        case .sent:
-            return "Отчет отправлен"
         }
     }
 }
