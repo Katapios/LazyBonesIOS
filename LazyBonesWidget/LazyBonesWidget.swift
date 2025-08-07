@@ -166,7 +166,7 @@ struct LazyBonesWidgetEntryView : View {
                     .padding(.trailing, 15)
                     .foregroundColor(statusColor)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("𝕷𝖆𝖇: 🅞’𝖙𝖗𝟗𝖈")
+                    Text("𝕷𝖆𝖇: 🅞'𝖙𝖗𝟗𝖈")
                         .font(.headline)
                         .lineLimit(1)
                     Text(entry.deviceName)
@@ -178,7 +178,7 @@ struct LazyBonesWidgetEntryView : View {
                     Text(statusText)
                         .font(.body)
                         .foregroundColor(statusColor)
-                    if entry.reportStatus != "done" {
+                    if entry.reportStatus != "done" && entry.reportStatus != "sent" {
                         Text(entry.timerString)
                             .font(.caption2)
                             .foregroundColor(.secondary)
@@ -248,23 +248,35 @@ struct LazyBonesWidgetEntryView : View {
 
     var statusText: String {
         switch entry.reportStatus {
-        case "done": return "Отчёт сделан"
-        case "inProgress": return "Отчёт заполняется"
-        default: return "Отчёт не сделан"
+        case "done": return "Отчёт завершен"
+        case "sent": return "Отчёт отправлен"
+        case "inProgress": return "Отчёт заполняется..."
+        case "notSent": return "Отчёт не отправлен"
+        case "notCreated": return "Отчёт не создан"
+        case "notStarted": return "Заполни отчет"
+        default: return "Статус неизвестен"
         }
     }
+    
     var statusSymbol: String {
         switch entry.reportStatus {
         case "done": return "checkmark.seal.fill"
-        case "inProgress": return "gearshape.fill"
-        default: return "xmark.seal.fill"
+        case "sent": return "paperplane.fill"
+        case "inProgress": return "pencil.circle.fill"
+        case "notSent": return "tray.fill"
+        case "notCreated": return "doc.fill"
+        case "notStarted": return "exclamationmark.circle.fill"
+        default: return "questionmark.circle.fill"
         }
     }
+    
     var statusColor: Color {
         switch entry.reportStatus {
-        case "done": return .green
+        case "done", "sent": return .green
         case "inProgress": return .orange
-        default: return .red
+        case "notSent": return .yellow
+        case "notCreated", "notStarted": return .red
+        default: return .gray
         }
     }
     func formattedDate(_ date: Date) -> String {
@@ -312,12 +324,15 @@ extension ConfigurationAppIntent {
     }
 }
 
-#Preview(as: .systemSmall) {
+#Preview(as: .systemMedium) {
     LazyBonesWidget()
 } timeline: {
     SimpleEntry(date: .now, reportStatus: "notStarted", deviceName: "iPhone Дениса", timerString: "До старта: 00:00:00")
     SimpleEntry(date: .now, reportStatus: "inProgress", deviceName: "iPhone Дениса", timerString: "До конца: 00:00:00")
-    SimpleEntry(date: .now, reportStatus: "done", deviceName: "iPhone Дениса", timerString: "Время отчёта истекло")
+    SimpleEntry(date: .now, reportStatus: "done", deviceName: "iPhone Дениса", timerString: "")
+    SimpleEntry(date: .now, reportStatus: "sent", deviceName: "iPhone Дениса", timerString: "")
+    SimpleEntry(date: .now, reportStatus: "notSent", deviceName: "iPhone Дениса", timerString: "До конца: 00:00:00")
+    SimpleEntry(date: .now, reportStatus: "notCreated", deviceName: "iPhone Дениса", timerString: "До старта: 00:00:00")
 }
 
 struct Post: Codable, Identifiable {

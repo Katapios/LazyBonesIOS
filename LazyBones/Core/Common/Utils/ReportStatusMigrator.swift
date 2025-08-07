@@ -14,7 +14,7 @@ class ReportStatusMigrator {
     /// Мигрирует массив отчетов, заменяя .done на .sent
     static func migratePosts(_ posts: [Post]) -> [Post] {
         return posts.map { post in
-            var updatedPost = post
+            let updatedPost = post
             // Если есть какие-то внутренние статусы в Post, их тоже можно мигрировать
             return updatedPost
         }
