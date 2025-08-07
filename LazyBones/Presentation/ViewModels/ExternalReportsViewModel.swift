@@ -188,6 +188,14 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
         state.isLoading = true
         state.error = nil
         
+        // Проверяем подключение к Telegram перед попыткой очистки
+        let settings = telegramIntegrationService.loadTelegramSettings()
+        guard settings.token != nil && !settings.token!.isEmpty else {
+            state.error = NSError(domain: "ExternalReports", code: 3, userInfo: [NSLocalizedDescriptionKey: "Telegram не настроен. Проверьте настройки в разделе Settings."])
+            state.isLoading = false
+            return
+        }
+        
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             telegramIntegrationService.deleteAllBotMessages { success in
                 Task { @MainActor in
@@ -202,9 +210,13 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
                         // Обновляем состояние кнопок
                         self.updateButtonStates()
                         
+                        // После успешной очистки перезагружаем состояние
+                        // чтобы синхронизировать UI с сервисом
+                        await self.loadReports()
+                        
                         Logger.info("Successfully cleared external reports history", log: Logger.telegram)
                     } else {
-                        self.state.error = NSError(domain: "ExternalReports", code: 2, userInfo: [NSLocalizedDescriptionKey: "Ошибка очистки истории"])
+                        self.state.error = NSError(domain: "ExternalReports", code: 2, userInfo: [NSLocalizedDescriptionKey: "Ошибка очистки истории. Проверьте подключение к интернету и настройки Telegram."])
                         Logger.error("Failed to clear external reports history", log: Logger.telegram)
                     }
                     self.state.isLoading = false
@@ -284,4 +296,4 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
             }
         }
     }
-} 
+}

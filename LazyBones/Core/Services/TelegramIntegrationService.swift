@@ -14,6 +14,8 @@ protocol TelegramIntegrationServiceProtocol: ObservableObject {
     func saveTelegramSettings(token: String?, chatId: String?, botId: String?)
     func loadTelegramSettings() -> (token: String?, chatId: String?, botId: String?)
     func saveLastUpdateId(_ updateId: Int)
+    func resetLastUpdateId()
+    func refreshTelegramService()
     
     // MARK: - External Posts Management
     func fetchExternalPosts(completion: @escaping (Bool) -> Void)
@@ -30,10 +32,6 @@ protocol TelegramIntegrationServiceProtocol: ObservableObject {
     
     // MARK: - Report Formatting
     func formatCustomReportForTelegram(_ report: Post, deviceName: String) -> String
-    
-    // MARK: - Debug and Maintenance
-    func refreshTelegramService()
-    func resetLastUpdateId()
 }
 
 /// Сервис для интеграции с Telegram
@@ -62,27 +60,9 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
         loadExternalPosts()
     }
     
-    // MARK: - Private Helper Methods
-    
-    /// Получить актуальный TelegramService из DI контейнера
-    private func getCurrentTelegramService() -> TelegramServiceProtocol? {
-        // Пытаемся получить актуальный сервис из DI контейнера
-        if let currentService = DependencyContainer.shared.resolve(TelegramServiceProtocol.self) {
-            return currentService
-        }
-        
-        // Fallback к сохраненному сервису
-        return telegramService
-    }
-    
     // MARK: - Settings Management
     
     func saveTelegramSettings(token: String?, chatId: String?, botId: String?) {
-        Logger.info("Saving Telegram settings", log: Logger.telegram)
-        Logger.info("Token: \(token?.prefix(10) ?? "nil")...", log: Logger.telegram)
-        Logger.info("ChatId: \(chatId ?? "nil")", log: Logger.telegram)
-        Logger.info("BotId: \(botId ?? "nil")", log: Logger.telegram)
-        
         telegramToken = token
         telegramChatId = chatId
         telegramBotId = botId
@@ -92,11 +72,7 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
         
         // Обновляем TelegramService в DI контейнере только если есть валидный токен
         if let token = token, !token.isEmpty {
-            Logger.info("Registering new TelegramService with token", log: Logger.telegram)
             DependencyContainer.shared.registerTelegramService(token: token)
-        } else {
-            Logger.info("Clearing TelegramService (no valid token)", log: Logger.telegram)
-            // Можно добавить очистку сервиса если нужно
         }
     }
     
@@ -106,34 +82,30 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
         telegramBotId = userDefaultsManager.string(forKey: "telegramBotId")
         lastUpdateId = userDefaultsManager.integer(forKey: "lastUpdateId")
         
-        Logger.info("Loaded Telegram settings", log: Logger.telegram)
-        Logger.info("Token: \(telegramToken?.prefix(10) ?? "nil")...", log: Logger.telegram)
-        Logger.info("ChatId: \(telegramChatId ?? "nil")", log: Logger.telegram)
-        Logger.info("LastUpdateId: \(lastUpdateId ?? 0)", log: Logger.telegram)
-        
         // Обновляем TelegramService в DI контейнере если есть токен
         if let token = telegramToken, !token.isEmpty {
-            Logger.info("Updating TelegramService in DI container", log: Logger.telegram)
             DependencyContainer.shared.registerTelegramService(token: token)
         }
         
         return (telegramToken, telegramChatId, telegramBotId)
     }
     
-    /// Принудительно обновить TelegramService в DI контейнере
-    func refreshTelegramService() {
-        Logger.info("Refreshing TelegramService", log: Logger.telegram)
-        if let token = telegramToken, !token.isEmpty {
-            DependencyContainer.shared.registerTelegramService(token: token)
-            Logger.info("TelegramService refreshed successfully", log: Logger.telegram)
-        } else {
-            Logger.warning("Cannot refresh TelegramService - no valid token", log: Logger.telegram)
-        }
-    }
-    
     func saveLastUpdateId(_ updateId: Int) {
         lastUpdateId = updateId
         userDefaultsManager.set(updateId, forKey: "lastUpdateId")
+    }
+    
+    func resetLastUpdateId() {
+        lastUpdateId = nil
+        userDefaultsManager.remove(forKey: "lastUpdateId")
+        Logger.info("Last update ID reset", log: Logger.telegram)
+    }
+    
+    func refreshTelegramService() {
+        // Обновляем TelegramService с новым токеном, если он доступен
+        if let token = telegramToken, !token.isEmpty {
+            DependencyContainer.shared.registerTelegramService(token: token)
+        }
     }
     
     // MARK: - External Posts Management
@@ -148,29 +120,17 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
             return
         }
         
-        Logger.info("Telegram token found: \(String(token.prefix(10)))...", log: Logger.telegram)
-        Logger.info("Last update ID: \(lastUpdateId ?? 0)", log: Logger.telegram)
-        
         Task {
             do {
                 // Получаем TelegramService для обновлений
-                guard let telegramServiceForUpdates = getCurrentTelegramService() else {
+                guard let telegramServiceForUpdates = telegramService else {
                     Logger.error("TelegramService not available", log: Logger.telegram)
-                    Logger.error("telegramService is nil", log: Logger.telegram)
                     completion(false)
                     return
                 }
                 
-                Logger.info("TelegramService is available", log: Logger.telegram)
-                
-                // Если lastUpdateId = 0, получаем все сообщения (не передаем offset)
-                let offset = lastUpdateId == 0 ? nil : lastUpdateId
-                Logger.info("Using offset: \(offset ?? -1) for getUpdates", log: Logger.telegram)
-                
                 // Получаем обновления из Telegram
-                let updates = try await telegramServiceForUpdates.getUpdates(offset: offset)
-                
-                Logger.info("Received \(updates.count) updates from Telegram", log: Logger.telegram)
+                let updates = try await telegramServiceForUpdates.getUpdates(offset: lastUpdateId)
                 
                 // Фильтруем только сообщения (не редактирования)
                 let messages = updates.compactMap { update -> TelegramMessage? in
@@ -188,41 +148,28 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
                 for message in messages {
                     if let post = convertTelegramMessageToPost(message) {
                         newExternalPosts.append(post)
-                        Logger.debug("Converted message \(message.messageId ?? 0) to post", log: Logger.telegram)
-                    } else {
-                        Logger.debug("Failed to convert message \(message.messageId ?? 0)", log: Logger.telegram)
                     }
                 }
                 
-                Logger.info("Successfully converted \(newExternalPosts.count) messages to posts", log: Logger.telegram)
-                
-                // Добавляем новые сообщения к существующим на главном потоке
-                let postsToAdd = newExternalPosts // Создаем копию для использования в MainActor
+                // Обновляем externalPosts на главном потоке
+                let finalExternalPosts = newExternalPosts
                 await MainActor.run {
-                    // Добавляем новые сообщения к существующим
-                    self.externalPosts.append(contentsOf: postsToAdd)
-                    
-                    // Удаляем дубликаты по messageId
-                    let uniquePosts = self.removeDuplicatePosts(self.externalPosts)
-                    self.externalPosts = uniquePosts
-                    
+                    self.externalPosts = finalExternalPosts
                     self.saveExternalPosts()
                     
                     // Обновляем lastUpdateId
                     if let lastUpdate = updates.last {
                         self.lastUpdateId = (lastUpdate.updateId ?? 0) + 1
                         self.userDefaultsManager.set(self.lastUpdateId, forKey: "lastUpdateId")
-                        Logger.info("Updated lastUpdateId to: \(self.lastUpdateId ?? 0)", log: Logger.telegram)
                     }
                     
-                    Logger.info("Added \(postsToAdd.count) new external posts, total: \(self.externalPosts.count)", log: Logger.telegram)
+                    Logger.info("Fetched \(finalExternalPosts.count) external posts", log: Logger.telegram)
                     completion(true)
                 }
                 
             } catch {
                 await MainActor.run {
                     Logger.error("Failed to fetch external posts: \(error)", log: Logger.telegram)
-                    Logger.error("Error details: \(error.localizedDescription)", log: Logger.telegram)
                     completion(false)
                 }
             }
@@ -250,27 +197,9 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
     }
     
     func deleteAllBotMessages(completion: @escaping (Bool) -> Void) {
-        Logger.info("Clearing all external posts history", log: Logger.telegram)
-        
-        // Очищаем все внешние сообщения
-        externalPosts.removeAll()
-        
-        // Сохраняем пустой список
-        saveExternalPosts()
-        
-        // Сбрасываем lastUpdateId для получения всех сообщений заново
-        lastUpdateId = 0
-        userDefaultsManager.set(0, forKey: "lastUpdateId")
-        
-        Logger.info("Successfully cleared all external posts history", log: Logger.telegram)
-        completion(true)
-    }
-    
-    /// Сбросить lastUpdateId для получения всех сообщений заново
-    func resetLastUpdateId() {
-        Logger.info("Resetting lastUpdateId to 0", log: Logger.telegram)
-        lastUpdateId = 0
-        userDefaultsManager.set(0, forKey: "lastUpdateId")
+        // TODO: Реализовать с новым TelegramService
+        Logger.warning("deleteAllBotMessages not implemented yet", log: Logger.telegram)
+        completion(false)
     }
     
     // MARK: - Message Conversion
@@ -278,14 +207,11 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
     func convertTelegramMessageToPost(_ message: TelegramMessage) -> Post? {
         // Если есть текст — обычный текстовый отчет
         if let text = message.text, !text.isEmpty {
-            // Парсим текст для извлечения структурированных данных
-            let (goodItems, badItems, remainingText) = parseReportText(text)
-            
             let post = Post(
                 id: UUID(),
                 date: Date(timeIntervalSince1970: TimeInterval(message.date ?? 0)),
-                goodItems: goodItems,
-                badItems: badItems,
+                goodItems: [],
+                badItems: [],
                 published: false,
                 voiceNotes: [],
                 type: .external,
@@ -296,7 +222,7 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
                 authorLastName: message.from?.lastName,
                 isExternal: true,
                 externalVoiceNoteURLs: nil,
-                externalText: remainingText.isEmpty ? nil : remainingText,
+                externalText: text,
                 externalMessageId: message.messageId,
                 authorId: message.from?.id
             )
@@ -386,144 +312,6 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
         return nil
     }
     
-    // MARK: - Text Parsing
-    
-    /// Парсит текст отчета для извлечения структурированных данных
-    private func parseReportText(_ text: String) -> (goodItems: [String], badItems: [String], remainingText: String) {
-        var goodItems: [String] = []
-        var badItems: [String] = []
-        var remainingText = text
-        
-        // Паттерны для поиска секций
-        let goodPatterns = [
-            "я молодец:",
-            "я молодец",
-            "молодец:",
-            "молодец",
-            "хорошо:",
-            "хорошо",
-            "плюсы:",
-            "плюсы",
-            "+:",
-            "+"
-        ]
-        
-        let badPatterns = [
-            "я не молодец:",
-            "я не молодец",
-            "не молодец:",
-            "не молодец",
-            "плохо:",
-            "плохо",
-            "минусы:",
-            "минусы",
-            "-:",
-            "-"
-        ]
-        
-        // Разбиваем текст на строки
-        let lines = text.components(separatedBy: .newlines)
-        var currentSection: String? = nil
-        var currentItems: [String] = []
-        
-        for line in lines {
-            let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmedLine.isEmpty { continue }
-            
-            // Проверяем, является ли строка заголовком секции
-            let lowercasedLine = trimmedLine.lowercased()
-            
-            if goodPatterns.contains(where: { lowercasedLine.contains($0) }) {
-                // Сохраняем предыдущую секцию
-                if let section = currentSection, !currentItems.isEmpty {
-                    if section == "good" {
-                        goodItems.append(contentsOf: currentItems)
-                    } else if section == "bad" {
-                        badItems.append(contentsOf: currentItems)
-                    }
-                }
-                
-                // Начинаем новую секцию
-                currentSection = "good"
-                currentItems = []
-                continue
-            }
-            
-            if badPatterns.contains(where: { lowercasedLine.contains($0) }) {
-                // Сохраняем предыдущую секцию
-                if let section = currentSection, !currentItems.isEmpty {
-                    if section == "good" {
-                        goodItems.append(contentsOf: currentItems)
-                    } else if section == "bad" {
-                        badItems.append(contentsOf: currentItems)
-                    }
-                }
-                
-                // Начинаем новую секцию
-                currentSection = "bad"
-                currentItems = []
-                continue
-            }
-            
-            // Если это не заголовок, добавляем в текущую секцию
-            if currentSection != nil {
-                // Убираем номера и маркеры в начале строки
-                let cleanedItem = trimmedLine.replacingOccurrences(of: "^\\d+\\.\\s*", with: "", options: .regularExpression)
-                    .replacingOccurrences(of: "^[-•*]\\s*", with: "", options: .regularExpression)
-                
-                if !cleanedItem.isEmpty {
-                    currentItems.append(cleanedItem)
-                }
-            }
-        }
-        
-        // Сохраняем последнюю секцию
-        if let section = currentSection, !currentItems.isEmpty {
-            if section == "good" {
-                goodItems.append(contentsOf: currentItems)
-            } else if section == "bad" {
-                badItems.append(contentsOf: currentItems)
-            }
-        }
-        
-        // Убираем обработанные секции из оставшегося текста
-        var processedText = text
-        for pattern in goodPatterns + badPatterns {
-            processedText = processedText.replacingOccurrences(of: pattern, with: "", options: [.caseInsensitive, .regularExpression])
-        }
-        
-        // Убираем пустые строки и лишние пробелы
-        remainingText = processedText.components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-            .joined(separator: "\n")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        return (goodItems: goodItems, badItems: badItems, remainingText: remainingText)
-    }
-    
-    // MARK: - Utility Methods
-    
-    /// Удаляет дубликаты постов по externalMessageId
-    private func removeDuplicatePosts(_ posts: [Post]) -> [Post] {
-        var seenMessageIds: Set<Int> = []
-        var uniquePosts: [Post] = []
-        
-        for post in posts {
-            if let messageId = post.externalMessageId {
-                if !seenMessageIds.contains(messageId) {
-                    seenMessageIds.insert(messageId)
-                    uniquePosts.append(post)
-                }
-            } else {
-                // Если нет messageId, добавляем пост (может быть локальным)
-                uniquePosts.append(post)
-            }
-        }
-        
-        return uniquePosts
-    }
-    
     // MARK: - Combined Posts
     
     func getAllPosts() -> [Post] {
@@ -534,7 +322,7 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
     // MARK: - Report Formatting
     
     func formatCustomReportForTelegram(_ report: Post, deviceName: String) -> String {
-        if let telegramService = getCurrentTelegramService() as? TelegramService {
+        if let telegramService = telegramService as? TelegramService {
             return telegramService.formatCustomReportForTelegram(report, deviceName: deviceName)
         } else {
             // Fallback форматирование если TelegramService недоступен
@@ -544,7 +332,7 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
             if !report.goodItems.isEmpty {
                 message += "✅ <b>План:</b>\n"
                 for (index, item) in report.goodItems.enumerated() {
-                    let status = if let evaluationResults = report.evaluationResults, 
+                    let status = if let evaluationResults = report.evaluationResults,
                                    index < evaluationResults.count {
                         evaluationResults[index] ? "✅" : "❌"
                     } else {
@@ -568,4 +356,4 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
 }
 
 // MARK: - Typealias for easier usage
-typealias TelegramIntegrationServiceType = any TelegramIntegrationServiceProtocol 
+typealias TelegramIntegrationServiceType = any TelegramIntegrationServiceProtocol
