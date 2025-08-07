@@ -65,7 +65,7 @@ class PostFormViewModel: ObservableObject {
     }
     
     var isReportDone: Bool {
-        store.reportStatus == .done
+        store.reportStatus == .sent
     }
     
     // MARK: - Methods

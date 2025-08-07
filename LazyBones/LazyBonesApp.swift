@@ -20,6 +20,9 @@ struct LazyBonesApp: App {
     init() {
         Logger.info("App initializing", log: Logger.general)
         
+        // Миграция статусов для обратной совместимости
+        ReportStatusMigrator.performFullMigration()
+        
         // Тестирование конфигурационных переменных
         #if DEBUG
         ConfigTest.testAllConfigVariables()

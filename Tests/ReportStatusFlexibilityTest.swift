@@ -124,7 +124,6 @@ class ReportStatusFlexibilityTest: XCTestCase {
         XCTAssertTrue(factory.shouldResetOnNewDay(.sent))
         XCTAssertTrue(factory.shouldResetOnNewDay(.notCreated))
         XCTAssertTrue(factory.shouldResetOnNewDay(.notSent))
-        XCTAssertTrue(factory.shouldResetOnNewDay(.done))
         XCTAssertFalse(factory.shouldResetOnNewDay(.notStarted))
         XCTAssertFalse(factory.shouldResetOnNewDay(.inProgress))
     }
@@ -132,7 +131,7 @@ class ReportStatusFlexibilityTest: XCTestCase {
     // MARK: - Тесты UI свойств
     
     func testUIProperties() {
-        let statuses: [ReportStatus] = [.notStarted, .inProgress, .sent, .notCreated, .notSent, .done]
+        let statuses: [ReportStatus] = [.notStarted, .inProgress, .sent, .notCreated, .notSent]
         
         for status in statuses {
             // Проверяем, что у каждого статуса есть отображаемое имя
@@ -157,7 +156,6 @@ class ReportStatusFlexibilityTest: XCTestCase {
         XCTAssertFalse(ReportStatus.sent.isEnabled)
         XCTAssertFalse(ReportStatus.notCreated.isEnabled)
         XCTAssertFalse(ReportStatus.notSent.isEnabled)
-        XCTAssertFalse(ReportStatus.done.isEnabled)
     }
     
     // MARK: - Тесты расширяемости

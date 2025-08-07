@@ -73,7 +73,6 @@ struct MainState {
     /// Текст статуса
     var reportStatusText: String {
         switch reportStatus {
-        case .done: return "Отчёт отправлен"
         case .inProgress: return "Отчет заполняется..."
         case .notStarted: return "Заполни отчет!"
         case .notCreated: return "Отчёт не создан"
@@ -85,7 +84,6 @@ struct MainState {
     /// Цвет статуса
     var reportStatusColor: Color {
         switch reportStatus {
-        case .done: return .black
         case .inProgress: return .black
         case .notStarted: return .gray
         case .notCreated: return .gray

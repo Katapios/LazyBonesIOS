@@ -42,8 +42,9 @@ class LocalReportService {
     }
     
     func getReportStatus() -> ReportStatus {
-        if let raw = userDefaults?.string(forKey: reportStatusKey), let status = ReportStatus(rawValue: raw) {
-            return status
+        if let raw = userDefaults?.string(forKey: reportStatusKey) {
+            // Используем миграцию для обратной совместимости
+            return ReportStatusMigrator.migrateStatus(raw)
         }
         return .notStarted
     }

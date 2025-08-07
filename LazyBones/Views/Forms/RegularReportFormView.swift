@@ -676,6 +676,6 @@ struct RegularReportFormView: View {
 
 private func createStoreWithDoneStatus() -> PostStore {
     let store = PostStore()
-    store.reportStatus = .done
+    store.reportStatus = .sent
     return store
 } 

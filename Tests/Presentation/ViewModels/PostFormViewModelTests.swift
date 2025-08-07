@@ -100,7 +100,7 @@ class PostFormViewModelTests: XCTestCase {
     
     func testIsReportDone_WhenStatusDone_ReturnsTrue() {
         // Given
-        mockStore.reportStatus = .done
+        mockStore.reportStatus = .sent
         
         // When
         let result = viewModel.isReportDone

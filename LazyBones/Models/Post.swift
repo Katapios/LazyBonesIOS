@@ -515,7 +515,7 @@ extension PostStore {
         let now = Date()
         let today = calendar.startOfDay(for: now)
         let hasTodayPost = posts.contains(where: { calendar.isDate($0.date, inSameDayAs: today) })
-        if !hasTodayPost || (reportStatus == .done && hasTodayPost) {
+        if !hasTodayPost || (reportStatus == .sent && hasTodayPost) {
             updateReportStatus()
         }
     }

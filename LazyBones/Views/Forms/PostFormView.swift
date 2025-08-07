@@ -436,6 +436,6 @@ struct PostFormView: View {
 
 #Preview("PostFormView - Status Done") {
     let store = PostStore()
-    store.reportStatus = .done
+    store.reportStatus = .sent
     return PostFormView(store: store)
 }

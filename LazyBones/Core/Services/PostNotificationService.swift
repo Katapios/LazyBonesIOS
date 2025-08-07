@@ -50,7 +50,7 @@ class PostNotificationService: PostNotificationServiceProtocol {
         let reportStatus = getReportStatus()
         
         // Если отчет уже завершен, не планируем уведомления
-        if reportStatus == .done {
+        if reportStatus == .sent {
             Logger.info("Report already done, no notifications needed", log: Logger.notifications)
             return
         }

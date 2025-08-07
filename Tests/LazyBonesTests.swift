@@ -66,7 +66,7 @@ struct LazyBonesTests {
         store.notificationStartHour = 8
         store.notificationEndHour = 22
         store.notificationsEnabled = true
-        store.reportStatus = .done
+        store.reportStatus = .sent
         // scheduleNotifications не должен создавать уведомления
         // (Проверка: функция просто завершится без ошибок)
         store.scheduleNotifications()

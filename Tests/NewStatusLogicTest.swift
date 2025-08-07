@@ -36,7 +36,7 @@ class NewStatusLogicTest: XCTestCase {
         
         // Кнопка активна только для .notStarted и .inProgress
         let activeStatuses: [ReportStatus] = [.notStarted, .inProgress]
-        let inactiveStatuses: [ReportStatus] = [.sent, .notCreated, .notSent, .done]
+        let inactiveStatuses: [ReportStatus] = [.sent, .notCreated, .notSent]
         
         for status in activeStatuses {
             print("Кнопка активна для статуса: \(status.displayName)")

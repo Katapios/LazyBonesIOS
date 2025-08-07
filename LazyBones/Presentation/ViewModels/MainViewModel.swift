@@ -45,7 +45,6 @@ class MainViewModel: ObservableObject {
     
     var reportStatusText: String {
         switch store.reportStatus {
-        case .done: return "Отчёт отправлен"
         case .inProgress: return "Отчет заполняется..."
         case .notStarted: return "Заполни отчет!"
         case .notCreated: return "Отчёт не создан"
@@ -56,7 +55,6 @@ class MainViewModel: ObservableObject {
     
     var reportStatusColor: Color {
         switch store.reportStatus {
-        case .done: return .black
         case .inProgress: return .black
         case .notStarted: return .gray
         case .notCreated: return .gray

@@ -54,7 +54,7 @@ class MainViewModelTests: XCTestCase {
     func testReportStatusText_ReturnsCorrectText() {
         // Given
         let testCases: [(ReportStatus, String)] = [
-            (.done, "Отчёт отправлен"),
+            
             (.inProgress, "Отчет заполняется..."),
             (.notStarted, "Заполни отчет!"),
             (.notCreated, "Отчёт не создан"),
@@ -73,7 +73,7 @@ class MainViewModelTests: XCTestCase {
     
     func testReportStatusColor_ReturnsCorrectColor() {
         // Given
-        let blackStatuses: [ReportStatus] = [.done, .inProgress, .sent]
+        let blackStatuses: [ReportStatus] = [.inProgress, .sent]
         let grayStatuses: [ReportStatus] = [.notStarted, .notCreated, .notSent]
         
         for status in blackStatuses {
@@ -148,7 +148,7 @@ class MainViewModelTests: XCTestCase {
     
     func testCanEditReport_ReturnsFalseForNonEditableStatuses() {
         // Given
-        let nonEditableStatuses: [ReportStatus] = [.done, .notCreated, .notSent, .sent]
+        let nonEditableStatuses: [ReportStatus] = [.notCreated, .notSent, .sent]
         
         for status in nonEditableStatuses {
             // When
@@ -212,7 +212,7 @@ class MainViewModelTests: XCTestCase {
     
     func testButtonColor_ReturnsBlackForActiveStatuses() {
         // Given
-        let blackStatuses: [ReportStatus] = [.done, .inProgress, .notStarted]
+        let blackStatuses: [ReportStatus] = [.inProgress, .notStarted]
         
         for status in blackStatuses {
             // When

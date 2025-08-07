@@ -32,7 +32,7 @@ class ReportPeriodLogicTest: XCTestCase {
     
     func testReportStatusLogic() {
         // Тестируем логику статусов
-        let statuses: [ReportStatus] = [.notStarted, .inProgress, .done, .notCreated, .notSent, .sent]
+        let statuses: [ReportStatus] = [.notStarted, .inProgress, .sent, .notCreated, .notSent]
         
         for status in statuses {
             print("Статус: \(status) - \(status.displayName)")
@@ -42,8 +42,6 @@ class ReportPeriodLogicTest: XCTestCase {
                 XCTAssertEqual(status.displayName, "Заполни отчет")
             case .inProgress:
                 XCTAssertEqual(status.displayName, "Отчет заполняется...")
-            case .done:
-                XCTAssertEqual(status.displayName, "Завершен")
             case .notCreated:
                 XCTAssertEqual(status.displayName, "Отчёт не создан")
             case .notSent:
