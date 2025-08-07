@@ -197,9 +197,16 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
     }
     
     func deleteAllBotMessages(completion: @escaping (Bool) -> Void) {
-        // TODO: Реализовать с новым TelegramService
-        Logger.warning("deleteAllBotMessages not implemented yet", log: Logger.telegram)
-        completion(false)
+        // В первую очередь очищаем локальное хранилище
+        externalPosts.removeAll()
+        saveExternalPosts()
+        
+        // Сбрасываем lastUpdateId для возможности получения новых сообщений
+        lastUpdateId = nil
+        userDefaultsManager.remove(forKey: "lastUpdateId")
+        
+        Logger.info("Successfully cleared all external posts and reset update ID", log: Logger.telegram)
+        completion(true)
     }
     
     // MARK: - Message Conversion
