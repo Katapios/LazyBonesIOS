@@ -28,50 +28,116 @@ enum BackgroundTaskServiceError: Error, LocalizedError {
 
 /// Реализация сервиса фоновых задач
 class BackgroundTaskService: BackgroundTaskServiceProtocol {
+    // MARK: - Singleton
+    static let shared = BackgroundTaskService()
     
-    private let taskIdentifier = AppConfig.backgroundTaskIdentifier
+    // MARK: - Properties
+    private let taskIdentifier: String
     private let userDefaultsManager: UserDefaultsManager
     private let autoSendService: AutoSendServiceType
+    private let registrationQueue = DispatchQueue(label: "com.katapios.LazyBones1.backgroundTaskRegistration")
+    private var isRegistered = false
     
-    init(userDefaultsManager: UserDefaultsManager = .shared, autoSendService: AutoSendServiceType? = nil) {
-        self.userDefaultsManager = userDefaultsManager
-        self.autoSendService = autoSendService ?? DependencyContainer.shared.resolve(AutoSendServiceType.self)!
+    // MARK: - Initialization
+    private init() {
+        // Initialize with default values first
+        self.userDefaultsManager = .shared
+        self.taskIdentifier = AppConfig.backgroundTaskIdentifier
+        
+        // Try to resolve autoSendService, but don't force unwrap
+        if let autoSendService = DependencyContainer.shared.resolve(AutoSendServiceType.self) {
+            self.autoSendService = autoSendService
+        } else {
+            // Fallback to a default implementation if resolution fails
+            Logger.error("Failed to resolve AutoSendService, using fallback", log: Logger.background)
+            let userDefaultsManager = UserDefaultsManager.shared
+            // Create a default TelegramService with empty token for fallback
+            let telegramService = TelegramService(token: "")
+            let postTelegramService = PostTelegramService(
+                telegramService: telegramService,
+                userDefaultsManager: userDefaultsManager
+            )
+            self.autoSendService = AutoSendService(
+                userDefaultsManager: userDefaultsManager,
+                postTelegramService: postTelegramService
+            )
+        }
+        
+        Logger.info("BackgroundTaskService initialized with identifier: \(self.taskIdentifier)", log: Logger.background)
     }
     
     // MARK: - BackgroundTaskServiceProtocol
     
     func registerBackgroundTasks() throws {
-        Logger.info("Registering background tasks", log: Logger.background)
+        var registrationError: Error?
         
-        BGTaskScheduler.shared.register(
-            forTaskWithIdentifier: taskIdentifier,
-            using: nil
-        ) { task in
-            Logger.info("Background task triggered: \(self.taskIdentifier)", log: Logger.background)
-            Task {
-                if let refreshTask = task as? BGAppRefreshTask {
-                    await self.handleSendReportTask(refreshTask)
-                } else {
-                    Logger.error("Unexpected task type: \(type(of: task))", log: Logger.background)
+        registrationQueue.sync {
+            guard !self.isRegistered else {
+                Logger.info("Background tasks already registered, skipping", log: Logger.background)
+                return
+            }
+            
+            Logger.info("Registering background tasks with identifier: \(self.taskIdentifier)", log: Logger.background)
+            
+            let success = BGTaskScheduler.shared.register(
+                forTaskWithIdentifier: self.taskIdentifier,
+                using: nil
+            ) { [weak self] task in
+                guard let self = self else {
                     task.setTaskCompleted(success: false)
+                    return
+                }
+                
+                Logger.info("Background task triggered: \(self.taskIdentifier)", log: Logger.background)
+                
+                Task {
+                    if let refreshTask = task as? BGAppRefreshTask {
+                        await self.handleSendReportTask(refreshTask)
+                    } else {
+                        Logger.error("Unexpected task type: \(type(of: task))", log: Logger.background)
+                        task.setTaskCompleted(success: false)
+                    }
                 }
             }
+            
+            if success {
+                self.isRegistered = true
+                Logger.info("Background tasks registered successfully", log: Logger.background)
+            } else {
+                Logger.error("Failed to register background task", log: Logger.background)
+                registrationError = BackgroundTaskServiceError.registrationFailed
+            }
         }
-        Logger.info("Background tasks registered successfully", log: Logger.background)
+        
+        if let error = registrationError {
+            throw error
+        }
     }
     
     func scheduleSendReportTask() throws {
         Logger.info("Scheduling send report background task", log: Logger.background)
         
-        let request = BGAppRefreshTaskRequest(identifier: taskIdentifier)
+        // First, cancel any existing tasks to avoid duplicates
+        BGTaskScheduler.shared.cancelAllTaskRequests()
+        
+        let request = BGAppRefreshTaskRequest(identifier: self.taskIdentifier)
         let earliestBeginDate = calculateEarliestBeginDate()
         request.earliestBeginDate = earliestBeginDate
         
         do {
             try BGTaskScheduler.shared.submit(request)
-            Logger.info("Background task scheduled for: \(earliestBeginDate)", log: Logger.background)
+            Logger.info("✅ Background task scheduled for: \(earliestBeginDate)", log: Logger.background)
+            
+            // Log all pending task requests for debugging
+            BGTaskScheduler.shared.getPendingTaskRequests { requests in
+                Logger.info("Pending task requests: \(requests.count)", log: Logger.background)
+                for (index, request) in requests.enumerated() {
+                    Logger.info("Task \(index + 1): ID=\(request.identifier), earliestBeginDate=\(String(describing: request.earliestBeginDate))", log: Logger.background)
+                }
+            }
+            
         } catch {
-            Logger.error("Failed to schedule background task: \(error)", log: Logger.background)
+            Logger.error("❌ Failed to schedule background task: \(error)", log: Logger.background)
             throw BackgroundTaskServiceError.schedulingFailed
         }
     }
@@ -87,15 +153,15 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
         
         do {
             // Проверяем настройки автоотправки через AutoSendService
-            if autoSendService.autoSendEnabled {
+            if self.autoSendService.autoSendEnabled {
                 Logger.info("Auto-send enabled, processing reports", log: Logger.background)
-                await processAutoSendReports()
+                await self.processAutoSendReports()
             } else {
                 Logger.info("Auto-send disabled, skipping", log: Logger.background)
             }
             
             // Планируем следующую задачу
-            try scheduleSendReportTask()
+            try self.scheduleSendReportTask()
             
             // Завершаем задачу успешно
             task.setTaskCompleted(success: true)
@@ -137,9 +203,18 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
     private func processAutoSendReports() async {
         Logger.info("Processing auto-send reports", log: Logger.background)
         
-        // Используем AutoSendService для автоотправки отчетов
-        autoSendService.performAutoSendReport()
-        Logger.info("Auto-send reports sent", log: Logger.background)
+        // Check if auto-send is still enabled before proceeding
+        guard self.autoSendService.autoSendEnabled else {
+            Logger.info("Auto-send is disabled, skipping report sending", log: Logger.background)
+            return
+        }
+        
+        // Use AutoSendService to send reports
+        Logger.info("Initiating auto-send via AutoSendService", log: Logger.background)
+        self.autoSendService.performAutoSendReport()
+        
+        // Log completion
+        Logger.info("Auto-send reports processing completed", log: Logger.background)
     }
     
     // MARK: - Helper Methods

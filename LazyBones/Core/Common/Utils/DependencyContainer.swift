@@ -119,14 +119,7 @@ extension DependencyContainer {
         })
         
         // Background Task Service
-        register(BackgroundTaskServiceProtocol.self, factory: {
-            let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
-            let autoSendService = self.resolve(AutoSendServiceType.self)!
-            return BackgroundTaskService(
-                userDefaultsManager: userDefaultsManager,
-                autoSendService: autoSendService
-            )
-        })
+        register(BackgroundTaskServiceProtocol.self, instance: BackgroundTaskService.shared)
         
         // Telegram Service
         register(TelegramServiceProtocol.self, factory: {

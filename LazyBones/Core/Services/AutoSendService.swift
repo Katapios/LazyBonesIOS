@@ -113,22 +113,32 @@ class AutoSendService: AutoSendServiceProtocol {
     }
     
     func scheduleAutoSendIfNeeded() {
+        Logger.info("Scheduling auto-send if needed", log: Logger.background)
+        
+        // Invalidate any existing timer
         autoSendTimer?.invalidate()
+        
         guard autoSendEnabled else { 
-            print("[AutoSend] Disabled")
+            Logger.info("Auto-send is disabled, skipping scheduling", log: Logger.background)
             return 
         }
         
-        // Планируем фоновую задачу через BackgroundTaskService
+        // Schedule the background task
         do {
             let backgroundTaskService = DependencyContainer.shared.resolve(BackgroundTaskServiceProtocol.self)!
             try backgroundTaskService.scheduleSendReportTask()
-            print("[AutoSend] Background task scheduled")
+            Logger.info("✅ Background task scheduled successfully", log: Logger.background)
         } catch {
-            print("[AutoSend] Failed to schedule background task: \(error)")
+            Logger.error("❌ Failed to schedule background task: \(error)", log: Logger.background)
+            
+            // Try to recover by rescheduling after a delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 60) { [weak self] in
+                Logger.info("Retrying background task scheduling after error", log: Logger.background)
+                self?.scheduleAutoSendIfNeeded()
+            }
         }
         
-        // Для отладки используем Timer в DEBUG режиме
+        // For debugging in DEBUG mode, use a Timer
         #if DEBUG
         let now = Date()
         let cal = Calendar.current
@@ -140,27 +150,52 @@ class AutoSendService: AutoSendServiceProtocol {
         ) ?? autoSendTime
         
         let interval = todaySend.timeIntervalSince(now)
-        print("[AutoSend] DEBUG: Scheduling timer for", todaySend, "in", interval, "seconds")
+        Logger.info("DEBUG: Scheduling timer for \(todaySend) in \(interval) seconds", log: Logger.background)
         
         if interval > 0 {
             autoSendTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] _ in
+                Logger.info("DEBUG: Timer fired, performing auto-send", log: Logger.background)
                 self?.performAutoSendReport()
             }
+        } else {
+            Logger.info("DEBUG: Not scheduling timer as interval is negative: \(interval)", log: Logger.background)
         }
         #endif
     }
     
     func performAutoSendReport() {
-        postTelegramService.performAutoSendReport {
-            // Обновляем статус после отправки
+        Logger.info("Starting auto-send report process", log: Logger.background)
+        
+        // Update last auto-send status
+        lastAutoSendStatus = "Sending..."
+        lastAutoSendDate = Date()
+        
+        postTelegramService.performAutoSendReport { [weak self] in
+            guard let self = self else { return }
+            
+            // Update status after sending
             DispatchQueue.main.async {
-                // Обновляем статус через PostStore если он доступен
+                Logger.info("Auto-send report completed, updating UI", log: Logger.background)
+                
+                // Update status via PostStore if available
                 if let postStore = DependencyContainer.shared.resolve(PostsProviderProtocol.self) as? PostStore {
                     postStore.updateReportStatus()
-                    print("[DEBUG] Автоотправка: статус обновлен через updateReportStatus()")
+                    Logger.info("Report status updated via PostStore", log: Logger.background)
+                } else {
+                    Logger.warning("PostStore not available for status update", log: Logger.background)
                 }
                 
+                // Update last status and save
+                self.lastAutoSendStatus = "Last sent: \(Date().formatted())"
+                self.saveAutoSendSettings()
+                
+                // Reload widgets
                 WidgetCenter.shared.reloadAllTimelines()
+                
+                // Reschedule the next auto-send
+                self.scheduleAutoSendIfNeeded()
+                
+                Logger.info("Auto-send process completed successfully", log: Logger.background)
             }
         }
     }
