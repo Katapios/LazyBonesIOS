@@ -653,7 +653,7 @@ Tests/
 
 ## 📋 Статус миграции на Clean Architecture
 
-### ✅ Завершено (75%)
+### ✅ Завершено (80%)
 - [x] **Domain Layer**: Entities, Use Cases, Repository Protocols
 - [x] **Data Layer**: Repositories, Data Sources, Mappers
 - [x] **Presentation Layer**: ViewModels, States, Events (частично завершено)
@@ -690,7 +690,7 @@ Tests/
 | **Testing** | 🔄 | 70% | Unit тесты готовы, нужны integration тесты |
 | **Documentation** | ✅ | 100% | Документация актуализирована |
 
-**Общий прогресс: 75% завершено**
+**Общий прогресс: 80% завершено**
 
 ---
 
