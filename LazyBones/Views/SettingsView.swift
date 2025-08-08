@@ -106,9 +106,9 @@ struct SettingsView: View {
         Section(header: Text("Настройка уведомлений")) {
             Toggle("Получать уведомления", isOn: viewModel.notificationsEnabled)
             if viewModel.store.notificationsEnabled {
-                Picker("Режим уведомлений", selection: viewModel.notificationMode) {
+                Picker("Режим уведомлений", selection: $viewModel.store.notificationMode) {
                     ForEach(NotificationMode.allCases, id: \.self) { mode in
-                        Text(mode.description).tag(mode as NotificationMode)
+                        Text(mode.displayName).tag(mode)
                     }
                 }
                 .pickerStyle(.segmented)

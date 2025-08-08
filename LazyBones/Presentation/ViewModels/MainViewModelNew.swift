@@ -70,7 +70,7 @@ class MainViewModelNew: BaseViewModel<MainState, MainEvent>, LoadableViewModel {
         
         do {
             // Загружаем настройки уведомлений
-            let notificationSettings = try await settingsRepository.loadNotificationSettings()
+            let notificationSettings = try await settingsRepository.getNotificationSettings()
             state.notificationStartHour = notificationSettings.startHour
             state.notificationEndHour = notificationSettings.endHour
             

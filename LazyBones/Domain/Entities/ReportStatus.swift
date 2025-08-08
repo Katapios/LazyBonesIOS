@@ -1,7 +1,7 @@
 import Foundation
 
 /// Domain Entity - Статус отчета
-enum ReportStatus: String, Codable {
+public enum ReportStatus: String, Codable {
     case notStarted = "notStarted"
     case inProgress = "inProgress"
     case sent = "sent"
@@ -27,16 +27,3 @@ enum ReportStatus: String, Codable {
         }
     }
 }
-
-/// Режим уведомлений
-enum NotificationMode: String, Codable, CaseIterable {
-    case hourly
-    case twice
-    
-    var description: String {
-        switch self {
-        case .hourly: return "Каждый час"
-        case .twice: return "2 раза в день"
-        }
-    }
-} 

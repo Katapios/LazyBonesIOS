@@ -211,8 +211,8 @@ extension DependencyContainer {
         })
         
         register(SettingsRepository.self, factory: {
-            let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
-            return SettingsRepository(userDefaultsManager: userDefaultsManager)
+            // Using default parameters for SettingsRepository
+            return SettingsRepository()
         })
         
         register(TagRepository.self, factory: {

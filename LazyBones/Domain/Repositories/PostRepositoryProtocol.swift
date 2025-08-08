@@ -23,31 +23,3 @@ protocol TagRepositoryProtocol {
     func updateGoodTag(old: String, new: String) async throws
     func updateBadTag(old: String, new: String) async throws
 }
-
-/// Протокол репозитория для работы с настройками
-protocol SettingsRepositoryProtocol {
-    func saveNotificationSettings(
-        enabled: Bool,
-        mode: NotificationMode,
-        intervalHours: Int,
-        startHour: Int,
-        endHour: Int
-    ) async throws
-    
-    func loadNotificationSettings() async throws -> (
-        enabled: Bool,
-        mode: NotificationMode,
-        intervalHours: Int,
-        startHour: Int,
-        endHour: Int
-    )
-    
-    func saveTelegramSettings(token: String?, chatId: String?, botId: String?) async throws
-    func loadTelegramSettings() async throws -> (token: String?, chatId: String?, botId: String?)
-    
-    func saveReportStatus(_ status: ReportStatus) async throws
-    func loadReportStatus() async throws -> ReportStatus
-    
-    func saveForceUnlock(_ forceUnlock: Bool) async throws
-    func loadForceUnlock() async throws -> Bool
-} 
