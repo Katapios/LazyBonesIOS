@@ -95,7 +95,7 @@ public final class SettingsMigrationManager {
         }
         
         // Мигрируем настройки приложения
-        var deviceName = UIDevice.current.name
+        var deviceName = await getDeviceName()
         if let savedDeviceName = oldUserDefaults.string(forKey: "deviceName"), !savedDeviceName.isEmpty {
             deviceName = savedDeviceName
         }
@@ -114,10 +114,18 @@ public final class SettingsMigrationManager {
         // После успешной миграции помечаем старые настройки для удаления
         // (удаляем в следующем запуске, чтобы не потерять данные при ошибке)
         UserDefaults.standard.set(true, forKey: "shouldCleanupOldSettings")
+        
+        // Очищаем старые настройки
+        await cleanupOldSettingsIfNeeded()
+    }
+    
+    /// Получает имя устройства
+    private func getDeviceName() async -> String {
+        return await UIDevice.current.name
     }
     
     /// Очищает старые настройки, если миграция была выполнена успешно
-    public func cleanupOldSettingsIfNeeded() {
+    public func cleanupOldSettingsIfNeeded() async {
         guard UserDefaults.standard.bool(forKey: "shouldCleanupOldSettings") else {
             return
         }

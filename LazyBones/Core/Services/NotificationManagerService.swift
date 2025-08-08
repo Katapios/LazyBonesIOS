@@ -199,7 +199,6 @@ class NotificationManagerService: NotificationManagerServiceProtocol {
         case .hourly:
             return "Каждый час с \(startHour):00 до \(endHour):00"
         case .twice:
-            let interval = notificationIntervalHours
             return "Дважды в день с \(startHour):00 до \(endHour):00"
         case .daily:
             return "Каждый день в \(startHour):00"
