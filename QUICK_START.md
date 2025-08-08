@@ -1,7 +1,7 @@
 # 🚀 Быстрый старт - LazyBones
 
 ## 📊 Статус проекта
-**Миграция на Clean Architecture: 65% завершено**
+**Миграция на Clean Architecture: 80% завершено**
 
 ## 🎯 Что нужно сделать
 
@@ -46,13 +46,13 @@ struct MainView: View {
 ## 📋 Быстрый чек-лист
 
 ### Создать ViewModels (1-2 недели)
-- [ ] `MainViewModel` с `BaseViewModel<MainState, MainEvent>`
-- [ ] `ReportsViewModel` с `BaseViewModel<ReportsState, ReportsEvent>`
+- [x] `MainViewModelNew` с `BaseViewModel<MainState, MainEvent>`
+- [x] `ReportsViewModelNew` с `BaseViewModel<ReportsState, ReportsEvent>`
 - [ ] `SettingsViewModel` с `BaseViewModel<SettingsState, SettingsEvent>`
 - [ ] `TagManagerViewModel` с `BaseViewModel<TagManagerState, TagManagerEvent>`
 
 ### Мигрировать Views (1-2 недели)
-- [ ] `MainView` - убрать `store: PostStore`
+- [x] `MainView` - заменить на `MainViewNew`
 - [ ] `ReportsView` - убрать `store: PostStore`
 - [ ] `SettingsView` - убрать `store: PostStore`
 - [ ] `TagManagerView` - убрать `store: PostStore`
@@ -65,7 +65,7 @@ struct MainView: View {
 ## 📁 Ключевые файлы
 
 ### Готовые (новая архитектура)
-- `ExternalReportsView.swift` - единственный View с новой архитектурой
+- `ExternalReportsView.swift`, `MainViewNew.swift` — Views с новой архитектурой (ReportsViewClean.swift — в разработке)
 - `ExternalReportsViewModel.swift` - использует Use Cases
 - `RegularReportsViewModel.swift` - использует Use Cases
 - `CustomReportsViewModel.swift` - использует Use Cases

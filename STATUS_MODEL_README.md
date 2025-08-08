@@ -8,8 +8,8 @@
 
 ### Единый источник истины
 - Все статусы определены в `ReportStatus` enum
-- Централизованное обновление через `PostStore.updateReportStatus()`
-- Синхронизация между сервисами через callbacks
+- Централизованное обновление через `ReportStatusManager.updateStatus()` (в `PostStore` — делегирование)
+- Сервисы (`PostTimerService`, `NotificationManagerService`, виджеты) обновляются реактивно
 
 ### Реактивность
 - Использование `@Published` для автоматического обновления UI

@@ -1,6 +1,6 @@
 # 🏗️ План миграции на Clean Architecture
 
-## 📊 Статус: 65% завершено
+## 📊 Статус: 80% завершено
 
 **Дата**: 5 августа 2025  
 **Статус**: Domain/Data готовы, Presentation в процессе
@@ -50,6 +50,7 @@ class MainViewModel: ObservableObject {
 ```swift
 // НОВАЯ архитектура:
 ExternalReportsView(viewModel: ExternalReportsViewModel) // ✅
+MainViewNew() // ✅
 
 // СТАРАЯ архитектура:
 MainView(store: PostStore) // ❌
@@ -151,7 +152,7 @@ struct ContentView: View {
 ## 📁 Ключевые файлы
 
 ### Готовые (новая архитектура)
-- `ExternalReportsView.swift` - единственный View с новой архитектурой
+- `ExternalReportsView.swift`, `MainViewNew.swift` — Views с новой архитектурой
 - `ExternalReportsViewModel.swift` - использует Use Cases
 - `RegularReportsViewModel.swift` - использует Use Cases
 - `CustomReportsViewModel.swift` - использует Use Cases

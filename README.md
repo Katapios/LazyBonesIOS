@@ -94,7 +94,7 @@ struct MainView: View {
 ## 📁 Ключевые файлы
 
 ### Готовые (новая архитектура)
-- `ExternalReportsView.swift` - единственный View с новой архитектурой
+- `ExternalReportsView.swift`, `MainViewNew.swift` — Views, мигрированные на Clean Architecture
 - `ExternalReportsViewModel.swift` - использует Use Cases
 - `RegularReportsViewModel.swift` - использует Use Cases
 - `CustomReportsViewModel.swift` - использует Use Cases
@@ -136,4 +136,4 @@ open LazyBones.xcodeproj
 
 ---
 
-**🔄 Проект в активной разработке. Миграция на Clean Architecture: 65% завершено.**
+**🔄 Проект в активной разработке. Миграция на Clean Architecture: 80% завершено.**

@@ -27,7 +27,7 @@
 - ✅ MainViewModelNew - новый с Clean Architecture (готов к использованию)
 - ✅ ReportsViewModelNew - новый с Clean Architecture (готов к использованию)
 - ✅ MainViewNew - новый View с Clean Architecture
-- ✅ Единственный View с новой архитектурой: `ExternalReportsView`
+- ✅ Мигрированные Views: `ExternalReportsView`, `MainViewNew`
 - ❌ ViewModels-адаптеры: `MainViewModel` (старый), `ReportsViewModel` (старый), `SettingsViewModel` (оборачивают PostStore)
 - ❌ Views используют PostStore: `MainView` (старый), `ReportsView` (старый), `SettingsView`
 
