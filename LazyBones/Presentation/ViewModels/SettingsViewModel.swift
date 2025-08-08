@@ -210,8 +210,13 @@ class SettingsViewModel: ObservableObject {
     }
     
     func unlockReports() {
+        // Вызываем разблокировку - она установит статус в .notStarted
         store.unlockReportCreation()
-        store.updateReportStatus()
+        
+        // Не вызываем updateReportStatus(), так как он пересчитает статус заново
+        // и может вернуть его в предыдущее состояние
+        
+        // Обновляем виджеты
         WidgetCenter.shared.reloadAllTimelines()
     }
     

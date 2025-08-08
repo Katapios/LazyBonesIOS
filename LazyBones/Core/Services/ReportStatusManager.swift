@@ -133,22 +133,18 @@ class ReportStatusManager: ReportStatusManagerProtocol {
     }
     
     func unlockReportCreation() {
-        let today = Calendar.current.startOfDay(for: Date())
-        let posts = postsProvider.getPosts()
+        // Сбрасываем статус на notStarted и сохраняем его
+        reportStatus = .notStarted
+        saveStatus()
         
-        // Удаляем опубликованный отчет за сегодня
-        if let publishedIndex = posts.firstIndex(where: { 
-            $0.type == .regular && 
-            Calendar.current.isDate($0.date, inSameDayAs: today) && 
-            $0.published 
-        }) {
-            var updatedPosts = posts
-            updatedPosts.remove(at: publishedIndex)
-            postsProvider.updatePosts(updatedPosts)
-            
-            updateStatus()
-            timerService.updateReportStatus(reportStatus)
-        }
+        // Обновляем зависимости
+        updateDependencies(reportStatus)
+        
+        // Обновляем виджеты
+        WidgetCenter.shared.reloadAllTimelines()
+        
+        // Обновляем таймер
+        timerService.updateReportStatus(reportStatus)
     }
     
     func loadStatus() {
