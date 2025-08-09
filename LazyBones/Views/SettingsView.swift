@@ -68,7 +68,7 @@ struct SettingsView: View {
         Section(header: Text("Имя телефона для виджета")) {
             TextField("Введите имя телефона", text: Binding(
                 get: { viewModel.state.deviceName },
-                set: { Task { await viewModel.handle(.saveDeviceName($0)) } }
+                set: { viewModel.state.deviceName = $0 }
             ))
             Button("Сохранить имя") {
                 Task { await viewModel.handle(.saveDeviceName(viewModel.state.deviceName)) }
