@@ -14,6 +14,7 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
     private let timerService: any PostTimerServiceProtocol
     private let statusManager: any ReportStatusManagerProtocol
     private let iCloudService: ICloudServiceProtocol
+    private let autoSendService: AutoSendServiceType
 
     init(
         settingsRepository: any SettingsRepositoryProtocol,
@@ -21,7 +22,8 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
         postRepository: any PostRepositoryProtocol,
         timerService: any PostTimerServiceProtocol,
         statusManager: any ReportStatusManagerProtocol,
-        iCloudService: ICloudServiceProtocol
+        iCloudService: ICloudServiceProtocol,
+        autoSendService: AutoSendServiceType
     ) {
         self.settingsRepository = settingsRepository
         self.notificationManager = notificationManager
@@ -29,6 +31,7 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
         self.timerService = timerService
         self.statusManager = statusManager
         self.iCloudService = iCloudService
+        self.autoSendService = autoSendService
         super.init(initialState: SettingsState())
     }
 
@@ -78,6 +81,10 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
         state.isBackgroundFetchTestEnabled = AppConfig.sharedUserDefaults.bool(forKey: "backgroundFetchTestEnabled")
         // iCloud availability
         state.isICloudAvailable = await iCloudService.isICloudAvailable()
+        // AutoSend
+        state.autoSendEnabled = autoSendService.autoSendEnabled
+        state.autoSendTime = autoSendService.autoSendTime
+        state.lastAutoSendStatus = autoSendService.lastAutoSendStatus
     }
 
     private func saveDeviceName(_ name: String) async {

@@ -19,4 +19,9 @@ struct SettingsState {
     var isICloudAvailable: Bool = false
     var isExportingToICloud: Bool = false
     var exportResult: String? = nil
+
+    // MARK: - AutoSend
+    var autoSendEnabled: Bool = false
+    var autoSendTime: Date = Date()
+    var lastAutoSendStatus: String? = nil
 }

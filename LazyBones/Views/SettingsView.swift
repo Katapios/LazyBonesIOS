@@ -22,7 +22,8 @@ struct SettingsView: View {
                 postsProvider: container.resolve(PostsProviderProtocol.self)!,
                 factory: ReportStatusFactory()
             ),
-            iCloudService: container.resolve(ICloudServiceProtocol.self)!
+            iCloudService: container.resolve(ICloudServiceProtocol.self)!,
+            autoSendService: container.resolve(AutoSendServiceType.self)!
         ))
     }
     var body: some View {
@@ -174,7 +175,25 @@ struct SettingsView: View {
     
     private var autoSendSection: some View {
         Section(header: Text("Автоотправка отчетов")) {
-            // Сохранение через PostStore было. Оставим текст, переключатель исключим до миграции AutoSend VM
+            Toggle("Включить автоотправку отчетов", isOn: Binding(
+                get: { viewModel.state.autoSendEnabled },
+                set: { newValue in
+                    viewModel.state.autoSendEnabled = newValue
+                    (DependencyContainer.shared.resolve(AutoSendServiceType.self) as? AutoSendService)?.autoSendEnabled = newValue
+                }
+            ))
+            DatePicker("Время автоотправки", selection: Binding(
+                get: { viewModel.state.autoSendTime },
+                set: { newDate in
+                    viewModel.state.autoSendTime = newDate
+                    (DependencyContainer.shared.resolve(AutoSendServiceType.self) as? AutoSendService)?.autoSendTime = newDate
+                }
+            ), displayedComponents: .hourAndMinute)
+            if let status = viewModel.state.lastAutoSendStatus {
+                Text(status)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
             Text("Отчеты будут автоматически отправляться один раз в сутки, в период с 22:01 до 23:59. Если пользователь уже отправил отчеты вручную, автоотправка не производится. Если система не смогла отправить отчеты за предыдущие дни, они будут отправлены вместе с текущими. Отправка происходит в фоне, когда система разрешит выполнение фоновой задачи.")
                 .font(.caption)
                 .foregroundColor(.secondary)
