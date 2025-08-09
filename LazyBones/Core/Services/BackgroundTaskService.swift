@@ -123,11 +123,25 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
         Logger.info("Skipping BGTask scheduling on Simulator (using DEBUG timer instead)", log: Logger.background)
         return
         #endif
+        
+        // Availability guard
+        if #unavailable(iOS 13.0) {
+            Logger.warning("BGTaskScheduler is unavailable on this iOS version", log: Logger.background)
+            return
+        }
+        
+        // Verify Info.plist contains permitted identifiers
+        if let permitted = Bundle.main.object(forInfoDictionaryKey: "BGTaskSchedulerPermittedIdentifiers") as? [String], !permitted.contains(self.taskIdentifier) {
+            Logger.error("BGTask identifier not permitted in Info.plist: \(self.taskIdentifier)", log: Logger.background)
+            return
+        }
+        
         Logger.info("Scheduling send report background task", log: Logger.background)
         
         // First, cancel any existing tasks to avoid duplicates
         BGTaskScheduler.shared.cancelAllTaskRequests()
         
+        // Create request safely
         let request = BGAppRefreshTaskRequest(identifier: self.taskIdentifier)
         let earliestBeginDate = calculateEarliestBeginDate()
         request.earliestBeginDate = earliestBeginDate
