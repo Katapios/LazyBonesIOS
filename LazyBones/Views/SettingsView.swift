@@ -174,17 +174,11 @@ struct SettingsView: View {
         Section(header: Text("Автоотправка отчетов")) {
             Toggle("Включить автоотправку отчетов", isOn: Binding(
                 get: { viewModel.state.autoSendEnabled },
-                set: { newValue in
-                    viewModel.state.autoSendEnabled = newValue
-                    (DependencyContainer.shared.resolve(AutoSendServiceType.self) as? AutoSendService)?.autoSendEnabled = newValue
-                }
+                set: { viewModel.setAutoSendEnabled($0) }
             ))
             DatePicker("Время автоотправки", selection: Binding(
                 get: { viewModel.state.autoSendTime },
-                set: { newDate in
-                    viewModel.state.autoSendTime = newDate
-                    (DependencyContainer.shared.resolve(AutoSendServiceType.self) as? AutoSendService)?.autoSendTime = newDate
-                }
+                set: { viewModel.setAutoSendTime($0) }
             ), displayedComponents: .hourAndMinute)
             if let status = viewModel.state.lastAutoSendStatus {
                 Text(status)

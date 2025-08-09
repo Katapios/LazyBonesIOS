@@ -64,6 +64,22 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
         }
     }
 
+    // MARK: - Public setters for View bindings
+
+    func setAutoSendEnabled(_ enabled: Bool) {
+        state.autoSendEnabled = enabled
+        autoSendService.autoSendEnabled = enabled
+        autoSendService.scheduleAutoSendIfNeeded()
+        state.lastAutoSendStatus = autoSendService.lastAutoSendStatus
+    }
+
+    func setAutoSendTime(_ date: Date) {
+        state.autoSendTime = date
+        autoSendService.autoSendTime = date
+        autoSendService.scheduleAutoSendIfNeeded()
+        state.lastAutoSendStatus = autoSendService.lastAutoSendStatus
+    }
+
     // MARK: - Actions
 
     private func loadSettings() async {
