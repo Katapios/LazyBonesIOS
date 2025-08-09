@@ -69,6 +69,10 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
     // MARK: - BackgroundTaskServiceProtocol
     
     func registerBackgroundTasks() throws {
+        #if targetEnvironment(simulator)
+        Logger.info("Skipping BGTask registration on Simulator", log: Logger.background)
+        return
+        #endif
         var registrationError: Error?
         
         registrationQueue.sync {
@@ -115,6 +119,10 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
     }
     
     func scheduleSendReportTask() throws {
+        #if targetEnvironment(simulator)
+        Logger.info("Skipping BGTask scheduling on Simulator (using DEBUG timer instead)", log: Logger.background)
+        return
+        #endif
         Logger.info("Scheduling send report background task", log: Logger.background)
         
         // First, cancel any existing tasks to avoid duplicates
