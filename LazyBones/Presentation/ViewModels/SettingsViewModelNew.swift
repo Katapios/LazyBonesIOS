@@ -9,7 +9,7 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
 
     // Dependencies
     private let settingsRepository: any SettingsRepositoryProtocol
-    private let notificationManager: NotificationManagerServiceType
+    let notificationManager: NotificationManagerServiceType
     private let postRepository: any PostRepositoryProtocol
     private let timerService: any PostTimerServiceProtocol
     private let statusManager: any ReportStatusManagerProtocol
@@ -30,6 +30,10 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
         self.statusManager = statusManager
         self.iCloudService = iCloudService
         super.init(initialState: SettingsState())
+    }
+
+    func load() async {
+        await handle(.loadSettings)
     }
 
     override func handle(_ event: SettingsEvent) async {
