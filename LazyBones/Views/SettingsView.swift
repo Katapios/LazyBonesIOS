@@ -35,7 +35,7 @@ struct SettingsView: View {
             dataSection
         }
         .navigationTitle("Настройки")
-        .onChange(of: scenePhase) { oldPhase, newPhase in
+        .onChange(of: scenePhase, initial: false) { oldPhase, newPhase in
             if newPhase == .active {
                 WidgetCenter.shared.reloadAllTimelines()
             }
@@ -57,7 +57,7 @@ struct SettingsView: View {
         .onAppear {
             Task { await viewModel.handle(.loadSettings) }
         }
-        .onChange(of: viewModel.state.isBackgroundFetchTestEnabled) { _, newValue in
+        .onChange(of: viewModel.state.isBackgroundFetchTestEnabled, initial: false) { _, newValue in
             Task { await viewModel.handle(.setBackgroundFetchTestEnabled(newValue)) }
         }
         .hideKeyboardOnTap()
