@@ -141,6 +141,21 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
         // First, cancel any existing tasks to avoid duplicates
         BGTaskScheduler.shared.cancelAllTaskRequests()
         
+        // Ensure request creation and submission on main thread
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { [taskIdentifier = self.taskIdentifier] in
+                let request = BGAppRefreshTaskRequest(identifier: taskIdentifier)
+                request.earliestBeginDate = self.calculateEarliestBeginDate()
+                do {
+                    try BGTaskScheduler.shared.submit(request)
+                    Logger.info("✅ Background task scheduled (main thread)", log: Logger.background)
+                } catch {
+                    Logger.error("❌ Failed to schedule background task (main thread): \(error)", log: Logger.background)
+                }
+            }
+            return
+        }
+        
         // Create request safely
         let request = BGAppRefreshTaskRequest(identifier: self.taskIdentifier)
         let earliestBeginDate = calculateEarliestBeginDate()
