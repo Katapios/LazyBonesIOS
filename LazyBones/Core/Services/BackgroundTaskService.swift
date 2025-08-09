@@ -1,5 +1,6 @@
 import Foundation
 import BackgroundTasks
+import UIKit
 
 /// Протокол сервиса фоновых задач
 protocol BackgroundTaskServiceProtocol {
@@ -130,8 +131,19 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
             return
         }
         
+        // Verify Background App Refresh is available
+        let refreshStatus = UIApplication.shared.backgroundRefreshStatus
+        Logger.info("Background refresh status: \(refreshStatus.rawValue)", log: Logger.background)
+        guard refreshStatus == .available else {
+            Logger.warning("Background App Refresh is disabled; skipping BGTask scheduling", log: Logger.background)
+            return
+        }
+        
         // Verify Info.plist contains permitted identifiers
-        if let permitted = Bundle.main.object(forInfoDictionaryKey: "BGTaskSchedulerPermittedIdentifiers") as? [String], !permitted.contains(self.taskIdentifier) {
+        let permitted = Bundle.main.object(forInfoDictionaryKey: "BGTaskSchedulerPermittedIdentifiers") as? [String] ?? []
+        Logger.info("Permitted BGTask IDs: \(permitted)", log: Logger.background)
+        Logger.info("Bundle ID: \(Bundle.main.bundleIdentifier ?? "nil")", log: Logger.background)
+        guard permitted.contains(self.taskIdentifier) else {
             Logger.error("BGTask identifier not permitted in Info.plist: \(self.taskIdentifier)", log: Logger.background)
             return
         }
@@ -145,7 +157,7 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
         if !Thread.isMainThread {
             DispatchQueue.main.async { [taskIdentifier = self.taskIdentifier] in
                 let request = BGAppRefreshTaskRequest(identifier: taskIdentifier)
-                request.earliestBeginDate = self.calculateEarliestBeginDate()
+                request.earliestBeginDate = self.safeEarliestBeginDate()
                 do {
                     try BGTaskScheduler.shared.submit(request)
                     Logger.info("✅ Background task scheduled (main thread)", log: Logger.background)
@@ -158,7 +170,7 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
         
         // Create request safely
         let request = BGAppRefreshTaskRequest(identifier: self.taskIdentifier)
-        let earliestBeginDate = calculateEarliestBeginDate()
+        let earliestBeginDate = safeEarliestBeginDate()
         request.earliestBeginDate = earliestBeginDate
         
         do {
@@ -211,6 +223,13 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
     }
     
     // MARK: - Private Methods
+    
+    private func safeEarliestBeginDate() -> Date {
+        let computed = calculateEarliestBeginDate()
+        // iOS не гарантирует запуск раньше 15 минут; дадим минимум +20 минут, чтобы исключить ошибки планирования
+        let minDate = Date().addingTimeInterval(20 * 60)
+        return max(computed, minDate)
+    }
     
     private func calculateEarliestBeginDate() -> Date {
         let calendar = Calendar.current
