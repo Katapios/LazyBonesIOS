@@ -152,12 +152,15 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.segmented)
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Ежечасные уведомления: каждый час с 8:00 до 21:00. В 21:00 — предостерегающее уведомление.")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                    Text("Два раза в день: в 8:00 и в 21:00 (в 21:00 — предостерегающее уведомление).")
-                        .font(.caption)
-                        .foregroundColor(.gray)
+                    if (viewModel.notificationManager as? NotificationManagerService)?.notificationMode == .hourly {
+                        Text("Ежечасные уведомления: каждый час с 8:00 до 21:00. В 21:00 — предостерегающее уведомление.")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    } else {
+                        Text("Два раза в день: в 8:00 и в 21:00 (в 21:00 — предостерегающее уведомление).")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
                     if let schedule = (viewModel.notificationManager as? NotificationManagerService)?.notificationScheduleForToday() {
                         Text("Сегодня уведомления:")
                             .font(.caption)
