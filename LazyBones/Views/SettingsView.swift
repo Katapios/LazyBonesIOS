@@ -138,13 +138,13 @@ struct SettingsView: View {
     private var notificationSection: some View {
         Section(header: Text("Настройка уведомлений")) {
             Toggle("Получать уведомления", isOn: Binding(
-                get: { (viewModel.notificationManager as? NotificationManagerService)?.notificationsEnabled ?? false },
-                set: { (viewModel.notificationManager as? NotificationManagerService)?.notificationsEnabled = $0 }
+                get: { viewModel.state.notificationsEnabled },
+                set: { viewModel.setNotificationsEnabled($0) }
             ))
-            if (viewModel.notificationManager as? NotificationManagerService)?.notificationsEnabled == true {
+            if viewModel.state.notificationsEnabled {
                 Picker("Режим уведомлений", selection: Binding(
-                    get: { (viewModel.notificationManager as? NotificationManagerService)?.notificationMode ?? .hourly },
-                    set: { (viewModel.notificationManager as? NotificationManagerService)?.notificationMode = $0 }
+                    get: { viewModel.state.notificationMode },
+                    set: { viewModel.setNotificationMode($0) }
                 )) {
                     ForEach(NotificationMode.allCases, id: \.self) { mode in
                         Text(mode.description).tag(mode as NotificationMode)
@@ -152,7 +152,7 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.segmented)
                 VStack(alignment: .leading, spacing: 6) {
-                    if (viewModel.notificationManager as? NotificationManagerService)?.notificationMode == .hourly {
+                    if viewModel.state.notificationMode == .hourly {
                         Text("Ежечасные уведомления: каждый час с 8:00 до 21:00. В 21:00 — предостерегающее уведомление.")
                             .font(.caption)
                             .foregroundColor(.gray)

@@ -24,4 +24,8 @@ struct SettingsState {
     var autoSendEnabled: Bool = false
     var autoSendTime: Date = Date()
     var lastAutoSendStatus: String? = nil
+
+    // MARK: - Notifications UI State
+    var notificationsEnabled: Bool = false
+    var notificationMode: NotificationMode = .hourly
 }
