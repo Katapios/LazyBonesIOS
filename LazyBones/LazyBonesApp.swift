@@ -68,7 +68,26 @@ private func setupBackgroundTasks() {
     do {
         let backgroundTaskService = DependencyContainer.shared.resolve(BackgroundTaskServiceProtocol.self)!
         try backgroundTaskService.registerBackgroundTasks()
-        try backgroundTaskService.scheduleSendReportTask()
+        
+        #if targetEnvironment(simulator)
+        Logger.info("Skipping initial BGTask scheduling on Simulator", log: Logger.background)
+        #else
+        Task { @MainActor in
+            // Schedule only if background refresh is available and auto-send is enabled
+            let refreshStatus = UIApplication.shared.backgroundRefreshStatus
+            if refreshStatus == .available,
+               let autoSend = DependencyContainer.shared.resolve(AutoSendServiceType.self),
+               autoSend.autoSendEnabled {
+                do {
+                    try backgroundTaskService.scheduleSendReportTask()
+                } catch {
+                    Logger.error("Failed to setup background tasks: \(error)", log: Logger.background)
+                }
+            } else {
+                Logger.info("Skipping initial BGTask scheduling (refresh unavailable or auto-send disabled)", log: Logger.background)
+            }
+        }
+        #endif
         Logger.info("Background tasks setup completed", log: Logger.general)
     } catch {
         Logger.error("Failed to setup background tasks: \(error)", log: Logger.background)
