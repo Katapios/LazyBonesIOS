@@ -80,12 +80,12 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
 
     func setNotificationsEnabled(_ enabled: Bool) {
         state.notificationsEnabled = enabled
-        (notificationManager as? NotificationManagerService)?.notificationsEnabled = enabled
+        notificationManager.notificationsEnabled = enabled
     }
 
     func setNotificationMode(_ mode: NotificationMode) {
         state.notificationMode = mode
-        (notificationManager as? NotificationManagerService)?.notificationMode = mode
+        notificationManager.notificationMode = mode
     }
 
     // MARK: - Actions
@@ -110,8 +110,8 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
         state.autoSendTime = autoSendService.autoSendTime
         state.lastAutoSendStatus = autoSendService.lastAutoSendStatus
         // Notifications UI
-        state.notificationsEnabled = (notificationManager as? NotificationManagerService)?.notificationsEnabled ?? false
-        state.notificationMode = (notificationManager as? NotificationManagerService)?.notificationMode ?? .hourly
+        state.notificationsEnabled = notificationManager.notificationsEnabled
+        state.notificationMode = notificationManager.notificationMode
     }
 
     private func saveDeviceName(_ name: String) async {

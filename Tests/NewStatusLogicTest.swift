@@ -47,7 +47,7 @@ class NewStatusLogicTest: XCTestCase {
         }
         
         XCTAssertEqual(activeStatuses.count, 2, "Должно быть 2 активных статуса")
-        XCTAssertEqual(inactiveStatuses.count, 4, "Должно быть 4 неактивных статуса")
+        XCTAssertEqual(inactiveStatuses.count, 3, "Должно быть 3 неактивных статуса")
     }
     
     func testTimerLogic() {

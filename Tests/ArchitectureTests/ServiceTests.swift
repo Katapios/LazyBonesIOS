@@ -136,12 +136,19 @@ class ServiceTests: XCTestCase {
         
         // When
         do {
+            // Запросим разрешение; если не дано — пропустим тест, т.к. планирование не имеет смысла
+            let granted = try await notificationService.requestPermission()
+            if !granted {
+                throw XCTSkip("Notification permission not granted on simulator")
+            }
             try await notificationService.scheduleNotification(
                 title: title,
                 body: body,
                 date: date,
                 identifier: identifier
             )
+            // Небольшая пауза, чтобы центр уведомлений успел зарегистрировать запрос
+            try? await Task.sleep(nanoseconds: 200_000_000)
             
             // Verify notification was scheduled
             let pendingNotifications = try await notificationService.getPendingNotifications()
@@ -150,6 +157,8 @@ class ServiceTests: XCTestCase {
             
             // Cancel notification
             try await notificationService.cancelNotification(identifier: identifier)
+            // Даем системе время удалить запрос из очереди
+            try? await Task.sleep(nanoseconds: 200_000_000)
             
             // Verify notification was cancelled
             let updatedPendingNotifications = try await notificationService.getPendingNotifications()
