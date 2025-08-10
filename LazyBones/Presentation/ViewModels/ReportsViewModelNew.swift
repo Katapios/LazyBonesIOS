@@ -37,6 +37,103 @@ class ReportsViewModelNew: BaseViewModel<ReportsState, ReportsEvent>, LoadableVi
         // Подписка на изменения тегов
         NotificationCenter.default.addObserver(self, selector: #selector(handleTagsDidChange), name: .tagsDidChange, object: nil)
     }
+
+    // MARK: - Sending Regular Report
+    private func sendRegularReport(_ post: DomainPost) async {
+        // Предусловия: должны быть пункты отчёта
+        if post.goodItems.isEmpty && post.badItems.isEmpty {
+            state.error = NSError(domain: "Reports", code: 10, userInfo: [NSLocalizedDescriptionKey: "Сначала сохраните отчет"])
+            return
+        }
+
+        state.isLoading = true
+        defer { state.isLoading = false }
+
+        let message = formatRegularReportMessage(post)
+
+        let success: Bool = await withCheckedContinuation { continuation in
+            postTelegramService.sendToTelegram(text: message) { ok in
+                continuation.resume(returning: ok)
+            }
+        }
+
+        if success {
+            do {
+                var updated = post
+                // Если есть голосовые, отправляем их последовательно
+                if !updated.voiceNotes.isEmpty {
+                    let voicesSent = await sendVoiceNotes(updated.voiceNotes)
+                    if voicesSent {
+                        // Удаляем локальные файлы и чистим список
+                        cleanupVoiceFiles(updated.voiceNotes)
+                        updated.voiceNotes = []
+                    }
+                }
+                updated.published = true
+                let input = UpdateReportInput(report: updated)
+                _ = try await updateReportUseCase.execute(input: input)
+                updateReportInLists(updated)
+                NotificationCenter.default.post(name: .reportStatusDidChange, object: nil)
+            } catch {
+                state.error = error
+            }
+        } else {
+            state.error = NSError(domain: "Reports", code: 11, userInfo: [NSLocalizedDescriptionKey: "Не удалось отправить в Telegram"])
+        }
+    }
+
+    /// Отправить голосовые заметки последовательно через PostTelegramService
+    private func sendVoiceNotes(_ notes: [DomainVoiceNote]) async -> Bool {
+        if notes.isEmpty { return true }
+        var allOk = true
+        for note in notes {
+            let ok: Bool = await withCheckedContinuation { continuation in
+                postTelegramService.sendVoice(fileURL: note.url, caption: nil) { success in
+                    continuation.resume(returning: success)
+                }
+            }
+            if !ok { allOk = false }
+        }
+        return allOk
+    }
+
+    /// Удалить локальные файлы голосовых заметок (best-effort)
+    private func cleanupVoiceFiles(_ notes: [DomainVoiceNote]) {
+        for note in notes {
+            do {
+                try FileManager.default.removeItem(at: note.url)
+            } catch {
+                Logger.error("Failed to delete voice file: \(note.url.lastPathComponent) error: \(error)", log: Logger.ui)
+            }
+        }
+    }
+
+    private func formatRegularReportMessage(_ report: DomainPost) -> String {
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "ru_RU")
+        df.dateStyle = .full
+        let dateStr = df.string(from: report.date)
+        let deviceName = UIDevice.current.name
+
+        var message = "\u{1F4C5} <b>Отчет за день — \(dateStr)</b>\n"
+        message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
+
+        if !report.goodItems.isEmpty {
+            message += "<b>✅ Я молодец:</b>\n"
+            for (idx, item) in report.goodItems.enumerated() {
+                message += "\(idx + 1). \(item)\n"
+            }
+            message += "\n"
+        }
+        if !report.badItems.isEmpty {
+            message += "<b>❌ Я не молодец:</b>\n"
+            for (idx, item) in report.badItems.enumerated() {
+                message += "\(idx + 1). \(item)\n"
+            }
+        }
+
+        return message
+    }
     
     deinit {
         NotificationCenter.default.removeObserver(self)
@@ -94,6 +191,8 @@ class ReportsViewModelNew: BaseViewModel<ReportsState, ReportsEvent>, LoadableVi
             state.error = nil
         case .sendCustomReport(let post):
             await sendCustomReport(post)
+        case .sendRegularReport(let post):
+            await sendRegularReport(post)
         }
     }
     

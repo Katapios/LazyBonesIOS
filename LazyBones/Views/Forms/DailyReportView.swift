@@ -361,12 +361,29 @@ struct DailyReportView: View {
                             .foregroundColor(.secondary)
                         Spacer()
                         Button("Сохранить") {
-                            if selectedTab == .good {
-                                store.addGoodTag(newPlanItem)
-                            } else {
-                                store.addBadTag(newPlanItem)
+                            let tagText = newPlanItem
+                            Task { @MainActor in
+                                if let tagRepo = DependencyContainer.shared.resolve((any TagRepositoryProtocol).self) {
+                                    do {
+                                        if selectedTab == .good {
+                                            try await tagRepo.addGoodTag(tagText)
+                                        } else {
+                                            try await tagRepo.addBadTag(tagText)
+                                        }
+                                        addPlanItem()
+                                    } catch {
+                                        Logger.error("Failed to save tag from DailyReportView: \(error)", log: Logger.ui)
+                                    }
+                                } else {
+                                    // fallback на legacy (не должно происходить)
+                                    if selectedTab == .good {
+                                        store.addGoodTag(tagText)
+                                    } else {
+                                        store.addBadTag(tagText)
+                                    }
+                                    addPlanItem()
+                                }
                             }
-                            addPlanItem()
                         }
                         .font(.caption)
                         .foregroundColor(.blue)
@@ -395,7 +412,7 @@ struct DailyReportView: View {
                         title: "Отправить",
                         icon: "paperplane.fill",
                         color: .green,
-                        action: { publishReportToTelegram() },
+                        action: { sendRegularReportCleanArch() },
                         isEnabled: true,
                         compact: true
                     )
@@ -551,65 +568,53 @@ struct DailyReportView: View {
         savePlan()
     }
     
-    func publishReportToTelegram() {
-        let today = Calendar.current.startOfDay(for: Date())
-        guard let regular = store.posts.first(where: { $0.type == .regular && Calendar.current.isDate($0.date, inSameDayAs: today) }) else {
-            publishStatus = "Сначала сохраните план как отчет!"
-            return
-        }
-        guard let token = store.telegramToken, let chatId = store.telegramChatId, !token.isEmpty, !chatId.isEmpty else {
-            publishStatus = "Заполните токен и chat_id в настройках"
-            return
-        }
-        
-        // Отправляем текстовое сообщение
-        sendTextMessage(token: token, chatId: chatId, post: regular) { success in
-            if success {
-                // Сразу помечаем отчет отправленным, обновляем статус и нотифицируем UI
-                DispatchQueue.main.async {
-                    if let idx = self.store.posts.firstIndex(where: { $0.id == regular.id }) {
-                        var updated = self.store.posts[idx]
-                        updated.published = true
-                        self.store.posts[idx] = updated
-                        self.store.save()
-                        self.store.updateReportStatus()
-                        NotificationCenter.default.post(name: .reportStatusDidChange, object: nil)
-                    }
-                    self.publishStatus = regular.voiceNotes.isEmpty ? "Отчет успешно опубликован!" : "Отчет опубликован, отправляю голосовые…"
-                }
+    func sendRegularReportCleanArch() {
+        Task { @MainActor in
+            let today = Calendar.current.startOfDay(for: Date())
 
-                // Если есть голосовые — отправляем, но статус уже отмечен как отправленный
-                if regular.voiceNotes.count > 0 {
-                    self.sendAllVoiceNotes(
-                        token: token,
-                        chatId: chatId,
-                        voiceNotes: regular.voiceNotes.map { $0.path }
-                    ) { allSuccess in
-                        DispatchQueue.main.async {
-                            if allSuccess {
-                                // Удаляем локальные файлы голосовых заметок и очищаем список в посте
-                                var fileDeletionErrors = 0
-                                for path in regular.voiceNotes.map({ $0.path }) {
-                                    do { try FileManager.default.removeItem(atPath: path) } catch { fileDeletionErrors += 1 }
-                                }
-                                if let idx = self.store.posts.firstIndex(where: { $0.id == regular.id }) {
-                                    var updated = self.store.posts[idx]
-                                    updated.voiceNotes = []
-                                    self.store.posts[idx] = updated
-                                    self.store.save()
-                                }
-                                self.publishStatus = fileDeletionErrors == 0 ? "Отчет успешно опубликован с голосовыми заметками!" : "Опубликовано, но не удалось удалить некоторые аудиофайлы"
-                            } else {
-                                // Не считаем это провалом общего статуса — текст уже ушел
-                                self.publishStatus = "Отчет опубликован, но произошла ошибка при отправке голосовых"
-                            }
-                        }
-                    }
-                }
+            // 1) Получаем Domain-пост обычного отчёта на сегодня
+            guard let getReportsUseCase = DependencyContainer.shared.resolve(GetReportsUseCase.self) else {
+                self.publishStatus = "Ошибка: UseCase не найден"
+                return
+            }
+            var domainRegular: DomainPost?
+            do {
+                let input = GetReportsInput(date: Date(), type: .regular, includeExternal: false)
+                let regulars = try await getReportsUseCase.execute(input: input)
+                domainRegular = regulars.first { Calendar.current.isDate($0.date, inSameDayAs: today) }
+            } catch {
+                self.publishStatus = "Ошибка загрузки отчёта"
+                return
+            }
+            guard let post = domainRegular else {
+                self.publishStatus = "Сначала сохраните план как отчет!"
+                return
+            }
+
+            // 2) Создаём VM и отправляем
+            guard let deleteUC = DependencyContainer.shared.resolve(DeleteReportUseCase.self),
+                  let updateUC = DependencyContainer.shared.resolve(UpdateReportUseCase.self),
+                  let tagRepo = DependencyContainer.shared.resolve((any TagRepositoryProtocol).self),
+                  let telegramSvc = DependencyContainer.shared.resolve(PostTelegramServiceProtocol.self) else {
+                self.publishStatus = "Ошибка DI: зависимости не найдены"
+                return
+            }
+
+            let vm = ReportsViewModelNew(
+                getReportsUseCase: getReportsUseCase,
+                deleteReportUseCase: deleteUC,
+                updateReportUseCase: updateUC,
+                tagRepository: tagRepo,
+                postTelegramService: telegramSvc
+            )
+
+            await vm.handle(.sendRegularReport(post))
+
+            // 3) Индикация статуса
+            if vm.state.error == nil {
+                self.publishStatus = "Отчет успешно опубликован!"
             } else {
-                DispatchQueue.main.async {
-                    self.publishStatus = "Ошибка отправки: неверный токен или chat_id"
-                }
+                self.publishStatus = vm.state.error?.localizedDescription ?? "Ошибка отправки"
             }
         }
     }

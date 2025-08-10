@@ -5,6 +5,8 @@ import BackgroundTasks
 protocol PostTelegramServiceProtocol {
     /// Отправить отчет в Telegram
     func sendToTelegram(text: String, completion: @escaping (Bool) -> Void)
+    /// Отправить голосовое сообщение в Telegram
+    func sendVoice(fileURL: URL, caption: String?, completion: @escaping (Bool) -> Void)
     
     /// Выполнить автоматическую отправку отчетов
     func performAutoSendReport(completion: (() -> Void)?)
@@ -23,6 +25,25 @@ class PostTelegramService: PostTelegramServiceProtocol {
     init(telegramService: TelegramServiceProtocol, userDefaultsManager: UserDefaultsManagerProtocol) {
         self.telegramService = telegramService
         self.userDefaultsManager = userDefaultsManager
+    }
+    
+    func sendVoice(fileURL: URL, caption: String? = nil, completion: @escaping (Bool) -> Void) {
+        Logger.info("Sending voice to Telegram: \(fileURL.lastPathComponent)", log: Logger.telegram)
+        guard let chatId = userDefaultsManager.string(forKey: "telegramChatId"), !chatId.isEmpty else {
+            Logger.error("Telegram chatId is missing", log: Logger.telegram)
+            completion(false)
+            return
+        }
+        Task {
+            do {
+                try await telegramService.sendVoice(fileURL, caption: caption, to: chatId)
+                await MainActor.run { completion(true) }
+                Logger.info("Voice sent successfully", log: Logger.telegram)
+            } catch {
+                await MainActor.run { completion(false) }
+                Logger.error("Failed to send voice: \(error)", log: Logger.telegram)
+            }
+        }
     }
     
     // MARK: - Public Methods

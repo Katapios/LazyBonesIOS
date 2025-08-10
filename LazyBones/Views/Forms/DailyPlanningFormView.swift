@@ -183,8 +183,21 @@ struct PlanningContentView: View {
                             .foregroundColor(.secondary)
                         Spacer()
                         Button("Сохранить") {
-                            store.goodTags.append(newPlanItem)
-                            store.saveGoodTags(store.goodTags)
+                            let tagText = newPlanItem
+                            Task { @MainActor in
+                                if let tagRepo = DependencyContainer.shared.resolve((any TagRepositoryProtocol).self) {
+                                    do {
+                                        try await tagRepo.addGoodTag(tagText)
+                                    } catch {
+                                        Logger.error("Failed to save good tag from PlanningContentView: \(error)", log: Logger.ui)
+                                    }
+                                } else {
+                                    // Fallback на legacy при отсутствии DI (не должно происходить)
+                                    var tags = store.goodTags
+                                    tags.append(tagText)
+                                    store.saveGoodTags(tags)
+                                }
+                            }
                         }
                         .font(.caption)
                         .foregroundColor(.blue)
@@ -213,7 +226,7 @@ struct PlanningContentView: View {
                         title: "Отправить",
                         icon: "paperplane.fill",
                         color: .green,
-                        action: { publishCustomReportToTelegram() },
+                        action: { sendCustomReportCleanArch() },
                         isEnabled: true,
                         compact: true
                     )
@@ -331,84 +344,54 @@ struct PlanningContentView: View {
         savePlan()
     }
     
-    func publishCustomReportToTelegram() {
+    // MARK: - Clean Architecture sending
+    func sendCustomReportCleanArch() {
         Task { @MainActor in
             let today = Calendar.current.startOfDay(for: Date())
 
-            // Загружаем кастомный отчет на сегодня из репозитория, чтобы видеть актуальный isEvaluated
+            // 1) Получаем Domain пост кастомного отчёта на сегодня
+            guard let getReportsUseCase = DependencyContainer.shared.resolve(GetReportsUseCase.self) else {
+                self.publishStatus = "Ошибка: UseCase не найден"
+                return
+            }
             var domainCustom: DomainPost?
-            if let useCase = DependencyContainer.shared.resolve(GetReportsUseCase.self) {
-                do {
-                    let input = GetReportsInput(date: Date(), type: .custom, includeExternal: false)
-                    let customs = try await useCase.execute(input: input)
-                    domainCustom = customs.first { Calendar.current.isDate($0.date, inSameDayAs: today) }
-                } catch {
-                    Logger.error("Failed to load custom reports for sending: \(error)", log: Logger.ui)
-                }
+            do {
+                let input = GetReportsInput(date: Date(), type: .custom, includeExternal: false)
+                let customs = try await getReportsUseCase.execute(input: input)
+                domainCustom = customs.first { Calendar.current.isDate($0.date, inSameDayAs: today) }
+            } catch {
+                self.publishStatus = "Ошибка загрузки отчёта"
+                return
+            }
+            guard let post = domainCustom else {
+                self.publishStatus = "Сначала сохраните план как отчет!"
+                return
+            }
+
+            // 2) Создаём VM ReportsViewModelNew и вызываем отправку
+            guard let deleteUC = DependencyContainer.shared.resolve(DeleteReportUseCase.self),
+                  let updateUC = DependencyContainer.shared.resolve(UpdateReportUseCase.self),
+                  let tagRepo = DependencyContainer.shared.resolve((any TagRepositoryProtocol).self),
+                  let telegramSvc = DependencyContainer.shared.resolve(PostTelegramServiceProtocol.self) else {
+                self.publishStatus = "Ошибка DI: зависимости не найдены"
+                return
+            }
+
+            let vm = ReportsViewModelNew(
+                getReportsUseCase: getReportsUseCase,
+                deleteReportUseCase: deleteUC,
+                updateReportUseCase: updateUC,
+                tagRepository: tagRepo,
+                postTelegramService: telegramSvc
+            )
+
+            await vm.handle(.sendCustomReport(post))
+
+            // 3) Простая индикация статуса для пользователя
+            if vm.state.error == nil {
+                self.publishStatus = "План успешно опубликован!"
             } else {
-                // DI недоступен: используем legacy store
-                if let idx = store.posts.firstIndex(where: { $0.type == .custom && Calendar.current.isDate($0.date, inSameDayAs: today) }) {
-                    let legacy = store.posts[idx]
-                    domainCustom = legacy.toDomain()
-                }
-            }
-
-            guard let customDomain = domainCustom else {
-                publishStatus = "Сначала сохраните план как отчет!"
-                return
-            }
-            guard customDomain.isEvaluated == true else {
-                publishStatus = "Сначала оцените план!"
-                return
-            }
-            guard !customDomain.goodItems.isEmpty else {
-                publishStatus = "Сначала сохраните план как отчет!"
-                return
-            }
-
-            // Формируем сообщение через интеграцию, используя legacy-модель
-            let legacyPost = customDomain.toLegacy()
-            let deviceName = store.getDeviceName()
-            let message = store.telegramIntegrationService.formatCustomReportForTelegram(legacyPost, deviceName: deviceName)
-
-            guard let postTelegramService = DependencyContainer.shared.resolve(PostTelegramServiceProtocol.self) else {
-                self.publishStatus = "Ошибка: сервис Telegram не найден"
-                return
-            }
-
-            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                postTelegramService.sendToTelegram(text: message) { success in
-                    DispatchQueue.main.async {
-                        if success {
-                            self.publishStatus = "План успешно опубликован!"
-                        } else {
-                            self.publishStatus = "Ошибка отправки: проверьте токен и chat_id в настройках"
-                        }
-                        continuation.resume()
-                    }
-                }
-            }
-
-            // При успехе — отмечаем как опубликованный через UseCase
-            if publishStatus == "План успешно опубликован!" {
-                if let updateUseCase = DependencyContainer.shared.resolve(UpdateReportUseCase.self) {
-                    var updated = customDomain
-                    updated.published = true
-                    do {
-                        let _ = try await updateUseCase.execute(input: UpdateReportInput(report: updated))
-                    } catch {
-                        Logger.error("Failed to mark custom report published: \(error)", log: Logger.ui)
-                    }
-                } else {
-                    // Fallback: пометим в legacy store, чтобы UI обновился
-                    if let idx = self.store.posts.firstIndex(where: { $0.id == legacyPost.id }) {
-                        var lp = self.store.posts[idx]
-                        lp.published = true
-                        self.store.posts[idx] = lp
-                        self.store.save()
-                    }
-                }
-                NotificationCenter.default.post(name: .reportStatusDidChange, object: nil)
+                self.publishStatus = vm.state.error?.localizedDescription ?? "Ошибка отправки"
             }
         }
     }

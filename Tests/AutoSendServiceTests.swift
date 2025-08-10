@@ -268,11 +268,19 @@ class MockPostTelegramService: PostTelegramServiceProtocol {
     var performAutoSendReportCalled = false
     var autoSendAllReportsForTodayCalled = false
     var sendToTelegramCalled = false
+    var sendVoiceCalled = false
     var lastSentText: String?
+    var lastVoiceURL: URL?
     
     func sendToTelegram(text: String, completion: @escaping (Bool) -> Void) {
         sendToTelegramCalled = true
         lastSentText = text
+        completion(shouldSucceed)
+    }
+    
+    func sendVoice(fileURL: URL, caption: String?, completion: @escaping (Bool) -> Void) {
+        sendVoiceCalled = true
+        lastVoiceURL = fileURL
         completion(shouldSucceed)
     }
     
