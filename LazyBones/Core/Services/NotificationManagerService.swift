@@ -85,28 +85,22 @@ class NotificationManagerService: NotificationManagerServiceProtocol {
     // MARK: - Settings Management
     
     func saveNotificationSettings() {
-        let ud = UserDefaults(suiteName: appGroup)
-        ud?.set(notificationsEnabled, forKey: "notificationsEnabled")
-        ud?.set(notificationMode.rawValue, forKey: "notificationMode")
-        ud?.set(notificationIntervalHours, forKey: "notificationIntervalHours")
-        ud?.set(notificationStartHour, forKey: "notificationStartHour")
-        ud?.set(notificationEndHour, forKey: "notificationEndHour")
+        userDefaultsManager.saveNotificationSettings(
+            enabled: notificationsEnabled,
+            intervalHours: notificationIntervalHours,
+            startHour: notificationStartHour,
+            endHour: notificationEndHour,
+            mode: notificationMode.rawValue
+        )
     }
     
     func loadNotificationSettings() {
-        let ud = UserDefaults(suiteName: appGroup)
-        notificationsEnabled = ud?.bool(forKey: "notificationsEnabled") ?? false
-        
-        if let modeRaw = ud?.string(forKey: "notificationMode"), 
-           let mode = NotificationMode(rawValue: modeRaw) {
-            notificationMode = mode
-        } else {
-            notificationMode = .hourly
-        }
-        
-        notificationIntervalHours = ud?.integer(forKey: "notificationIntervalHours") == 0 ? 1 : ud!.integer(forKey: "notificationIntervalHours")
-        notificationStartHour = ud?.integer(forKey: "notificationStartHour") ?? 8
-        notificationEndHour = ud?.integer(forKey: "notificationEndHour") ?? 22
+        let settings = userDefaultsManager.loadNotificationSettings()
+        notificationsEnabled = settings.enabled
+        notificationMode = NotificationMode(rawValue: settings.mode) ?? .hourly
+        notificationIntervalHours = settings.intervalHours
+        notificationStartHour = settings.startHour
+        notificationEndHour = settings.endHour
     }
     
     // MARK: - Notification Logic

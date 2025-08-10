@@ -5,11 +5,7 @@ import WidgetKit
 struct SettingsView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel: SettingsViewModelNew
-    @State private var showAlert = false
     @State private var showUnlockAlert = false
-    // Диагностика
-    @State private var diagStoredStatus: String = ""
-    @State private var diagMainStatus: String = ""
     
     init() {
         let container = DependencyContainer.shared
@@ -44,13 +40,6 @@ struct SettingsView: View {
                 WidgetCenter.shared.reloadAllTimelines()
             }
         }
-        .alert("Вы уверены?", isPresented: $showAlert) {
-            Button("Удалить всё", role: .destructive) {
-                Task { await viewModel.handle(.clearAllData) }
-            }
-            Button("Отмена", role: .cancel) {}
-            Text("Все отчёты будут удалены безвозвратно.")
-        }
         .alert("Разблокировать отчёты?", isPresented: $showUnlockAlert) {
             Button("Разблокировать", role: .destructive) {
                 Task { await viewModel.handle(.unlockReports) }
@@ -59,11 +48,7 @@ struct SettingsView: View {
             Text("Будет разблокирована возможность создания отчёта. Локальные отчёты не будут удалены.")
         }
         .onAppear {
-            refreshDiagnostics()
             Task { await viewModel.handle(.loadSettings) }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .reportStatusDidChange)) { _ in
-            refreshDiagnostics()
         }
         .onChange(of: viewModel.state.isBackgroundFetchTestEnabled, initial: false) { _, newValue in
             Task { await viewModel.handle(.setBackgroundFetchTestEnabled(newValue)) }
@@ -204,16 +189,6 @@ struct SettingsView: View {
     
     private var dataSection: some View {
         Section(header: Text("Данные")) {
-            Button(role: .destructive) {
-                showAlert = true
-            } label: {
-                Text("Сбросить все локальные отчёты")
-                    .frame(maxWidth: .infinity, alignment: .center)
-            }
-            .buttonStyle(.bordered)
-            .foregroundColor(.red)
-            .padding(.vertical, 4)
-
             Button {
                 showUnlockAlert = true
             } label: {
@@ -223,23 +198,13 @@ struct SettingsView: View {
             .buttonStyle(.borderedProminent)
             .tint(.blue)
             .padding(.vertical, 4)
-
-            // Описание работы кнопки
             Text("Снимает блокировку редактирования обычного отчёта за сегодня. Данные отчёта не удаляются. После нажатия вернитесь на Главную — кнопка редактирования станет активной.")
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-
-            // Техническая информация (временно, для диагностики)
-            Text(diagStoredStatus)
-                .font(.caption2)
-                .foregroundColor(.secondary)
-            Text(diagMainStatus)
-                .font(.caption2)
-                .foregroundColor(.secondary)
         }
     }
-    
+
     private var iCloudSection: some View {
         Section(header: Text("iCloud экспорт")) {
             if !viewModel.state.isICloudAvailable {
@@ -307,13 +272,6 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Diagnostics
-    private func refreshDiagnostics() {
-        let storedStatus = LocalReportService.shared.getReportStatus().rawValue
-        let storedForceUnlock = LocalReportService.shared.getForceUnlock()
-        diagStoredStatus = "Текущий сохранённый статус: \(storedStatus), forceUnlock: \(storedForceUnlock ? "true" : "false")"
-        diagMainStatus = "Статус на Главной (PostStore): \(PostStore.shared.reportStatus.rawValue)"
-    }
 }
 
 #Preview {

@@ -55,8 +55,6 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
             await createTestFile()
         case .checkICloudAvailability:
             await checkICloudAvailability()
-        case .clearAllData:
-            await clearAllData()
         case .unlockReports:
             await unlockReports()
         case let .setBackgroundFetchTestEnabled(value):
@@ -258,14 +256,6 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
         state.isICloudAvailable = await iCloudService.isICloudAvailable()
     }
 
-    private func clearAllData() async {
-        do {
-            try await postRepository.clear()
-            WidgetCenter.shared.reloadAllTimelines()
-        } catch {
-            self.error = error
-        }
-    }
 
     private func unlockReports() async {
         statusManager.unlockReportCreation()

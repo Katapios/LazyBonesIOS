@@ -16,6 +16,9 @@ protocol UserDefaultsManagerProtocol {
     func savePosts(_ posts: [Post])
     func saveTelegramSettings(token: String?, chatId: String?, botId: String?)
     func loadTelegramSettings() -> (token: String?, chatId: String?, botId: String?)
+    // Notification Settings
+    func saveNotificationSettings(enabled: Bool, intervalHours: Int, startHour: Int, endHour: Int, mode: String)
+    func loadNotificationSettings() -> (enabled: Bool, intervalHours: Int, startHour: Int, endHour: Int, mode: String)
 }
 
 /// Менеджер для работы с UserDefaults

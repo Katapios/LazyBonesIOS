@@ -18,7 +18,6 @@ enum SettingsEvent {
     case checkICloudAvailability
 
     // MARK: - Data
-    case clearAllData
     case unlockReports
 
     // MARK: - Background Fetch Test
