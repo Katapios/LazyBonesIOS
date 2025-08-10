@@ -11,7 +11,8 @@ class ServiceTests: XCTestCase {
         super.setUp()
         userDefaultsManager = UserDefaultsManager.shared
         notificationService = NotificationService()
-        backgroundTaskService = BackgroundTaskService()
+        // Use singleton, ctor is private
+        backgroundTaskService = BackgroundTaskService.shared
     }
     
     override func tearDown() {

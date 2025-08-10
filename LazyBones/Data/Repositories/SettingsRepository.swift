@@ -45,17 +45,15 @@ class SettingsRepository: SettingsRepositoryProtocol {
     // MARK: - Telegram Settings
     
     func saveTelegramSettings(token: String?, chatId: String?, botId: String?) async throws {
-        userDefaultsManager.set(token, forKey: "telegramToken")
-        userDefaultsManager.set(chatId, forKey: "telegramChatId")
-        userDefaultsManager.set(botId, forKey: "telegramBotId")
+        // ВАЖНО: Нельзя передавать nil в UserDefaults.set(_:forKey:)
+        // Делегируем в UserDefaultsManager, который корректно удаляет ключ при nil
+        userDefaultsManager.saveTelegramSettings(token: token, chatId: chatId, botId: botId)
     }
     
     func loadTelegramSettings() async throws -> (token: String?, chatId: String?, botId: String?) {
-        let token = userDefaultsManager.string(forKey: "telegramToken")
-        let chatId = userDefaultsManager.string(forKey: "telegramChatId")
-        let botId = userDefaultsManager.string(forKey: "telegramBotId")
-        
-        return (token, chatId, botId)
+        // Используем централизованный helper для согласованности
+        let settings = userDefaultsManager.loadTelegramSettings()
+        return (settings.token, settings.chatId, settings.botId)
     }
     
     // MARK: - Report Status
@@ -78,4 +76,5 @@ class SettingsRepository: SettingsRepositoryProtocol {
     func loadForceUnlock() async throws -> Bool {
         return userDefaultsManager.bool(forKey: "forceUnlock")
     }
-} 
+}
+ 

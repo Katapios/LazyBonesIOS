@@ -132,6 +132,14 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
     private func saveTelegramSettings(token: String?, chatId: String?, botId: String?) async {
         do {
             try await settingsRepository.saveTelegramSettings(token: token, chatId: chatId, botId: botId)
+            // Обновляем TelegramService в DI, чтобы сразу подхватить новый токен
+            let container = DependencyContainer.shared
+            if let token = token, !token.isEmpty {
+                container.registerTelegramService(token: token)
+            } else {
+                // Удаляем существующий сервис, чтобы последующие resolve получили пустой токен из UserDefaults
+                container.remove(TelegramServiceProtocol.self)
+            }
             state.telegramStatus = "Сохранено!"
         } catch {
             state.telegramStatus = "Ошибка сохранения"
