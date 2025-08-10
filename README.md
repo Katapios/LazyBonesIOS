@@ -75,7 +75,7 @@ struct MainView: View {
 ### Создать ViewModels (1-2 недели)
 - [x] `MainViewModelNew` с `BaseViewModel<MainState, MainEvent>` ✅
 - [x] `ReportsViewModelNew` с `BaseViewModel<ReportsState, ReportsEvent>` ✅
-- [ ] `SettingsViewModel` с `BaseViewModel<SettingsState, SettingsEvent>`
+- [x] `SettingsViewModelNew` с `BaseViewModel<SettingsState, SettingsEvent>` ✅ (см. SETTINGS_MIGRATION.md)
 - [ ] `TagManagerViewModel` с `BaseViewModel<TagManagerState, TagManagerEvent>`
 
 ### Мигрировать Views (1-2 недели)
@@ -83,7 +83,7 @@ struct MainView: View {
 - [ ] `MainView` - заменить на MainViewNew
 - [ ] `ReportsViewNew` - создать новый с Clean Architecture
 - [ ] `ReportsView` - заменить на ReportsViewNew
-- [ ] `SettingsView` - убрать `store: PostStore`
+- [x] `SettingsView` - переведён на `SettingsViewModelNew`, без `PostStore` ✅
 - [ ] `TagManagerView` - убрать `store: PostStore`
 
 ### Очистка (1 неделя)
@@ -101,6 +101,7 @@ struct MainView: View {
 - `MainViewModelNew.swift` - новый с Clean Architecture
 - `ReportsViewModelNew.swift` - новый с Clean Architecture
 - `MainViewNew.swift` - новый View с Clean Architecture
+- `SettingsViewModelNew.swift` и связанные представления/координатор (см. SETTINGS_MIGRATION.md)
 
 ### Проблемные (старая архитектура)
 - `ContentView.swift` - создает PostStore глобально
@@ -115,6 +116,11 @@ struct MainView: View {
 - ✅ Unit тесты для Domain/Data слоев
 - ✅ Unit тесты для ViewModels с новой архитектурой
 - ✅ Integration тесты
+
+Дополнительно:
+- `SettingsViewModelNewTests.swift` покрывает уведомления, Telegram, экспорт iCloud, автоотправку, разблокировку отчёта
+
+Подробнее: см. `SETTINGS_MIGRATION.md`
 
 ## 🚀 Установка
 
