@@ -113,6 +113,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
     // Для хранения подписок
     private var cancellables = Set<AnyCancellable>()
     private var isUpdatingFromNotificationService = false
+    private var statusChangeObserver: NSObjectProtocol?
     
     init() {
         print("[DEBUG][INIT] PostStore инициализирован")
@@ -158,53 +159,34 @@ class PostStore: ObservableObject, PostStoreProtocol {
             postsProvider: self
         )
         
-        // Подписки на Published свойства notificationManagerService
-        if let observableService = notificationManagerService as? NotificationManagerService {
-            observableService.$notificationsEnabled
-                .sink { [weak self] newValue in 
-                    self?.isUpdatingFromNotificationService = true
-                    self?.notificationsEnabled = newValue
-                    self?.isUpdatingFromNotificationService = false
-                }
-                .store(in: &cancellables)
-            observableService.$notificationMode
-                .sink { [weak self] newValue in 
-                    self?.isUpdatingFromNotificationService = true
-                    self?.notificationMode = newValue
-                    self?.isUpdatingFromNotificationService = false
-                }
-                .store(in: &cancellables)
-            observableService.$notificationIntervalHours
-                .sink { [weak self] newValue in 
-                    self?.isUpdatingFromNotificationService = true
-                    self?.notificationIntervalHours = newValue
-                    self?.isUpdatingFromNotificationService = false
-                }
-                .store(in: &cancellables)
-            observableService.$notificationStartHour
-                .sink { [weak self] newValue in 
-                    self?.isUpdatingFromNotificationService = true
-                    self?.notificationStartHour = newValue
-                    self?.isUpdatingFromNotificationService = false
-                }
-                .store(in: &cancellables)
-            observableService.$notificationEndHour
-                .sink { [weak self] newValue in 
-                    self?.isUpdatingFromNotificationService = true
-                    self?.notificationEndHour = newValue
-                    self?.isUpdatingFromNotificationService = false
-                }
-                .store(in: &cancellables)
+        // TelegramService для получения обновлений берется через computed property
+        // self.telegramServiceForUpdates = DependencyContainer.shared.resolve(TelegramServiceProtocol.self)
+        
+        // НОВОЕ: TelegramIntegrationService для управления Telegram интеграцией
+        self.telegramIntegrationService = telegramIntegrationService
+        
+        // НОВОЕ: NotificationManagerService для управления уведомлениями
+        self.notificationManagerService = notificationManagerService
+        
+        // НОВОЕ: AutoSendService для управления автоотправкой
+        self.autoSendService = autoSendService
+        
+        // Для хранения подписок
+        self.cancellables = Set<AnyCancellable>()
+        self.isUpdatingFromNotificationService = false
+        
+        // Подписка: изменения статуса отчета -> перерисовать все вью, зависящие от PostStore
+        statusChangeObserver = NotificationCenter.default.addObserver(
+            forName: .reportStatusDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            // Синхронизируем локальный statusManager с сохранённым состоянием,
+            // затем проксируем событие в SwiftUI, чтобы @EnvironmentObject PostStore обновил экраны
+            self?.statusManager.loadStatus()
+            self?.objectWillChange.send()
         }
         
-        // Подписка на внешние отчеты
-        if let observableService = telegramIntegrationService as? TelegramIntegrationService {
-            observableService.$externalPosts
-                .sink { [weak self] newExternalPosts in self?.externalPosts = newExternalPosts }
-                .store(in: &cancellables)
-        }
-        
-        // Загружаем настройки
         loadSettings()
         loadTelegramSettings()
         
@@ -278,6 +260,9 @@ class PostStore: ObservableObject, PostStoreProtocol {
 
 
     deinit {
+        if let token = statusChangeObserver {
+            NotificationCenter.default.removeObserver(token)
+        }
         stopTimer()
     }
 
@@ -515,7 +500,7 @@ extension PostStore {
         let now = Date()
         let today = calendar.startOfDay(for: now)
         let hasTodayPost = posts.contains(where: { calendar.isDate($0.date, inSameDayAs: today) })
-        if !hasTodayPost || (reportStatus == .sent && hasTodayPost) {
+        if !hasTodayPost && reportStatus != .notStarted {
             updateReportStatus()
         }
     }

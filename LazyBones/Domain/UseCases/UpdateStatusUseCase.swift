@@ -65,11 +65,21 @@ class UpdateStatusUseCase: UpdateStatusUseCaseProtocol {
             // Получаем отчеты за сегодня
             let todayPosts = try await postRepository.fetch(for: Calendar.current.startOfDay(for: Date()))
             
+            // Определяем эффективное значение forceUnlock:
+            // если явно передано во входе — используем его,
+            // иначе читаем сохранённое значение из репозитория
+            let effectiveForceUnlock: Bool
+            if let forced = input.forceUnlock {
+                effectiveForceUnlock = forced
+            } else {
+                effectiveForceUnlock = try await settingsRepository.loadForceUnlock()
+            }
+
             // Определяем новый статус
             let newStatus = calculateNewStatus(
                 currentStatus: currentStatus,
                 todayPosts: todayPosts,
-                forceUnlock: input.forceUnlock ?? false
+                forceUnlock: effectiveForceUnlock
             )
             
             // Сохраняем новый статус

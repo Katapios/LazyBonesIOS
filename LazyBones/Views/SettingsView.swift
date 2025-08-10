@@ -7,6 +7,9 @@ struct SettingsView: View {
     @StateObject private var viewModel: SettingsViewModelNew
     @State private var showAlert = false
     @State private var showUnlockAlert = false
+    // Диагностика
+    @State private var diagStoredStatus: String = ""
+    @State private var diagMainStatus: String = ""
     
     init() {
         let container = DependencyContainer.shared
@@ -56,7 +59,11 @@ struct SettingsView: View {
             Text("Будет разблокирована возможность создания отчёта. Локальные отчёты не будут удалены.")
         }
         .onAppear {
+            refreshDiagnostics()
             Task { await viewModel.handle(.loadSettings) }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .reportStatusDidChange)) { _ in
+            refreshDiagnostics()
         }
         .onChange(of: viewModel.state.isBackgroundFetchTestEnabled, initial: false) { _, newValue in
             Task { await viewModel.handle(.setBackgroundFetchTestEnabled(newValue)) }
@@ -216,6 +223,20 @@ struct SettingsView: View {
             .buttonStyle(.borderedProminent)
             .tint(.blue)
             .padding(.vertical, 4)
+
+            // Описание работы кнопки
+            Text("Снимает блокировку редактирования обычного отчёта за сегодня. Данные отчёта не удаляются. После нажатия вернитесь на Главную — кнопка редактирования станет активной.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // Техническая информация (временно, для диагностики)
+            Text(diagStoredStatus)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+            Text(diagMainStatus)
+                .font(.caption2)
+                .foregroundColor(.secondary)
         }
     }
     
@@ -285,8 +306,16 @@ struct SettingsView: View {
             }
         }
     }
+
+    // MARK: - Diagnostics
+    private func refreshDiagnostics() {
+        let storedStatus = LocalReportService.shared.getReportStatus().rawValue
+        let storedForceUnlock = LocalReportService.shared.getForceUnlock()
+        diagStoredStatus = "Текущий сохранённый статус: \(storedStatus), forceUnlock: \(storedForceUnlock ? "true" : "false")"
+        diagMainStatus = "Статус на Главной (PostStore): \(PostStore.shared.reportStatus.rawValue)"
+    }
 }
 
 #Preview {
     SettingsView()
-} 
+}

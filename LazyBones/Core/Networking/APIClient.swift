@@ -136,6 +136,10 @@ class APIClient {
         // Установить тело запроса
         if let body = body {
             request.httpBody = body
+            // Если передаем сырое тело, укажем тип JSON по умолчанию
+            if request.value(forHTTPHeaderField: "Content-Type") == nil {
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            }
         } else if let parameters = parameters, method != .GET {
             request.httpBody = try JSONSerialization.data(withJSONObject: parameters)
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")

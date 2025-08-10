@@ -77,7 +77,11 @@ class TelegramService: TelegramServiceProtocol {
             }
         } catch {
             Logger.error("Failed to send message: \(error)", log: Logger.networking)
-            throw TelegramServiceError.networkError(error)
+            if let tgError = error as? TelegramServiceError {
+                throw tgError
+            } else {
+                throw TelegramServiceError.networkError(error)
+            }
         }
     }
     
@@ -105,7 +109,11 @@ class TelegramService: TelegramServiceProtocol {
             }
         } catch {
             Logger.error("Failed to send document: \(error)", log: Logger.networking)
-            throw TelegramServiceError.networkError(error)
+            if let tgError = error as? TelegramServiceError {
+                throw tgError
+            } else {
+                throw TelegramServiceError.networkError(error)
+            }
         }
     }
     
@@ -133,7 +141,11 @@ class TelegramService: TelegramServiceProtocol {
             }
         } catch {
             Logger.error("Failed to send voice: \(error)", log: Logger.networking)
-            throw TelegramServiceError.networkError(error)
+            if let tgError = error as? TelegramServiceError {
+                throw tgError
+            } else {
+                throw TelegramServiceError.networkError(error)
+            }
         }
     }
     
@@ -178,7 +190,11 @@ class TelegramService: TelegramServiceProtocol {
         } catch {
             Logger.error("Failed to get updates: \(error)", log: Logger.networking)
             Logger.error("Error type: \(type(of: error))", log: Logger.networking)
-            throw TelegramServiceError.networkError(error)
+            if let tgError = error as? TelegramServiceError {
+                throw tgError
+            } else {
+                throw TelegramServiceError.networkError(error)
+            }
         }
     }
     
@@ -197,7 +213,11 @@ class TelegramService: TelegramServiceProtocol {
             }
         } catch {
             Logger.error("Failed to get bot info: \(error)", log: Logger.networking)
-            throw TelegramServiceError.networkError(error)
+            if let tgError = error as? TelegramServiceError {
+                throw tgError
+            } else {
+                throw TelegramServiceError.networkError(error)
+            }
         }
     }
     

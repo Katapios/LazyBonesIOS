@@ -18,17 +18,24 @@ class SettingsCoordinator: BaseCoordinator {
     }
     
     func showTelegramSettings() {
-        // TODO: Создать TelegramSettingsViewModel и TelegramSettingsView
         Logger.debug("Showing Telegram settings", log: Logger.ui)
+        let view = TelegramSettingsView()
+        let hosting = UIHostingController(rootView: view)
+        hosting.title = "Telegram"
+        navigationController?.pushViewController(hosting, animated: true)
     }
     
     func showNotificationSettings() {
-        // TODO: Создать NotificationSettingsViewModel и NotificationSettingsView
         Logger.debug("Showing notification settings", log: Logger.ui)
+        let view = NotificationSettingsView()
+        let hosting = UIHostingController(rootView: view)
+        hosting.title = "Уведомления"
+        navigationController?.pushViewController(hosting, animated: true)
     }
     
     func showTagManager() {
         // TagManagerView уже существует, но не принимает viewModel
         Logger.debug("Showing tag manager", log: Logger.ui)
     }
-} 
+}
+ 

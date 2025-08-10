@@ -16,6 +16,7 @@ class MainViewModelNew: BaseViewModel<MainState, MainEvent>, LoadableViewModel {
     
     // MARK: - Private Properties
     private var timer: Timer?
+    private var statusChangeObserver: NSObjectProtocol?
     
     // MARK: - Initialization
     init(
@@ -32,10 +33,24 @@ class MainViewModelNew: BaseViewModel<MainState, MainEvent>, LoadableViewModel {
         super.init(initialState: MainState())
         
         setupTimer()
+
+        // Подписываемся на изменения статуса (разблокировка из настроек и др.)
+        statusChangeObserver = NotificationCenter.default.addObserver(
+            forName: .reportStatusDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.handle(.updateStatus)
+            }
+        }
     }
     
     deinit {
         timer?.invalidate()
+        if let token = statusChangeObserver {
+            NotificationCenter.default.removeObserver(token)
+        }
     }
     
     // MARK: - LoadableViewModel

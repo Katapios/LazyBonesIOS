@@ -12,17 +12,35 @@ class MainViewModel: ObservableObject {
     
     // MARK: - Private Properties
     private var timer: Timer?
+    private var statusChangeObserver: NSObjectProtocol?
     
     // MARK: - Initialization
     init(store: PostStore) {
         self.store = store
         setupTimer()
+
+        // Подписываемся на изменения статуса (разблокировка из настроек и др.)
+        statusChangeObserver = NotificationCenter.default.addObserver(
+            forName: .reportStatusDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                // Статус уже пересчитан менеджером и проброшен в PostStore через нотификацию
+                // Обновим только время, чтобы перерисовать UI без повторного пересчета
+                self.currentTime = Date()
+            }
+        }
     }
     
     deinit {
         // Timer invalidation in deinit is safe without MainActor
         // since we're just calling invalidate() which is thread-safe
         timer?.invalidate()
+        if let token = statusChangeObserver {
+            NotificationCenter.default.removeObserver(token)
+        }
     }
     
     // MARK: - Timer Management

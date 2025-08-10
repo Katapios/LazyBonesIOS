@@ -50,6 +50,7 @@ class LocalReportService {
     }
     func saveReportStatus(_ status: ReportStatus) {
         userDefaults?.set(status.rawValue, forKey: reportStatusKey)
+        userDefaults?.synchronize()
         WidgetCenter.shared.reloadAllTimelines()
     }
     func getForceUnlock() -> Bool {
@@ -57,6 +58,7 @@ class LocalReportService {
     }
     func saveForceUnlock(_ value: Bool) {
         userDefaults?.set(value, forKey: forceUnlockKey)
+        userDefaults?.synchronize()
         WidgetCenter.shared.reloadAllTimelines()
     }
     

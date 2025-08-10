@@ -151,26 +151,57 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
             state.telegramStatus = "Введите токен и chat_id"
             return
         }
-        let urlString = "https://api.telegram.org/bot\(state.telegramToken)/sendMessage"
-        let params = [
-            "chat_id": state.telegramChatId,
-            "text": "Проверка связи с LazyBones!"
-        ]
-        var urlComponents = URLComponents(string: urlString)
-        urlComponents?.queryItems = params.map { URLQueryItem(name: $0.key, value: $0.value) }
-        guard let url = urlComponents?.url else {
-            state.telegramStatus = "Ошибка URL"
-            return
-        }
         do {
-            let (_, response) = try await URLSession.shared.data(from: url)
-            if let http = response as? HTTPURLResponse, http.statusCode == 200 {
-                state.telegramStatus = "Успешно!"
-            } else {
-                state.telegramStatus = "Ошибка: неверный токен или chat_id"
+            // Разрешаем сервис через DI, чтобы соблюдать слои абстракции
+            let container = DependencyContainer.shared
+            var telegramService = container.resolve(TelegramServiceProtocol.self)
+            // Если сервис не зарегистрирован, но токен введён — зарегистрируем на лету
+            if telegramService == nil {
+                container.registerTelegramService(token: state.telegramToken)
+                telegramService = container.resolve(TelegramServiceProtocol.self)
             }
+            guard let telegramService else {
+                state.telegramStatus = "Сервис Telegram недоступен"
+                return
+            }
+            // 1) Проверяем валидность токена (getMe)
+            _ = try await telegramService.getMe()
+            // 2) Пробуем отправить тестовое сообщение в указанный чат (как было в исходной логике)
+            try await telegramService.sendMessage("Проверка связи с LazyBones!", to: state.telegramChatId)
+            state.telegramStatus = "Успешно!"
         } catch {
-            state.telegramStatus = "Ошибка: \(error.localizedDescription)"
+            // Больше информации для пользователя
+            if let apiErr = error as? APIClientError {
+                switch apiErr {
+                case .unauthorized:
+                    state.telegramStatus = "Ошибка: неверный токен"
+                case .forbidden, .notFound:
+                    state.telegramStatus = "Ошибка: доступ запрещён или ресурс не найден"
+                case .serverError(let code):
+                    state.telegramStatus = "Ошибка сервера Telegram (\(code))"
+                case .networkError(let underlying):
+                    state.telegramStatus = "Сетевая ошибка: \(underlying.localizedDescription)"
+                default:
+                    state.telegramStatus = "Ошибка сети"
+                }
+            } else if let tgErr = error as? TelegramServiceError {
+                switch tgErr {
+                case .invalidToken:
+                    state.telegramStatus = "Ошибка: неверный токен"
+                case .invalidChatId:
+                    state.telegramStatus = "Ошибка: неверный chat_id"
+                case .apiError(let message):
+                    state.telegramStatus = "Ошибка API: \(message)"
+                case .networkError(let underlying):
+                    state.telegramStatus = "Сетевая ошибка: \(underlying.localizedDescription)"
+                default:
+                    state.telegramStatus = tgErr.localizedDescription
+                }
+            } else if let urlErr = error as? URLError {
+                state.telegramStatus = "Сетевая ошибка: \(urlErr.localizedDescription)"
+            } else {
+                state.telegramStatus = "Ошибка: \(error.localizedDescription)"
+            }
         }
     }
 
@@ -238,9 +269,11 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
 
     private func unlockReports() async {
         statusManager.unlockReportCreation()
-        statusManager.updateStatus()
-        timerService.updateReportStatus(statusManager.reportStatus)
         WidgetCenter.shared.reloadAllTimelines()
+        // Синхронизируем легаси PostStore, чтобы UI обновился мгновенно
+        PostStore.shared.updateReportStatus()
+        // Обновим состояние настроек, чтобы диагностические лейблы отобразили актуальные значения
+        await loadSettings()
     }
 
     private func setBackgroundFetchTestEnabled(_ value: Bool) async {

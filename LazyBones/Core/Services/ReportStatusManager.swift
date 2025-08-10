@@ -2,6 +2,10 @@ import Foundation
 import WidgetKit
 import Combine
 
+extension Notification.Name {
+    static let reportStatusDidChange = Notification.Name("ReportStatusDidChange")
+}
+
 /// Протокол для получения отчетов
 protocol PostsProviderProtocol {
     func getPosts() -> [Post]
@@ -60,46 +64,71 @@ class ReportStatusManager: ReportStatusManagerProtocol {
     func updateStatus() {
         // Сначала проверяем новый день
         checkForNewDay()
-        
-        if forceUnlock {
-            let newStatus: ReportStatus = .notStarted
-            if reportStatus != newStatus {
-                reportStatus = newStatus
-                saveStatus()
-                updateDependencies(newStatus)
+
+        // Синхронизируем флаг forceUnlock из хранилища на случай, если он был изменён другим инстансом менеджера
+        let storedForceUnlock = localService.getForceUnlock()
+        let forceUnlockChanged = (storedForceUnlock != forceUnlock)
+        if forceUnlockChanged {
+            forceUnlock = storedForceUnlock
+        }
+
+        let today = Calendar.current.startOfDay(for: Date())
+        let isPeriodActive = factory.isReportPeriodActive()
+
+        // Получаем отчеты за сегодня
+        let posts = postsProvider.getPosts()
+        // Если посты ещё не загружены (на старте приложения), не переопределяем сохранённый статус
+        if posts.isEmpty {
+            if forceUnlockChanged {
+                // Статус не меняем, но уведомим зависимости/UI о возможном изменении forceUnlock
+                updateDependencies(reportStatus)
             }
             return
         }
-        
-        let today = Calendar.current.startOfDay(for: Date())
-        let isPeriodActive = factory.isReportPeriodActive()
-        
-        // Получаем отчеты за сегодня
-        let posts = postsProvider.getPosts()
         let regular = posts.first(where: { 
             $0.type == .regular && Calendar.current.isDate($0.date, inSameDayAs: today) 
         })
-        
-        // Определяем новый статус
+
+        // Если включен forceUnlock
+        if forceUnlock {
+            if regular?.published == true {
+                // Отчет уже отправлен — одноразовая разблокировка должна быть погашена
+                forceUnlock = false
+                localService.saveForceUnlock(false)
+                // Продолжаем обычный расчет статуса ниже
+            } else {
+                // Отчет не отправлен — удерживаем статус notStarted и выходим
+                let newStatus: ReportStatus = .notStarted
+                if reportStatus != newStatus {
+                    reportStatus = newStatus
+                    saveStatus()
+                    updateDependencies(newStatus)
+                } else if forceUnlockChanged {
+                    // Статус не изменился, но forceUnlock изменился — уведомим UI
+                    updateDependencies(newStatus)
+                }
+                return
+            }
+        }
+
+        // Определяем новый статус (без принудительной разблокировки)
         let newStatus = factory.createStatus(
             hasRegularReport: regular != nil,
             isReportPublished: regular?.published ?? false,
             isPeriodActive: isPeriodActive,
-            forceUnlock: forceUnlock
+            forceUnlock: false
         )
         
-        // Принудительно сбрасываем статус, если нет отчетов за сегодня
-        if regular == nil && reportStatus == .sent {
-            reportStatus = .notStarted
-            saveStatus()
-            updateDependencies(.notStarted)
-            return
-        }
+        // Удалено: не выполняем принудительный сброс .sent -> .notStarted, если не найден отчет за сегодня
+        // Сброс статуса выполняется по правилам нового дня в checkForNewDay()
         
         // Обновляем только если статус изменился
         if reportStatus != newStatus {
             reportStatus = newStatus
             saveStatus()
+            updateDependencies(newStatus)
+        } else if forceUnlockChanged {
+            // Статус не изменился, но forceUnlock изменился — уведомим UI
             updateDependencies(newStatus)
         }
     }
@@ -133,22 +162,25 @@ class ReportStatusManager: ReportStatusManagerProtocol {
     }
     
     func unlockReportCreation() {
+        // Разблокировать создание отчета без удаления локальных данных
+        // Устанавливаем флаг принудительной разблокировки и сохраняем
+        if forceUnlock == false { forceUnlock = true }
+        // Если у сегодняшнего регулярного отчета стоит published=true, снимаем публикацию, чтобы разрешить редактирование без удаления данных
         let today = Calendar.current.startOfDay(for: Date())
-        let posts = postsProvider.getPosts()
-        
-        // Удаляем опубликованный отчет за сегодня
-        if let publishedIndex = posts.firstIndex(where: { 
-            $0.type == .regular && 
-            Calendar.current.isDate($0.date, inSameDayAs: today) && 
-            $0.published 
-        }) {
-            var updatedPosts = posts
-            updatedPosts.remove(at: publishedIndex)
-            postsProvider.updatePosts(updatedPosts)
-            
-            updateStatus()
-            timerService.updateReportStatus(reportStatus)
+        var posts = postsProvider.getPosts()
+        if let idx = posts.firstIndex(where: { $0.type == .regular && Calendar.current.isDate($0.date, inSameDayAs: today) }) {
+            if posts[idx].published == true {
+                posts[idx].published = false
+                postsProvider.updatePosts(posts)
+            }
         }
+        // Немедленно сохраняем флаг и новый статус (даже если они уже такие же)
+        let newStatus: ReportStatus = .notStarted
+        reportStatus = newStatus
+        localService.saveForceUnlock(true)
+        saveStatus()
+        updateDependencies(newStatus)
+        timerService.updateReportStatus(reportStatus)
     }
     
     func loadStatus() {
@@ -168,5 +200,7 @@ class ReportStatusManager: ReportStatusManagerProtocol {
         timerService.updateReportStatus(status)
         WidgetCenter.shared.reloadAllTimelines()
         notificationService.scheduleNotificationsIfNeeded()
+        // Уведомляем подписчиков (главный экран и др.), что статус изменился
+        NotificationCenter.default.post(name: .reportStatusDidChange, object: self, userInfo: ["status": status.rawValue])
     }
 } 
