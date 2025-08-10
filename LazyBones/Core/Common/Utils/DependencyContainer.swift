@@ -218,6 +218,11 @@ extension DependencyContainer {
         register(TagRepository.self, factory: {
             return TagRepository(userDefaults: .standard)
         })
+        // Also register by protocol for consumers resolving TagRepositoryProtocol
+        register(TagRepositoryProtocol.self, factory: {
+            // Reuse the same concrete repository instance
+            return self.resolve(TagRepository.self) as TagRepository? ?? TagRepository(userDefaults: .standard)
+        })
         
         // Timer Service
         register(PostTimerServiceProtocol.self, factory: {
@@ -225,8 +230,7 @@ extension DependencyContainer {
             return PostTimerService(
                 userDefaultsManager: userDefaultsManager
             ) { timeLeft, progress in
-                // Callback для обновления времени
-                Logger.debug("Timer updated: \(timeLeft), progress: \(progress)", log: Logger.timer)
+                // Callback для обновления времени (без логирования, чтобы убрать "тикание" из логов)
             }
         })
         

@@ -34,6 +34,9 @@ class MainViewModelNew: BaseViewModel<MainState, MainEvent>, LoadableViewModel {
         
         setupTimer()
 
+        // Запускаем сервис таймера, чтобы он начал обновлять оставшееся время и прогресс
+        timerService.startTimer()
+
         // Подписываемся на изменения статуса (разблокировка из настроек и др.)
         statusChangeObserver = NotificationCenter.default.addObserver(
             forName: .reportStatusDidChange,
@@ -48,6 +51,8 @@ class MainViewModelNew: BaseViewModel<MainState, MainEvent>, LoadableViewModel {
     
     deinit {
         timer?.invalidate()
+        // Останавливаем сервис таймера при уничтожении VM
+        timerService.stopTimer()
         if let token = statusChangeObserver {
             NotificationCenter.default.removeObserver(token)
         }
@@ -186,6 +191,9 @@ class MainViewModelNew: BaseViewModel<MainState, MainEvent>, LoadableViewModel {
         // Обновляем текущее время
         state.currentTime = Date()
         
+        // Форсируем пересчет оставшегося времени и прогресса в сервисе таймера каждую секунду
+        timerService.updateTimeLeft()
+
         // Получаем время от таймер-сервиса
         state.timeLeft = timerService.timeLeft
         state.timeProgress = timerService.timeProgress

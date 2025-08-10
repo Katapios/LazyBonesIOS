@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 /// Новый ReportsViewModel с Clean Architecture
 @MainActor
@@ -12,18 +13,21 @@ class ReportsViewModelNew: BaseViewModel<ReportsState, ReportsEvent>, LoadableVi
     private let deleteReportUseCase: DeleteReportUseCase
     private let updateReportUseCase: UpdateReportUseCase
     private let tagRepository: any TagRepositoryProtocol
+    private let postTelegramService: PostTelegramServiceProtocol
     
     // MARK: - Initialization
     init(
         getReportsUseCase: GetReportsUseCase,
         deleteReportUseCase: DeleteReportUseCase,
         updateReportUseCase: UpdateReportUseCase,
-        tagRepository: any TagRepositoryProtocol
+        tagRepository: any TagRepositoryProtocol,
+        postTelegramService: PostTelegramServiceProtocol = DependencyContainer.shared.resolve(PostTelegramServiceProtocol.self)!
     ) {
         self.getReportsUseCase = getReportsUseCase
         self.deleteReportUseCase = deleteReportUseCase
         self.updateReportUseCase = updateReportUseCase
         self.tagRepository = tagRepository
+        self.postTelegramService = postTelegramService
         
         super.init(initialState: ReportsState())
         
@@ -81,6 +85,8 @@ class ReportsViewModelNew: BaseViewModel<ReportsState, ReportsEvent>, LoadableVi
             updateReevaluationSettings(enabled)
         case .clearError:
             state.error = nil
+        case .sendCustomReport(let post):
+            await sendCustomReport(post)
         }
     }
     
@@ -232,9 +238,89 @@ class ReportsViewModelNew: BaseViewModel<ReportsState, ReportsEvent>, LoadableVi
     private func loadSettings() {
         state.allowCustomReportReevaluation = UserDefaults.standard.bool(forKey: "allowCustomReportReevaluation")
     }
-    
     private func updateReevaluationSettings(_ enabled: Bool) {
         state.allowCustomReportReevaluation = enabled
         UserDefaults.standard.set(enabled, forKey: "allowCustomReportReevaluation")
     }
-} 
+
+    // MARK: - Sending Custom Report
+    private func sendCustomReport(_ post: DomainPost) async {
+        // Предусловия: должен быть сохранённый план и выполнена оценка
+        if post.goodItems.isEmpty {
+            state.error = NSError(domain: "Reports", code: 1, userInfo: [NSLocalizedDescriptionKey: "Сначала сохраните план"])
+            return
+        }
+        if post.isEvaluated != true {
+            state.error = NSError(domain: "Reports", code: 2, userInfo: [NSLocalizedDescriptionKey: "Сначала оцените отчет"])
+            return
+        }
+
+        state.isLoading = true
+        defer { state.isLoading = false }
+
+        let message = formatCustomReportMessage(post)
+
+        let success: Bool = await withCheckedContinuation { continuation in
+            postTelegramService.sendToTelegram(text: message) { ok in
+                continuation.resume(returning: ok)
+            }
+        }
+
+        if success {
+            do {
+                var updated = post
+                updated.published = true
+                let input = UpdateReportInput(report: updated)
+                _ = try await updateReportUseCase.execute(input: input)
+                updateReportInLists(updated)
+                NotificationCenter.default.post(name: .reportStatusDidChange, object: nil)
+            } catch {
+                state.error = error
+            }
+        } else {
+            state.error = NSError(domain: "Reports", code: 3, userInfo: [NSLocalizedDescriptionKey: "Не удалось отправить в Telegram"])
+        }
+    }
+
+    private func formatCustomReportMessage(_ report: DomainPost) -> String {
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "ru_RU")
+        df.dateStyle = .full
+        let dateStr = df.string(from: report.date)
+        let deviceName = UIDevice.current.name
+
+        var message = "\u{1F4C5} <b>Кастомный отчет — \(dateStr)</b>\n"
+        message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
+
+        if !report.goodItems.isEmpty {
+            message += "<b>✅ План:</b>\n"
+            if let results = report.evaluationResults, results.count == report.goodItems.count {
+                for (idx, item) in report.goodItems.enumerated() {
+                    let mark = results[idx] ? "✅" : "❌"
+                    message += "\(idx + 1). \(mark) \(item)\n"
+                }
+            } else {
+                for (idx, item) in report.goodItems.enumerated() {
+                    message += "\(idx + 1). \(item)\n"
+                }
+            }
+            message += "\n"
+        }
+
+        if !report.badItems.isEmpty {
+            message += "<b>❌ Я не молодец:</b>\n"
+            for (idx, item) in report.badItems.enumerated() {
+                message += "\(idx + 1). \(item)\n"
+            }
+        }
+
+        if let results = report.evaluationResults, !results.isEmpty {
+            let done = results.filter { $0 }.count
+            let total = results.count
+            let percent = Int((Double(done) / Double(total)) * 100)
+            message += "\n📊 <i>Выполнено: \(done)/\(total) (\(percent)%)</i>"
+        }
+
+        return message
+    }
+}

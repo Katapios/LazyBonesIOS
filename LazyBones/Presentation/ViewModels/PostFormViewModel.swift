@@ -241,6 +241,8 @@ class PostFormViewModel: ObservableObject {
     private func finalizePublish(post: Post) {
         store.updateReportStatus()
         WidgetCenter.shared.reloadAllTimelines()
+        // Уведомляем новый главный экран и другие подписчики о смене статуса
+        NotificationCenter.default.post(name: .reportStatusDidChange, object: nil)
     }
     
     /// Форматировать сообщение для Telegram

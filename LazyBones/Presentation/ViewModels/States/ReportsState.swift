@@ -87,6 +87,7 @@ enum ReportsEvent {
     case startEvaluation(DomainPost)
     case completeEvaluation([Bool])
     case updateReevaluationSettings(Bool)
+    case sendCustomReport(DomainPost)
     
     // MARK: - UI
     case clearError

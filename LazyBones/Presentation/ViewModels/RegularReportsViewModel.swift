@@ -139,6 +139,9 @@ class RegularReportsViewModel: BaseViewModel<RegularReportsState, RegularReports
             
             // Обновляем состояние кнопок
             updateButtonStates()
+
+            // Сообщаем приложению, что статус отчёта изменился (для MainView)
+            NotificationCenter.default.post(name: .reportStatusDidChange, object: nil)
         } catch {
             state.error = error
         }

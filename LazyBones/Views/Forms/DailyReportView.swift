@@ -564,46 +564,51 @@ struct DailyReportView: View {
         
         // Отправляем текстовое сообщение
         sendTextMessage(token: token, chatId: chatId, post: regular) { success in
-            if success && regular.voiceNotes.count > 0 {
-                // Отправляем голосовые заметки
-                self.sendAllVoiceNotes(
-                    token: token,
-                    chatId: chatId,
-                    voiceNotes: regular.voiceNotes.map { $0.path }
-                ) { allSuccess in
-                    DispatchQueue.main.async {
-                        if allSuccess {
-                            // Помечаем отчет как отправленный
-                            if let idx = self.store.posts.firstIndex(where: { $0.id == regular.id }) {
-                                var updated = self.store.posts[idx]
-                                updated.published = true
-                                self.store.posts[idx] = updated
-                                self.store.save()
-                                // Обновляем статус после отправки
-                                self.store.updateReportStatus()
+            if success {
+                // Сразу помечаем отчет отправленным, обновляем статус и нотифицируем UI
+                DispatchQueue.main.async {
+                    if let idx = self.store.posts.firstIndex(where: { $0.id == regular.id }) {
+                        var updated = self.store.posts[idx]
+                        updated.published = true
+                        self.store.posts[idx] = updated
+                        self.store.save()
+                        self.store.updateReportStatus()
+                        NotificationCenter.default.post(name: .reportStatusDidChange, object: nil)
+                    }
+                    self.publishStatus = regular.voiceNotes.isEmpty ? "Отчет успешно опубликован!" : "Отчет опубликован, отправляю голосовые…"
+                }
+
+                // Если есть голосовые — отправляем, но статус уже отмечен как отправленный
+                if regular.voiceNotes.count > 0 {
+                    self.sendAllVoiceNotes(
+                        token: token,
+                        chatId: chatId,
+                        voiceNotes: regular.voiceNotes.map { $0.path }
+                    ) { allSuccess in
+                        DispatchQueue.main.async {
+                            if allSuccess {
+                                // Удаляем локальные файлы голосовых заметок и очищаем список в посте
+                                var fileDeletionErrors = 0
+                                for path in regular.voiceNotes.map({ $0.path }) {
+                                    do { try FileManager.default.removeItem(atPath: path) } catch { fileDeletionErrors += 1 }
+                                }
+                                if let idx = self.store.posts.firstIndex(where: { $0.id == regular.id }) {
+                                    var updated = self.store.posts[idx]
+                                    updated.voiceNotes = []
+                                    self.store.posts[idx] = updated
+                                    self.store.save()
+                                }
+                                self.publishStatus = fileDeletionErrors == 0 ? "Отчет успешно опубликован с голосовыми заметками!" : "Опубликовано, но не удалось удалить некоторые аудиофайлы"
+                            } else {
+                                // Не считаем это провалом общего статуса — текст уже ушел
+                                self.publishStatus = "Отчет опубликован, но произошла ошибка при отправке голосовых"
                             }
-                            self.publishStatus = "Отчет успешно опубликован с голосовыми заметками!"
-                        } else {
-                            self.publishStatus = "Ошибка отправки голосовых заметок"
                         }
                     }
                 }
             } else {
                 DispatchQueue.main.async {
-                    if success {
-                        // Помечаем отчет как отправленный
-                        if let idx = self.store.posts.firstIndex(where: { $0.id == regular.id }) {
-                            var updated = self.store.posts[idx]
-                            updated.published = true
-                            self.store.posts[idx] = updated
-                            self.store.save()
-                            // Обновляем статус после отправки
-                            self.store.updateReportStatus()
-                        }
-                        self.publishStatus = "Отчет успешно опубликован!"
-                    } else {
-                        self.publishStatus = "Ошибка отправки: неверный токен или chat_id"
-                    }
+                    self.publishStatus = "Ошибка отправки: неверный токен или chat_id"
                 }
             }
         }
@@ -654,12 +659,20 @@ struct DailyReportView: View {
         }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        let task = URLSession.shared.dataTask(with: request) { _, response, error in
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if error != nil {
                     completion(false)
                 } else if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
-                    completion(true)
+                    // Проверяем JSON { ok: true }
+                    if let data = data,
+                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let ok = json["ok"] as? Bool,
+                       ok == true {
+                        completion(true)
+                    } else {
+                        completion(false)
+                    }
                 } else {
                     completion(false)
                 }
@@ -753,7 +766,15 @@ struct DailyReportView: View {
                     completion(false)
                 } else if let httpResponse = response as? HTTPURLResponse,
                           httpResponse.statusCode == 200 {
-                    completion(true)
+                    // Проверяем JSON { ok: true }
+                    if let data = data,
+                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let ok = json["ok"] as? Bool,
+                       ok == true {
+                        completion(true)
+                    } else {
+                        completion(false)
+                    }
                 } else {
                     completion(false)
                 }
