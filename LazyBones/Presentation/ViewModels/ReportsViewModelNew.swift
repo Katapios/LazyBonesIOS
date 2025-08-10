@@ -33,6 +33,13 @@ class ReportsViewModelNew: BaseViewModel<ReportsState, ReportsEvent>, LoadableVi
         
         // Загружаем настройки
         loadSettings()
+
+        // Подписка на изменения тегов
+        NotificationCenter.default.addObserver(self, selector: #selector(handleTagsDidChange), name: .tagsDidChange, object: nil)
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
     
     // MARK: - LoadableViewModel
@@ -241,6 +248,13 @@ class ReportsViewModelNew: BaseViewModel<ReportsState, ReportsEvent>, LoadableVi
     private func updateReevaluationSettings(_ enabled: Bool) {
         state.allowCustomReportReevaluation = enabled
         UserDefaults.standard.set(enabled, forKey: "allowCustomReportReevaluation")
+    }
+    
+    // MARK: - Notifications
+    @objc private func handleTagsDidChange() {
+        Task { [weak self] in
+            await self?.loadTags()
+        }
     }
 
     // MARK: - Sending Custom Report

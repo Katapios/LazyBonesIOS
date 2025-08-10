@@ -4,6 +4,7 @@ import Combine
 
 extension Notification.Name {
     static let reportStatusDidChange = Notification.Name("ReportStatusDidChange")
+    static let tagsDidChange = Notification.Name("TagsDidChange")
 }
 
 /// Протокол для получения отчетов

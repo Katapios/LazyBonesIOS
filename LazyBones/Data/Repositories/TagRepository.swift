@@ -1,75 +1,60 @@
 import Foundation
 
-/// Реализация репозитория тегов
+/// Реализация репозитория тегов, делегирующая в LocalReportService
 class TagRepository: TagRepositoryProtocol {
     
-    private let userDefaults: UserDefaults
-    private let goodTagsKey = "goodTags"
-    private let badTagsKey = "badTags"
+    private let localService: LocalReportService
     
-    init(userDefaults: UserDefaults = .standard) {
-        self.userDefaults = userDefaults
+    init(localService: LocalReportService = .shared) {
+        self.localService = localService
     }
     
     func saveGoodTags(_ tags: [String]) async throws {
-        userDefaults.set(tags, forKey: goodTagsKey)
-        userDefaults.synchronize()
+        localService.saveGoodTags(tags)
+        NotificationCenter.default.post(name: .tagsDidChange, object: nil)
     }
     
     func saveBadTags(_ tags: [String]) async throws {
-        userDefaults.set(tags, forKey: badTagsKey)
-        userDefaults.synchronize()
+        localService.saveBadTags(tags)
+        NotificationCenter.default.post(name: .tagsDidChange, object: nil)
     }
     
     func loadGoodTags() async throws -> [String] {
-        return userDefaults.stringArray(forKey: goodTagsKey) ?? []
+        localService.loadGoodTags()
     }
     
     func loadBadTags() async throws -> [String] {
-        return userDefaults.stringArray(forKey: badTagsKey) ?? []
+        localService.loadBadTags()
     }
     
     func addGoodTag(_ tag: String) async throws {
-        var tags = try await loadGoodTags()
-        if !tags.contains(tag) {
-            tags.append(tag)
-            try await saveGoodTags(tags)
-        }
+        localService.addGoodTag(tag)
+        NotificationCenter.default.post(name: .tagsDidChange, object: nil)
     }
     
     func addBadTag(_ tag: String) async throws {
-        var tags = try await loadBadTags()
-        if !tags.contains(tag) {
-            tags.append(tag)
-            try await saveBadTags(tags)
-        }
+        localService.addBadTag(tag)
+        NotificationCenter.default.post(name: .tagsDidChange, object: nil)
     }
     
     func removeGoodTag(_ tag: String) async throws {
-        var tags = try await loadGoodTags()
-        tags.removeAll { $0 == tag }
-        try await saveGoodTags(tags)
+        localService.removeGoodTag(tag)
+        NotificationCenter.default.post(name: .tagsDidChange, object: nil)
     }
     
     func removeBadTag(_ tag: String) async throws {
-        var tags = try await loadBadTags()
-        tags.removeAll { $0 == tag }
-        try await saveBadTags(tags)
+        localService.removeBadTag(tag)
+        NotificationCenter.default.post(name: .tagsDidChange, object: nil)
     }
     
     func updateGoodTag(old: String, new: String) async throws {
-        var tags = try await loadGoodTags()
-        if let index = tags.firstIndex(of: old) {
-            tags[index] = new
-            try await saveGoodTags(tags)
-        }
+        localService.updateGoodTag(old: old, new: new)
+        NotificationCenter.default.post(name: .tagsDidChange, object: nil)
     }
     
     func updateBadTag(old: String, new: String) async throws {
-        var tags = try await loadBadTags()
-        if let index = tags.firstIndex(of: old) {
-            tags[index] = new
-            try await saveBadTags(tags)
-        }
+        localService.updateBadTag(old: old, new: new)
+        NotificationCenter.default.post(name: .tagsDidChange, object: nil)
     }
-} 
+}
+ 

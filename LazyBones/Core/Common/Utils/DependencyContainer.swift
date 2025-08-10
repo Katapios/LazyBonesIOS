@@ -216,12 +216,12 @@ extension DependencyContainer {
         })
         
         register(TagRepository.self, factory: {
-            return TagRepository(userDefaults: .standard)
+            return TagRepository(localService: .shared)
         })
         // Also register by protocol for consumers resolving TagRepositoryProtocol
         register(TagRepositoryProtocol.self, factory: {
             // Reuse the same concrete repository instance
-            return self.resolve(TagRepository.self) as TagRepository? ?? TagRepository(userDefaults: .standard)
+            return self.resolve(TagRepository.self) as TagRepository? ?? TagRepository(localService: .shared)
         })
         
         // Timer Service

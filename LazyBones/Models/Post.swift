@@ -114,6 +114,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
     private var cancellables = Set<AnyCancellable>()
     private var isUpdatingFromNotificationService = false
     private var statusChangeObserver: NSObjectProtocol?
+    private var tagsChangeObserver: NSObjectProtocol?
     
     init() {
         print("[DEBUG][INIT] PostStore инициализирован")
@@ -184,6 +185,17 @@ class PostStore: ObservableObject, PostStoreProtocol {
             // Синхронизируем локальный statusManager с сохранённым состоянием,
             // затем проксируем событие в SwiftUI, чтобы @EnvironmentObject PostStore обновил экраны
             self?.statusManager.loadStatus()
+            self?.objectWillChange.send()
+        }
+
+        // Подписка: изменения тегов из новой архитектуры -> перезагрузить теги в PostStore (для легаси экранов)
+        tagsChangeObserver = NotificationCenter.default.addObserver(
+            forName: .tagsDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.loadGoodTags()
+            self?.loadBadTags()
             self?.objectWillChange.send()
         }
         
@@ -261,6 +273,9 @@ class PostStore: ObservableObject, PostStoreProtocol {
 
     deinit {
         if let token = statusChangeObserver {
+            NotificationCenter.default.removeObserver(token)
+        }
+        if let token = tagsChangeObserver {
             NotificationCenter.default.removeObserver(token)
         }
         stopTimer()
@@ -538,21 +553,25 @@ extension PostStore {
     func saveGoodTags(_ tags: [String]) {
         localService.saveGoodTags(tags)
         self.goodTags = tags
+        NotificationCenter.default.post(name: .tagsDidChange, object: nil)
     }
     func addGoodTag(_ tag: String) {
         localService.addGoodTag(tag)
         self.goodTags = localService.loadGoodTags()
         Logger.info("Added good tag: \(tag)", log: Logger.general)
+        NotificationCenter.default.post(name: .tagsDidChange, object: nil)
     }
     func removeGoodTag(_ tag: String) {
         localService.removeGoodTag(tag)
         self.goodTags = localService.loadGoodTags()
         Logger.info("Removed good tag: \(tag)", log: Logger.general)
+        NotificationCenter.default.post(name: .tagsDidChange, object: nil)
     }
     func updateGoodTag(old: String, new: String) {
         localService.updateGoodTag(old: old, new: new)
         self.goodTags = localService.loadGoodTags()
         Logger.info("Updated good tag: \(old) -> \(new)", log: Logger.general)
+        NotificationCenter.default.post(name: .tagsDidChange, object: nil)
     }
     func loadBadTags() {
         self.badTags = localService.loadBadTags()
@@ -560,21 +579,25 @@ extension PostStore {
     func saveBadTags(_ tags: [String]) {
         localService.saveBadTags(tags)
         self.badTags = tags
+        NotificationCenter.default.post(name: .tagsDidChange, object: nil)
     }
     func addBadTag(_ tag: String) {
         localService.addBadTag(tag)
         self.badTags = localService.loadBadTags()
         Logger.info("Added bad tag: \(tag)", log: Logger.general)
+        NotificationCenter.default.post(name: .tagsDidChange, object: nil)
     }
     func removeBadTag(_ tag: String) {
         localService.removeBadTag(tag)
         self.badTags = localService.loadBadTags()
         Logger.info("Removed bad tag: \(tag)", log: Logger.general)
+        NotificationCenter.default.post(name: .tagsDidChange, object: nil)
     }
     func updateBadTag(old: String, new: String) {
         localService.updateBadTag(old: old, new: new)
         self.badTags = localService.loadBadTags()
         Logger.info("Updated bad tag: \(old) -> \(new)", log: Logger.general)
+        NotificationCenter.default.post(name: .tagsDidChange, object: nil)
     }
 
     // MARK: - Автоотправка в Telegram (делегируется к AutoSendService)

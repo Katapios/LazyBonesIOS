@@ -1,10 +1,11 @@
 import SwiftUI
 
 struct TagManagerView: View {
-    @StateObject private var viewModel: TagManagerViewModel
+    @StateObject private var viewModel: TagManagerViewModelNew
     
-    init(store: PostStore) {
-        self._viewModel = StateObject(wrappedValue: TagManagerViewModel(store: store))
+    init() {
+        let repo = DependencyContainer.shared.resolve(TagRepositoryProtocol.self)!
+        self._viewModel = StateObject(wrappedValue: TagManagerViewModelNew(tagRepository: repo))
     }
 
     var body: some View {
@@ -17,19 +18,19 @@ struct TagManagerView: View {
             HStack {
                 TextField("Добавить тег", text: $viewModel.newTag)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
-                Button(action: viewModel.addTag) {
+                Button(action: { Task { await viewModel.addTag() } }) {
                     Image(systemName: "plus.circle.fill")
                         .font(.title2)
                 }.disabled(viewModel.isNewTagEmpty)
             }
             List {
-                ForEach(viewModel.currentTags.indices, id: \ .self) { idx in
+                ForEach(viewModel.currentTags.indices, id: \.self) { idx in
                     HStack {
                         if viewModel.editingTagIndex == idx {
                             TextField("Тег", text: $viewModel.editingTagText)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
                             Button("OK") {
-                                viewModel.finishEditTag()
+                                Task { await viewModel.finishEditTag() }
                                 viewModel.editingTagIndex = nil
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -56,12 +57,14 @@ struct TagManagerView: View {
         .navigationTitle("Теги")
         .hideKeyboardOnTap()
         .alert("Удалить тег?", isPresented: $viewModel.showDeleteTagAlert) {
-            Button("Удалить", role: .destructive) { viewModel.deleteTag() }
+            Button("Удалить", role: .destructive) { Task { await viewModel.deleteTag() } }
             Button("Отмена", role: .cancel) { viewModel.cancelDeleteTag() }
         }
+        .task { await viewModel.loadTags() }
     }
 }
 
 #Preview {
-    TagManagerView(store: PostStore())
-} 
+    TagManagerView()
+}
+ 
