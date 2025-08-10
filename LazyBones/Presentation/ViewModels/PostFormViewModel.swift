@@ -174,101 +174,42 @@ class PostFormViewModel: ObservableObject {
             store.add(post: newPost)
         }
         
-        sendToTelegram(post: newPost)
-        onPublish?()
-        objectWillChange.send()
-    }
-    
-    /// Отправить в Telegram
-    private func sendToTelegram(post: Post) {
-        guard let token = store.telegramToken, !token.isEmpty,
-              let chatId = store.telegramChatId, !chatId.isEmpty else {
-            sendStatus = "Ошибка: не настроен Telegram"
-            return
-        }
-        
+        // Отправляем через новую архитектуру
         isSending = true
         sendStatus = "Отправка в Telegram..."
-        
-        let message = formatMessageForTelegram(post: post)
-        
-        let urlString = "https://api.telegram.org/bot\(token)/sendMessage"
-        guard let url = URL(string: urlString) else {
-            sendStatus = "Ошибка: неверный URL"
-            isSending = false
-            return
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let body: [String: Any] = [
-            "chat_id": chatId,
-            "text": message,
-            "parse_mode": "HTML"
-        ]
-        
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        } catch {
-            sendStatus = "Ошибка: не удалось создать запрос"
-            isSending = false
-            return
-        }
-        
-        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
-            DispatchQueue.main.async {
-                self?.isSending = false
-                
-                if let error = error {
-                    self?.sendStatus = "Ошибка: \(error.localizedDescription)"
-                } else if let httpResponse = response as? HTTPURLResponse {
-                    if httpResponse.statusCode == 200 {
-                        self?.sendStatus = "Отправлено успешно!"
-                        self?.finalizePublish(post: post)
-                    } else {
-                        self?.sendStatus = "Ошибка: HTTP \(httpResponse.statusCode)"
-                    }
-                } else {
-                    self?.sendStatus = "Неизвестная ошибка"
-                }
+        Task { @MainActor in
+            guard
+                let getUC = DependencyContainer.shared.resolve(GetReportsUseCase.self),
+                let delUC = DependencyContainer.shared.resolve(DeleteReportUseCase.self),
+                let updUC = DependencyContainer.shared.resolve(UpdateReportUseCase.self),
+                let tagRepo = DependencyContainer.shared.resolve((any TagRepositoryProtocol).self),
+                let postTg = DependencyContainer.shared.resolve(PostTelegramServiceProtocol.self)
+            else {
+                self.isSending = false
+                self.sendStatus = "Ошибка DI: зависимости не найдены"
+                return
             }
-        }.resume()
-    }
-    
-    /// Завершить публикацию
-    private func finalizePublish(post: Post) {
-        store.updateReportStatus()
-        WidgetCenter.shared.reloadAllTimelines()
-        // Уведомляем новый главный экран и другие подписчики о смене статуса
-        NotificationCenter.default.post(name: .reportStatusDidChange, object: nil)
-    }
-    
-    /// Форматировать сообщение для Telegram
-    private func formatMessageForTelegram(post: Post) -> String {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "dd.MM.yyyy"
-        let dateString = dateFormatter.string(from: post.date)
-        
-        var message = "📊 <b>Отчет за \(dateString)</b>\n\n"
-        
-        if !post.goodItems.isEmpty {
-            message += "✅ <b>Хорошо:</b>\n"
-            for item in post.goodItems {
-                message += "• \(item)\n"
+
+            let vm = ReportsViewModelNew(
+                getReportsUseCase: getUC,
+                deleteReportUseCase: delUC,
+                updateReportUseCase: updUC,
+                tagRepository: tagRepo,
+                postTelegramService: postTg
+            )
+
+            let domainPost = PostAdapter.toDomain(newPost)
+            await vm.handle(.sendRegularReport(domainPost))
+
+            if vm.state.error == nil {
+                self.sendStatus = "Отправлено успешно!"
+                self.onPublish?()
+            } else {
+                self.sendStatus = "Ошибка отправки"
             }
-            message += "\n"
+            self.isSending = false
+            self.objectWillChange.send()
         }
-        
-        if !post.badItems.isEmpty {
-            message += "❌ <b>Плохо:</b>\n"
-            for item in post.badItems {
-                message += "• \(item)\n"
-            }
-        }
-        
-        return message
     }
     
     /// Получить иконку для элемента

@@ -237,15 +237,38 @@ struct RegularReportFormView: View {
                                             }
                                         }
                                         Button("Сохранить") {
-                                            if selectedTab == .good {
-                                                store.addGoodTag(newText)
-                                            } else {
-                                                store.addBadTag(newText)
-                                            }
-                                            if selectedTab == .good {
-                                                addGoodItem()
-                                            } else {
-                                                addBadItem()
+                                            let tagText = newText
+                                            Task { @MainActor in
+                                                if let tagRepo = DependencyContainer.shared.resolve((any TagRepositoryProtocol).self) {
+                                                    do {
+                                                        if selectedTab == .good {
+                                                            try await tagRepo.addGoodTag(tagText)
+                                                            addGoodItem()
+                                                        } else {
+                                                            try await tagRepo.addBadTag(tagText)
+                                                            addBadItem()
+                                                        }
+                                                    } catch {
+                                                        Logger.error("Failed to save tag from RegularReportFormView: \(error)", log: Logger.ui)
+                                                        // Fallback на legacy (не должно происходить)
+                                                        if selectedTab == .good {
+                                                            store.addGoodTag(tagText)
+                                                            addGoodItem()
+                                                        } else {
+                                                            store.addBadTag(tagText)
+                                                            addBadItem()
+                                                        }
+                                                    }
+                                                } else {
+                                                    // Fallback на legacy (не должно происходить)
+                                                    if selectedTab == .good {
+                                                        store.addGoodTag(tagText)
+                                                        addGoodItem()
+                                                    } else {
+                                                        store.addBadTag(tagText)
+                                                        addBadItem()
+                                                    }
+                                                }
                                             }
                                         }
                                         .buttonStyle(.borderedProminent)
@@ -270,10 +293,12 @@ struct RegularReportFormView: View {
                             if isSending {
                                 ProgressView("Отправка в Telegram...")
                             }
+                            // Сообщение статуса оставляем для совместимости,
+                            // но наполнение теперь управляется новой архитектурой
                             if let status = sendStatus {
                                 Text(status)
                                     .font(.caption)
-                                    .foregroundColor(status == "Успешно отправлено!" ? .green : .red)
+                                    .foregroundColor(.secondary)
                             }
                         }
                         .padding(.vertical, 6)
@@ -453,215 +478,54 @@ struct RegularReportFormView: View {
             voiceNotes: voiceNotes,
             type: .regular
         )
-        
+
+        // Сохраняем черновик в legacy store (для UI совместимости)
         if post != nil {
             store.update(post: draftPost)
         } else {
             store.add(post: draftPost)
         }
-        
-        if let token = store.telegramToken, let chatId = store.telegramChatId,
-           !token.isEmpty, !chatId.isEmpty {
-            sendToTelegram(token: token, chatId: chatId, post: draftPost)
-        } else {
-            self.sendStatus = "Ошибка: заполните токен и chat_id в настройках"
-        }
-    }
 
-    // MARK: - Telegram Integration
-    func sendToTelegram(token: String, chatId: String, post: Post) {
+        // Отправляем через новую архитектуру
         isSending = true
         sendStatus = nil
-        sendTextMessage(token: token, chatId: chatId, post: post) { success in
-            if success && post.voiceNotes.count > 0 {
-                self.sendAllVoiceNotes(
-                    token: token,
-                    chatId: chatId,
-                    voiceNotes: post.voiceNotes.map { $0.path }
-                ) { allSuccess in
-                    DispatchQueue.main.async {
-                        self.isSending = false
-                        if allSuccess {
-                            self.finalizePublish(post: post)
-                        } else {
-                            self.sendStatus = "Ошибка отправки голосовых заметок"
-                        }
-                    }
-                }
-            } else {
-                DispatchQueue.main.async {
-                    self.isSending = false
-                    if success {
-                        self.finalizePublish(post: post)
-                    } else {
-                        self.sendStatus = "Ошибка отправки: неверный токен или chat_id"
-                    }
-                }
-            }
-        }
-    }
-
-    private func finalizePublish(post: Post) {
-        // Обновляем пост как опубликованный только если отправка успешна
-        let publishedPost = Post(
-            id: post.id,
-            date: post.date,
-            goodItems: post.goodItems,
-            badItems: post.badItems,
-            published: true,
-            voiceNotes: post.voiceNotes,
-            type: .regular
-        )
-        store.update(post: publishedPost)
-        self.sendStatus = "Успешно отправлено!"
-        self.onPublish?()
-        self.dismiss()
-    }
-
-    private func sendTextMessage(
-        token: String,
-        chatId: String,
-        post: Post,
-        completion: @escaping (Bool) -> Void
-    ) {
-        let dateFormatter = DateFormatter()
-        dateFormatter.locale = Locale(identifier: "ru_RU")
-        dateFormatter.dateStyle = .full
-        let dateStr = dateFormatter.string(from: post.date)
-        let deviceName = store.getDeviceName()
-
-        var message = "\u{1F4C5} <b>Отчёт за \(dateStr)</b>\n"
-        message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
-
-        if !post.goodItems.isEmpty {
-            message += "<b>✅ Я молодец:</b>\n"
-            for (index, item) in post.goodItems.enumerated() {
-                let icon = getIconForItem(item, isGood: true)
-                message += "\(index + 1). \(icon) \(item)\n"
-            }
-            message += "\n"
-        }
-        if !post.badItems.isEmpty {
-            message += "<b>❌ Я не молодец:</b>\n"
-            for (index, item) in post.badItems.enumerated() {
-                let icon = getIconForItem(item, isGood: false)
-                message += "\(index + 1). \(icon) \(item)\n"
-            }
-        }
-
-        if post.voiceNotes.count > 0 {
-            message += "\n\u{1F3A4} <i>Голосовая заметка прикреплена</i>"
-        }
-
-        let urlString = "https://api.telegram.org/bot\(token)/sendMessage"
-        let params = [
-            "chat_id": chatId,
-            "text": message,
-            "parse_mode": "HTML",
-        ]
-        var urlComponents = URLComponents(string: urlString)!
-        urlComponents.queryItems = params.map {
-            URLQueryItem(name: $0.key, value: $0.value)
-        }
-        guard let url = urlComponents.url else {
-            completion(false)
-            return
-        }
-
-        let task = URLSession.shared.dataTask(with: url) { data, response, error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    self.sendStatus = "Ошибка: \(error.localizedDescription)"
-                    completion(false)
-                } else if let httpResponse = response as? HTTPURLResponse,
-                          httpResponse.statusCode == 200 {
-                    completion(true)
-                } else {
-                    self.sendStatus = "Ошибка отправки: неверный токен или chat_id"
-                    completion(false)
-                }
-            }
-        }
-        task.resume()
-    }
-
-    private func sendAllVoiceNotes(
-        token: String,
-        chatId: String,
-        voiceNotes: [String],
-        completion: @escaping (Bool) -> Void
-    ) {
-        var index = 0
-        func sendNext(successSoFar: Bool) {
-            if index >= voiceNotes.count {
-                completion(successSoFar)
+        Task { @MainActor in
+            guard
+                let getUC = DependencyContainer.shared.resolve(GetReportsUseCase.self),
+                let delUC = DependencyContainer.shared.resolve(DeleteReportUseCase.self),
+                let updUC = DependencyContainer.shared.resolve(UpdateReportUseCase.self),
+                let tagRepo = DependencyContainer.shared.resolve((any TagRepositoryProtocol).self),
+                let postTg = DependencyContainer.shared.resolve(PostTelegramServiceProtocol.self)
+            else {
+                self.isSending = false
+                self.sendStatus = "Ошибка DI: зависимости не найдены"
                 return
             }
-            let path = voiceNotes[index]
-            let url = URL(fileURLWithPath: path)
-            sendSingleVoice(token: token, chatId: chatId, voiceURL: url) { success in
-                index += 1
-                sendNext(successSoFar: successSoFar && success)
+
+            let vm = ReportsViewModelNew(
+                getReportsUseCase: getUC,
+                deleteReportUseCase: delUC,
+                updateReportUseCase: updUC,
+                tagRepository: tagRepo,
+                postTelegramService: postTg
+            )
+
+            let domainPost = PostAdapter.toDomain(draftPost)
+            await vm.handle(.sendRegularReport(domainPost))
+
+            // Обновление UI статуса: успешность/ошибка читаем из vm.state.error
+            if vm.state.error == nil {
+                self.sendStatus = "Успешно отправлено!"
+                self.onPublish?()
+                self.dismiss()
+            } else {
+                self.sendStatus = "Ошибка отправки"
             }
+            self.isSending = false
         }
-        sendNext(successSoFar: true)
     }
 
-    private func sendSingleVoice(
-        token: String,
-        chatId: String,
-        voiceURL: URL,
-        completion: @escaping (Bool) -> Void
-    ) {
-        let urlString = "https://api.telegram.org/bot\(token)/sendVoice"
-        guard let tgURL = URL(string: urlString) else {
-            completion(false)
-            return
-        }
-        var request = URLRequest(url: tgURL)
-        request.httpMethod = "POST"
-        let boundary = UUID().uuidString
-        request.setValue(
-            "multipart/form-data; boundary=\(boundary)",
-            forHTTPHeaderField: "Content-Type"
-        )
-        var body = Data()
-        
-        // Добавляем chat_id
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"chat_id\"\r\n\r\n".data(using: .utf8)!)
-        body.append("\(chatId)\r\n".data(using: .utf8)!)
-        
-        // Добавляем аудиофайл
-        do {
-            let audioData = try Data(contentsOf: voiceURL)
-            body.append("--\(boundary)\r\n".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"voice\"; filename=\"voice_note.m4a\"\r\n".data(using: .utf8)!)
-            body.append("Content-Type: audio/m4a\r\n\r\n".data(using: .utf8)!)
-            body.append(audioData)
-            body.append("\r\n".data(using: .utf8)!)
-            body.append("--\(boundary)--\r\n".data(using: .utf8)!)
-        } catch {
-            completion(false)
-            return
-        }
-        
-        request.httpBody = body
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    print("Ошибка отправки аудио: \(error.localizedDescription)")
-                    completion(false)
-                } else if let httpResponse = response as? HTTPURLResponse,
-                          httpResponse.statusCode == 200 {
-                    completion(true)
-                } else {
-                    completion(false)
-                }
-            }
-        }
-        task.resume()
-    }
+    // Легаси отправка в Telegram удалена. Публикация производится через ReportsViewModelNew.
 }
 
 #Preview {
