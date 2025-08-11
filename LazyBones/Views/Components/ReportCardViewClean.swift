@@ -1,5 +1,13 @@
 import SwiftUI
 
+// Local helper to deduplicate sequences while preserving order
+private extension Sequence where Element: Hashable {
+    func uniqued() -> [Element] {
+        var seen = Set<Element>()
+        return self.filter { seen.insert($0).inserted }
+    }
+}
+
 struct ReportCardViewClean: View {
     let post: DomainPost
     var isSelectable: Bool = false
@@ -10,6 +18,14 @@ struct ReportCardViewClean: View {
     var isEvaluated: Bool = false
     var onEvaluate: (() -> Void)? = nil
     @Environment(\.colorScheme) var colorScheme
+
+    // Precomputed arrays to simplify expressions for Swift type-checker
+    private var uniqueGoodItems: [String] {
+        post.goodItems.filter { !$0.isEmpty }.uniqued()
+    }
+    private var uniqueBadItems: [String] {
+        post.badItems.filter { !$0.isEmpty }.uniqued()
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -81,19 +97,14 @@ struct ReportCardViewClean: View {
                                 }
                             }
                         } else {
-                        ForEach(
-                            Array(
-                                post.goodItems.filter { !$0.isEmpty }.uniqued()
-                                    .enumerated()
-                            ),
-                            id: \.element
-                        ) { index, item in
-                            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                Text("\(index + 1).")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Text(item)
-                                    .font(.body)
+                            ForEach(uniqueGoodItems.indices, id: \.self) { index in
+                                let item = uniqueGoodItems[index]
+                                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                    Text("\(index + 1).")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text(item)
+                                        .font(.body)
                                 }
                             }
                         }
@@ -107,13 +118,8 @@ struct ReportCardViewClean: View {
                         .background(Color.red.opacity(0.12))
                         .cornerRadius(8)
                     VStack(alignment: .leading, spacing: 2) {
-                        ForEach(
-                            Array(
-                                post.badItems.filter { !$0.isEmpty }.uniqued()
-                                    .enumerated()
-                            ),
-                            id: \.element
-                        ) { index, item in
+                        ForEach(uniqueBadItems.indices, id: \.self) { index in
+                            let item = uniqueBadItems[index]
                             HStack(alignment: .firstTextBaseline, spacing: 4) {
                                 Text("\(index + 1).")
                                     .font(.caption)
