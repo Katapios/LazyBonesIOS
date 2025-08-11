@@ -19,13 +19,20 @@ struct RegularReportFormView: View {
     enum TabType { case good, bad }
     @State private var pickerIndexGood: Int = 0
     @State private var pickerIndexBad: Int = 0
+    // Clean Architecture: локальные источники тегов из TagRepository
+    @State private var goodTagsCA: [String] = []
+    @State private var badTagsCA: [String] = []
+    @State private var tagsObserver: NSObjectProtocol?
+    // Clean Architecture: локальный статус отчёта из ReportStatusManager/LocalReportService
+    @State private var reportStatusCA: ReportStatus = .notStarted
+    @State private var statusObserver: NSObjectProtocol?
 
-    // MARK: - Глобальные теги
+    // MARK: - Теги (из TagRepository)
     private var goodTags: [TagItem] {
-        store.goodTags.map { TagItem(text: $0, icon: "tag", color: .green) }
+        goodTagsCA.map { TagItem(text: $0, icon: "tag", color: .green) }
     }
     private var badTags: [TagItem] {
-        store.badTags.map { TagItem(text: $0, icon: "tag", color: .red) }
+        badTagsCA.map { TagItem(text: $0, icon: "tag", color: .red) }
     }
 
     init(
@@ -64,7 +71,7 @@ struct RegularReportFormView: View {
     }
 
     var body: some View {
-        if store.reportStatus == .sent || store.reportStatus == .notCreated || store.reportStatus == .notSent {
+        if reportStatusCA == .sent || reportStatusCA == .notCreated || reportStatusCA == .notSent {
             VStack(spacing: 24) {
                 Spacer()
                 Image(systemName: "clock.arrow.circlepath")
@@ -162,28 +169,43 @@ struct RegularReportFormView: View {
                                             minHeight: 120,
                                             maxHeight: 120
                                         )
-                                        .id(selectedTab)
+                                        // Форсируем перерисовку при изменении набора тегов
+                                        .id("regular_\(selectedTab)_" + allTags.map { $0.text }.joined(separator: "|"))
                                         .clipped()
                                         
-                                        let selectedTag = allTags[(selectedTab == .good ? pickerIndexGood : pickerIndexBad)]
-                                        let isTagAdded = (selectedTab == .good ? goodItems : badItems).contains(where: { $0.text == selectedTag.text })
-                                        Button(action: {
-                                            if selectedTab == .good {
-                                                if !isTagAdded {
-                                                    addGoodTag(selectedTag)
+                                        // Безопасный доступ к выбранному тегу
+                                        let currentIndex = (selectedTab == .good ? pickerIndexGood : pickerIndexBad)
+                                        let safeIndex: Int = {
+                                            if allTags.isEmpty { return 0 }
+                                            if allTags.indices.contains(currentIndex) { return currentIndex }
+                                            return max(0, allTags.count - 1)
+                                        }()
+                                        if !allTags.isEmpty {
+                                            let selectedTag = allTags[safeIndex]
+                                            let isTagAdded = (selectedTab == .good ? goodItems : badItems).contains(where: { $0.text == selectedTag.text })
+                                            Button(action: {
+                                                // синхронизируем индекс при расхождении
+                                                if selectedTab == .good { if pickerIndexGood != safeIndex { pickerIndexGood = safeIndex } }
+                                                else { if pickerIndexBad != safeIndex { pickerIndexBad = safeIndex } }
+                                                if selectedTab == .good {
+                                                    if !isTagAdded { addGoodTag(selectedTag) }
+                                                } else {
+                                                    if !isTagAdded { addBadTag(selectedTag) }
                                                 }
-                                            } else {
-                                                if !isTagAdded {
-                                                    addBadTag(selectedTag)
-                                                }
+                                            }) {
+                                                Image(systemName: isTagAdded ? "checkmark.circle.fill" : "plus.circle.fill")
+                                                    .resizable()
+                                                    .frame(width: 28, height: 28)
+                                                    .foregroundColor(isTagAdded ? .green : .blue)
                                             }
-                                        }) {
-                                            Image(systemName: isTagAdded ? "checkmark.circle.fill" : "plus.circle.fill")
+                                            .buttonStyle(PlainButtonStyle())
+                                        } else {
+                                            Image(systemName: "plus.circle")
                                                 .resizable()
                                                 .frame(width: 28, height: 28)
-                                                .foregroundColor(isTagAdded ? .green : .blue)
+                                                .foregroundColor(.gray)
+                                                .opacity(0.4)
                                         }
-                                        .buttonStyle(PlainButtonStyle())
                                     }
                                     .padding(.horizontal, 4)
                                     .contentShape(Rectangle())
@@ -218,7 +240,7 @@ struct RegularReportFormView: View {
                             // --- Логика предложения сохранить тег ---
                             if let newText = (selectedTab == .good ? goodItems.last?.text : badItems.last?.text),
                                !newText.trimmingCharacters(in: .whitespaces).isEmpty,
-                               !(selectedTab == .good ? store.goodTags : store.badTags).contains(newText) {
+                               !(selectedTab == .good ? goodTagsCA : badTagsCA).contains(newText) {
                                 VStack(alignment: .leading, spacing: 8) {
                                     HStack {
                                         Image(systemName: "plus")
@@ -336,6 +358,37 @@ struct RegularReportFormView: View {
                         .padding(.vertical, 4)
                     }
                 }
+                .onAppear {
+                    // Подписка на изменения тегов
+                    if tagsObserver == nil {
+                        tagsObserver = NotificationCenter.default.addObserver(forName: .tagsDidChange, object: nil, queue: .main) { _ in
+                            Task { await loadTagsFromRepository() }
+                        }
+                    }
+                    Task { await loadTagsFromRepository() }
+                    // Загрузка статуса и подписка на изменения статуса отчёта (Clean Architecture)
+                    if statusObserver == nil {
+                        statusObserver = NotificationCenter.default.addObserver(forName: .reportStatusDidChange, object: nil, queue: .main) { note in
+                            if let raw = note.userInfo?["status"] as? String, let new = ReportStatus(rawValue: raw) {
+                                reportStatusCA = new
+                            } else {
+                                // На всякий случай синхронизируемся из локального хранилища
+                                reportStatusCA = LocalReportService.shared.getReportStatus()
+                            }
+                        }
+                    }
+                    reportStatusCA = LocalReportService.shared.getReportStatus()
+                }
+                .onDisappear {
+                    if let obs = tagsObserver {
+                        NotificationCenter.default.removeObserver(obs)
+                        tagsObserver = nil
+                    }
+                    if let obs = statusObserver {
+                        NotificationCenter.default.removeObserver(obs)
+                        statusObserver = nil
+                    }
+                }
             }
         }
     }
@@ -434,22 +487,12 @@ struct RegularReportFormView: View {
 
     // MARK: - Save and Publish
     func saveAndNotify() {
-        let filteredGood = goodItems.map { $0.text }.filter {
-            !$0.trimmingCharacters(in: .whitespaces).isEmpty
-        }
-        let filteredBad = badItems.map { $0.text }.filter {
-            !$0.trimmingCharacters(in: .whitespaces).isEmpty
-        }
-        let today = Calendar.current.startOfDay(for: Date())
-        
-        // Удалить все обычные отчёты за сегодня
-        store.posts.removeAll {
-            $0.type == .regular && Calendar.current.isDate($0.date, inSameDayAs: today)
-        }
-        
-        // Добавить новый отчёт
-        let newPost = Post(
-            id: UUID(),
+        let filteredGood = goodItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        let filteredBad = badItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+
+        // Собираем DomainPost и сохраняем через UpdateReportUseCase (Clean Architecture)
+        let draft = Post(
+            id: post?.id ?? UUID(),
             date: Date(),
             goodItems: filteredGood,
             badItems: filteredBad,
@@ -457,9 +500,22 @@ struct RegularReportFormView: View {
             voiceNotes: voiceNotes,
             type: .regular
         )
-        store.add(post: newPost)
-        onSave?()
-        dismiss()
+        guard let updateUC = DependencyContainer.shared.resolve(UpdateReportUseCase.self) else {
+            // Если DI недоступен, оставим поведение как раньше (fallback на legacy) — но без удаления/перезаписи списка в store
+            onSave?()
+            dismiss()
+            return
+        }
+        Task { @MainActor in
+            do {
+                let domainPost = PostAdapter.toDomain(draft)
+                _ = try await updateUC.execute(input: UpdateReportInput(report: domainPost))
+                onSave?()
+                dismiss()
+            } catch {
+                Logger.error("Failed to save regular report via UpdateReportUseCase: \(error)", log: Logger.ui)
+            }
+        }
     }
 
     func publishAndNotify() {
@@ -478,13 +534,6 @@ struct RegularReportFormView: View {
             voiceNotes: voiceNotes,
             type: .regular
         )
-
-        // Сохраняем черновик в legacy store (для UI совместимости)
-        if post != nil {
-            store.update(post: draftPost)
-        } else {
-            store.add(post: draftPost)
-        }
 
         // Отправляем через новую архитектуру
         isSending = true
@@ -526,6 +575,30 @@ struct RegularReportFormView: View {
     }
 
     // Легаси отправка в Telegram удалена. Публикация производится через ReportsViewModelNew.
+}
+
+// MARK: - Private helpers (Tags Loading)
+extension RegularReportFormView {
+    @MainActor
+    private func loadTagsFromRepository() async {
+        guard let tagRepo = DependencyContainer.shared.resolve((any TagRepositoryProtocol).self) else {
+            // Fallback на legacy хранилище, если DI недоступен
+            goodTagsCA = store.goodTags
+            badTagsCA = store.badTags
+            return
+        }
+        do {
+            async let good = tagRepo.loadGoodTags()
+            async let bad = tagRepo.loadBadTags()
+            goodTagsCA = try await good
+            badTagsCA = try await bad
+        } catch {
+            Logger.error("Failed to load tags in RegularReportFormView: \(error)", log: Logger.ui)
+            // Fallback на legacy
+            goodTagsCA = store.goodTags
+            badTagsCA = store.badTags
+        }
+    }
 }
 
 #Preview {

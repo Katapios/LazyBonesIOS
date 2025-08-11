@@ -249,26 +249,41 @@ struct DailyReportView: View {
                             maxHeight: 160
                         )
                         .clipped()
-                        .id(selectedTab) // Пересоздаем при смене вкладки
-                        
-                        let selectedTag = planTags[pickerIndex]
-                        let isTagAdded = (selectedTab == .good ? goodItems : badItems).contains(where: { $0.text == selectedTag.text })
-                        Button(action: {
-                            if (!isTagAdded) {
-                                if selectedTab == .good {
-                                    goodItems.append(ChecklistItem(id: UUID(), text: selectedTag.text))
-                                } else {
-                                    badItems.append(ChecklistItem(id: UUID(), text: selectedTag.text))
+                        // Форсируем перерисовку при изменении набора тегов
+                        .id("daily_\(selectedTab)_" + planTags.map { $0.text }.joined(separator: "|"))
+                        // Безопасный доступ к выбранному тегу
+                        let safeIndex: Int = {
+                            if planTags.isEmpty { return 0 }
+                            if planTags.indices.contains(pickerIndex) { return pickerIndex }
+                            return max(0, planTags.count - 1)
+                        }()
+                        if !planTags.isEmpty {
+                            let selectedTag = planTags[safeIndex]
+                            let isTagAdded = (selectedTab == .good ? goodItems : badItems).contains(where: { $0.text == selectedTag.text })
+                            Button(action: {
+                                if (!isTagAdded) {
+                                    if pickerIndex != safeIndex { pickerIndex = safeIndex }
+                                    if selectedTab == .good {
+                                        goodItems.append(ChecklistItem(id: UUID(), text: selectedTag.text))
+                                    } else {
+                                        badItems.append(ChecklistItem(id: UUID(), text: selectedTag.text))
+                                    }
+                                    savePlan()
                                 }
-                                savePlan()
+                            }) {
+                                Image(systemName: isTagAdded ? "checkmark.circle.fill" : "plus.circle.fill")
+                                    .resizable()
+                                    .frame(width: 28, height: 28)
+                                    .foregroundColor(isTagAdded ? .green : .blue)
                             }
-                        }) {
-                            Image(systemName: isTagAdded ? "checkmark.circle.fill" : "plus.circle.fill")
+                            .buttonStyle(PlainButtonStyle())
+                        } else {
+                            Image(systemName: "plus.circle")
                                 .resizable()
                                 .frame(width: 28, height: 28)
-                                .foregroundColor(isTagAdded ? .green : .blue)
+                                .foregroundColor(.gray)
+                                .opacity(0.4)
                         }
-                        .buttonStyle(PlainButtonStyle())
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 12)

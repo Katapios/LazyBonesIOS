@@ -57,7 +57,7 @@ struct DailyPlanningFormView: View {
 // Весь старый функционал вынесен во вложенную вью
 struct PlanningContentView: View {
     @EnvironmentObject var store: PostStore
-    @State private var planItems: [String] = []
+    @StateObject private var vm: PlanningViewModelNew
     @State private var newPlanItem: String = ""
     @State private var editingPlanIndex: Int? = nil
     @State private var editingPlanText: String = ""
@@ -65,13 +65,26 @@ struct PlanningContentView: View {
     @State private var showDeletePlanAlert = false
     @State private var planToDeleteIndex: Int? = nil
     @State private var lastPlanDate: Date = Calendar.current.startOfDay(for: Date())
-    @State private var publishStatus: String? = nil
-    @State private var pickerIndex: Int = 0
-    @State private var showTagPicker: Bool = false
     @State private var tagPickerOffset: CGFloat = 0
-    
+
+    init() {
+        let dc = DependencyContainer.shared
+        let tagRepo = dc.resolve(TagRepositoryProtocol.self)!
+        let getUC = dc.resolve(GetReportsUseCase.self)!
+        let delUC = dc.resolve(DeleteReportUseCase.self)!
+        let updUC = dc.resolve(UpdateReportUseCase.self)!
+        let tgSvc = dc.resolve(PostTelegramServiceProtocol.self)!
+        _vm = StateObject(wrappedValue: PlanningViewModelNew(
+            tagRepository: tagRepo,
+            getReportsUseCase: getUC,
+            deleteReportUseCase: delUC,
+            updateReportUseCase: updUC,
+            postTelegramService: tgSvc
+        ))
+    }
+
     var planTags: [TagItem] {
-        store.goodTags.map { TagItem(text: $0, icon: "tag", color: .green) }
+        vm.goodTags.map { TagItem(text: $0, icon: "tag", color: .green) }
     }
     
     var body: some View {
@@ -80,13 +93,16 @@ struct PlanningContentView: View {
         }
         .hideKeyboardOnTap()
         .onAppear {
-            loadPlan()
+            Task { await vm.load() }
             lastPlanDate = Calendar.current.startOfDay(for: Date())
         }
         .onChange(of: Calendar.current.startOfDay(for: Date()), initial: false) { oldDay, newDay in
             if newDay != lastPlanDate {
-                planItems = []
-                savePlan()
+                vm.planItems = []
+                // сохраняем новый пустой план
+                // (vm сам пишет в UserDefaults)
+                // Форсируем запись
+                let _ = { vm.planItems = vm.planItems }()
                 lastPlanDate = newDay
             }
         }
@@ -97,7 +113,7 @@ struct PlanningContentView: View {
         VStack(spacing: 16) {
             // --- Список пунктов плана ---
             List {
-                ForEach(planItems.indices, id: \.self) { idx in
+                ForEach(vm.planItems.indices, id: \.self) { idx in
                     HStack {
                         if editingPlanIndex == idx {
                             TextField("Пункт", text: $editingPlanText)
@@ -105,7 +121,7 @@ struct PlanningContentView: View {
                             Button("OK") { finishEditPlanItem() }
                             .buttonStyle(PlainButtonStyle())
                         } else {
-                            Text(planItems[idx])
+                            Text(vm.planItems[idx])
                             Spacer()
                             Button(action: { startEditPlanItem(idx) }) {
                                 Image(systemName: "pencil")
@@ -126,7 +142,7 @@ struct PlanningContentView: View {
                 HStack {
                     TextField("Добавить пункт плана", text: $newPlanItem)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
-                    Button(action: { withAnimation(.easeInOut(duration: 0.3)) { showTagPicker.toggle() } }) {
+                    Button(action: { vm.toggleTagPicker() }) {
                         Image(systemName: "tag")
                             .font(.title2)
                             .foregroundColor(.accentColor)
@@ -138,11 +154,11 @@ struct PlanningContentView: View {
                 }
                 
                 // TagPicker выезжает справа
-                if showTagPicker, !planTags.isEmpty {
+                if vm.showTagPicker, !planTags.isEmpty {
                     HStack(alignment: .center, spacing: 6) {
                         TagPickerUIKitWheel(
                             tags: planTags,
-                            selectedIndex: $pickerIndex
+                            selectedIndex: $vm.pickerIndex
                         ) { _ in }
                         .frame(
                             maxWidth: .infinity,
@@ -150,21 +166,38 @@ struct PlanningContentView: View {
                             maxHeight: 160
                         )
                         .clipped()
+                        // Форсируем перерисовку колеса при изменении набора тегов
+                        .id("planning_" + planTags.map { $0.text }.joined(separator: "|"))
                         
-                        let selectedTag = planTags[pickerIndex]
-                        let isTagAdded = planItems.contains(where: { $0 == selectedTag.text })
-                        Button(action: {
-                            if (!isTagAdded) {
-                                planItems.append(selectedTag.text)
-                                savePlan()
+                        let safeIndex: Int = {
+                            if planTags.isEmpty { return 0 }
+                            if planTags.indices.contains(vm.pickerIndex) { return vm.pickerIndex }
+                            return max(0, planTags.count - 1)
+                        }()
+                        if !planTags.isEmpty {
+                            let selectedTag = planTags[safeIndex]
+                            let isTagAdded = vm.planItems.contains(where: { $0 == selectedTag.text })
+                            Button(action: {
+                                if (!isTagAdded) {
+                                    // синхронизируем индекс, если он вышел за границы
+                                    if vm.pickerIndex != safeIndex { vm.pickerIndex = safeIndex }
+                                    vm.addSelectedTag()
+                                }
+                            }) {
+                                Image(systemName: isTagAdded ? "checkmark.circle.fill" : "plus.circle.fill")
+                                    .resizable()
+                                    .frame(width: 28, height: 28)
+                                    .foregroundColor(isTagAdded ? .green : .blue)
                             }
-                        }) {
-                            Image(systemName: isTagAdded ? "checkmark.circle.fill" : "plus.circle.fill")
+                            .buttonStyle(PlainButtonStyle())
+                        } else {
+                            // Нет тегов: показываем неактивную кнопку
+                            Image(systemName: "plus.circle")
                                 .resizable()
                                 .frame(width: 28, height: 28)
-                                .foregroundColor(isTagAdded ? .green : .blue)
+                                .foregroundColor(.gray)
+                                .opacity(0.4)
                         }
-                        .buttonStyle(PlainButtonStyle())
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 12)
@@ -176,7 +209,7 @@ struct PlanningContentView: View {
                 }
                 
                 // Показываем prompt для сохранения тега
-                if !newPlanItem.isEmpty && !store.goodTags.contains(newPlanItem) {
+                if !newPlanItem.isEmpty && !vm.goodTags.contains(newPlanItem) {
                     HStack {
                         Text("Сохранить тег?")
                             .font(.caption)
@@ -185,18 +218,7 @@ struct PlanningContentView: View {
                         Button("Сохранить") {
                             let tagText = newPlanItem
                             Task { @MainActor in
-                                if let tagRepo = DependencyContainer.shared.resolve((any TagRepositoryProtocol).self) {
-                                    do {
-                                        try await tagRepo.addGoodTag(tagText)
-                                    } catch {
-                                        Logger.error("Failed to save good tag from PlanningContentView: \(error)", log: Logger.ui)
-                                    }
-                                } else {
-                                    // Fallback на legacy при отсутствии DI (не должно происходить)
-                                    var tags = store.goodTags
-                                    tags.append(tagText)
-                                    store.saveGoodTags(tags)
-                                }
+                                await vm.addGoodTag(tagText)
                             }
                         }
                         .font(.caption)
@@ -212,7 +234,7 @@ struct PlanningContentView: View {
             }
             
             // Кнопки действий
-            if !planItems.isEmpty {
+            if !vm.planItems.isEmpty {
                 HStack(spacing: 12) {
                     LargeButtonView(
                         title: "Сохранить",
@@ -226,14 +248,14 @@ struct PlanningContentView: View {
                         title: "Отправить",
                         icon: "paperplane.fill",
                         color: .green,
-                        action: { sendCustomReportCleanArch() },
+                        action: { Task { await vm.sendCustomReport() } },
                         isEnabled: true,
                         compact: true
                     )
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.vertical, 4)
-                if let status = publishStatus {
+                if let status = vm.statusMessage {
                     Text(status)
                         .font(.caption)
                         .foregroundColor(status.contains("успешно") ? .green : .red)
@@ -242,7 +264,7 @@ struct PlanningContentView: View {
         }
         .padding()
         .alert("Сохранить план как отчет?", isPresented: $showSaveAlert) {
-            Button("Сохранить", role: .none) { savePlanAsReport() }
+            Button("Сохранить", role: .none) { vm.savePlanAsCustomReport(using: store) }
             Button("Отмена", role: .cancel) { }
         }
         .alert("Удалить пункт плана?", isPresented: $showDeletePlanAlert) {
@@ -255,145 +277,28 @@ struct PlanningContentView: View {
     func addPlanItem() {
         let trimmed = newPlanItem.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
-        planItems.append(trimmed)
+        vm.addPlanItem(trimmed)
         newPlanItem = ""
-        savePlan()
     }
     
     func startEditPlanItem(_ idx: Int) {
         editingPlanIndex = idx
-        editingPlanText = planItems[idx]
+        editingPlanText = vm.planItems[idx]
     }
     
     func finishEditPlanItem() {
         guard let idx = editingPlanIndex else { return }
         let trimmed = editingPlanText.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
-        planItems[idx] = trimmed
+        vm.updatePlanItem(at: idx, with: trimmed)
         editingPlanIndex = nil
         editingPlanText = ""
-        savePlan()
     }
     
     func deletePlanItem() {
         guard let idx = planToDeleteIndex else { return }
-        planItems.remove(at: idx)
+        vm.removePlanItem(at: idx)
         planToDeleteIndex = nil
-        savePlan()
-    }
-    
-    func savePlan() {
-        let key = "plan_" + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
-        if let data = try? JSONEncoder().encode(planItems) {
-            UserDefaults.standard.set(data, forKey: key)
-        }
-    }
-    
-    func loadPlan() {
-        let key = "plan_" + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
-        if let data = UserDefaults.standard.data(forKey: key),
-           let decoded = try? JSONDecoder().decode([String].self, from: data) {
-            planItems = decoded
-        } else {
-            planItems = []
-        }
-    }
-    
-    func savePlanAsReport() {
-        let today = Calendar.current.startOfDay(for: Date())
-        if let idx = store.posts.firstIndex(where: { $0.type == .custom && Calendar.current.isDate($0.date, inSameDayAs: today) }) {
-            let updated = Post(
-                id: store.posts[idx].id,
-                date: Date(),
-                goodItems: planItems,
-                badItems: [],
-                published: false,
-                voiceNotes: [],
-                type: .custom,
-                authorUsername: nil,
-                authorFirstName: nil,
-                authorLastName: nil,
-                isExternal: false,
-                externalVoiceNoteURLs: nil,
-                externalText: nil,
-                externalMessageId: nil,
-                authorId: nil
-            )
-            store.posts[idx] = updated
-            store.save()
-        } else {
-            let post = Post(
-                id: UUID(),
-                date: Date(),
-                goodItems: planItems,
-                badItems: [],
-                published: false,
-                voiceNotes: [],
-                type: .custom,
-                authorUsername: nil,
-                authorFirstName: nil,
-                authorLastName: nil,
-                isExternal: false,
-                externalVoiceNoteURLs: nil,
-                externalText: nil,
-                externalMessageId: nil,
-                authorId: nil
-            )
-            store.add(post: post)
-        }
-        savePlan()
-    }
-    
-    // MARK: - Clean Architecture sending
-    func sendCustomReportCleanArch() {
-        Task { @MainActor in
-            let today = Calendar.current.startOfDay(for: Date())
-
-            // 1) Получаем Domain пост кастомного отчёта на сегодня
-            guard let getReportsUseCase = DependencyContainer.shared.resolve(GetReportsUseCase.self) else {
-                self.publishStatus = "Ошибка: UseCase не найден"
-                return
-            }
-            var domainCustom: DomainPost?
-            do {
-                let input = GetReportsInput(date: Date(), type: .custom, includeExternal: false)
-                let customs = try await getReportsUseCase.execute(input: input)
-                domainCustom = customs.first { Calendar.current.isDate($0.date, inSameDayAs: today) }
-            } catch {
-                self.publishStatus = "Ошибка загрузки отчёта"
-                return
-            }
-            guard let post = domainCustom else {
-                self.publishStatus = "Сначала сохраните план как отчет!"
-                return
-            }
-
-            // 2) Создаём VM ReportsViewModelNew и вызываем отправку
-            guard let deleteUC = DependencyContainer.shared.resolve(DeleteReportUseCase.self),
-                  let updateUC = DependencyContainer.shared.resolve(UpdateReportUseCase.self),
-                  let tagRepo = DependencyContainer.shared.resolve((any TagRepositoryProtocol).self),
-                  let telegramSvc = DependencyContainer.shared.resolve(PostTelegramServiceProtocol.self) else {
-                self.publishStatus = "Ошибка DI: зависимости не найдены"
-                return
-            }
-
-            let vm = ReportsViewModelNew(
-                getReportsUseCase: getReportsUseCase,
-                deleteReportUseCase: deleteUC,
-                updateReportUseCase: updateUC,
-                tagRepository: tagRepo,
-                postTelegramService: telegramSvc
-            )
-
-            await vm.handle(.sendCustomReport(post))
-
-            // 3) Простая индикация статуса для пользователя
-            if vm.state.error == nil {
-                self.publishStatus = "План успешно опубликован!"
-            } else {
-                self.publishStatus = vm.state.error?.localizedDescription ?? "Ошибка отправки"
-            }
-        }
     }
 }
 

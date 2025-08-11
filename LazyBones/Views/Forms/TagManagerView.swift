@@ -29,9 +29,12 @@ struct TagManagerView: View {
                         if viewModel.editingTagIndex == idx {
                             TextField("Тег", text: $viewModel.editingTagText)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .submitLabel(.done)
+                                .onSubmit {
+                                    Task { await viewModel.finishEditTag() }
+                                }
                             Button("OK") {
                                 Task { await viewModel.finishEditTag() }
-                                viewModel.editingTagIndex = nil
                             }
                             .buttonStyle(PlainButtonStyle())
                         } else {
@@ -56,6 +59,11 @@ struct TagManagerView: View {
         .padding(.horizontal)
         .navigationTitle("Теги")
         .hideKeyboardOnTap()
+        .onDisappear {
+            if viewModel.editingTagIndex != nil {
+                Task { await viewModel.finishEditTag() }
+            }
+        }
         .alert("Удалить тег?", isPresented: $viewModel.showDeleteTagAlert) {
             Button("Удалить", role: .destructive) { Task { await viewModel.deleteTag() } }
             Button("Отмена", role: .cancel) { viewModel.cancelDeleteTag() }

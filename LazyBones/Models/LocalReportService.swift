@@ -73,6 +73,7 @@ class LocalReportService {
     func saveGoodTags(_ tags: [String]) {
         guard let data = try? JSONEncoder().encode(tags) else { return }
         userDefaults?.set(data, forKey: goodTagsKey)
+        userDefaults?.synchronize()
     }
     func addGoodTag(_ tag: String) {
         var tags = loadGoodTags()
@@ -107,6 +108,7 @@ class LocalReportService {
     func saveBadTags(_ tags: [String]) {
         guard let data = try? JSONEncoder().encode(tags) else { return }
         userDefaults?.set(data, forKey: badTagsKey)
+        userDefaults?.synchronize()
     }
     func addBadTag(_ tag: String) {
         var tags = loadBadTags()
