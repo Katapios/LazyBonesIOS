@@ -6,12 +6,9 @@
 import SwiftUI
 
 struct DailyPlanningFormView: View {
-    @EnvironmentObject var store: PostStore
     @State private var selectedTab = 0 // По умолчанию открывается первый экран (третий экран)
     
-    var postForToday: Post? {
-        store.posts.first(where: { Calendar.current.isDateInToday($0.date) })
-    }
+    // postForToday больше не используется напрямую из PostStore в этом экране
     
     var body: some View {
         VStack(spacing: 0) {
@@ -56,7 +53,6 @@ struct DailyPlanningFormView: View {
 
 // Весь старый функционал вынесен во вложенную вью
 struct PlanningContentView: View {
-    @EnvironmentObject var store: PostStore
     @StateObject private var vm: PlanningViewModelNew
     @State private var newPlanItem: String = ""
     @State private var editingPlanIndex: Int? = nil
@@ -264,7 +260,7 @@ struct PlanningContentView: View {
         }
         .padding()
         .alert("Сохранить план как отчет?", isPresented: $showSaveAlert) {
-            Button("Сохранить", role: .none) { vm.savePlanAsCustomReport(using: store) }
+            Button("Сохранить", role: .none) { vm.savePlanAsCustomReport(using: nil) }
             Button("Отмена", role: .cancel) { }
         }
         .alert("Удалить пункт плана?", isPresented: $showDeletePlanAlert) {
@@ -304,5 +300,4 @@ struct PlanningContentView: View {
 
 #Preview {
     DailyPlanningFormView()
-        .environmentObject(PostStore())
 }

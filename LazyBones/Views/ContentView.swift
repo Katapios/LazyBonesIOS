@@ -12,7 +12,6 @@ import Foundation
 /// Корневой TabView приложения с новой архитектурой
 struct ContentView: View {
     @StateObject var appCoordinator: AppCoordinator
-    @StateObject var store = PostStore()
     @Environment(\.scenePhase) private var scenePhase
     
     init() {
@@ -63,7 +62,6 @@ struct ContentView: View {
             }
             .tag(AppCoordinator.Tab.settings)
         }
-        .environmentObject(store)
         .environmentObject(appCoordinator)
         .onAppear {
             Logger.info("ContentView initialized", log: Logger.ui)

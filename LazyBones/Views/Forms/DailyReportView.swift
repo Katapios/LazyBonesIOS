@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import UIKit
 
 struct ThirdScreenPlanData: Codable {
     let goodItems: [String]
@@ -8,7 +9,7 @@ struct ThirdScreenPlanData: Codable {
 }
 
 struct DailyReportView: View {
-    @EnvironmentObject var store: PostStore
+    // Убрали зависимость от PostStore. Используем репозиторий тегов и локальный статус отчёта (Clean Architecture)
     @State private var goodItems: [ChecklistItem] = []
     @State private var badItems: [ChecklistItem] = []
     @State private var newPlanItem: String = ""
@@ -25,15 +26,22 @@ struct DailyReportView: View {
     @State private var selectedTab: TabType = .good
     @State private var voiceNotes: [VoiceNote] = []
     @State private var showVoiceRecorder: Bool = false
+    // Теги из TagRepository (Clean Architecture)
+    @State private var goodTagsCA: [String] = []
+    @State private var badTagsCA: [String] = []
+    @State private var tagsObserver: NSObjectProtocol?
+    // Статус отчёта из LocalReportService / ReportStatusManager
+    @State private var reportStatusCA: ReportStatus = .notStarted
+    @State private var statusObserver: NSObjectProtocol?
     
     enum TabType { case good, bad }
     
     var goodTags: [TagItem] {
-        store.goodTags.map { TagItem(text: $0, icon: "tag", color: .green) }
+        goodTagsCA.map { TagItem(text: $0, icon: "tag", color: .green) }
     }
     
     var badTags: [TagItem] {
-        store.badTags.map { TagItem(text: $0, icon: "tag", color: .red) }
+        badTagsCA.map { TagItem(text: $0, icon: "tag", color: .red) }
     }
     
     var planTags: [TagItem] {
@@ -41,7 +49,7 @@ struct DailyReportView: View {
     }
     
     var body: some View {
-        if store.reportStatus == .sent || store.reportStatus == .notCreated || store.reportStatus == .notSent {
+        if reportStatusCA == .sent || reportStatusCA == .notCreated || reportStatusCA == .notSent {
             VStack(spacing: 24) {
                 Spacer()
                 Image(systemName: "clock.arrow.circlepath")
@@ -68,6 +76,34 @@ struct DailyReportView: View {
                 // Загружаем сохраненные данные при появлении
                 loadSavedData()
                 lastPlanDate = Calendar.current.startOfDay(for: Date())
+                // Подписка на изменения тегов и начальная загрузка из TagRepository
+                if tagsObserver == nil {
+                    tagsObserver = NotificationCenter.default.addObserver(forName: .tagsDidChange, object: nil, queue: .main) { _ in
+                        Task { await loadTagsFromRepository() }
+                    }
+                }
+                Task { await loadTagsFromRepository() }
+                // Загрузка статуса и подписка на изменения статуса отчёта (Clean Architecture)
+                if statusObserver == nil {
+                    statusObserver = NotificationCenter.default.addObserver(forName: .reportStatusDidChange, object: nil, queue: .main) { note in
+                        if let raw = note.userInfo?["status"] as? String, let new = ReportStatus(rawValue: raw) {
+                            reportStatusCA = new
+                        } else {
+                            reportStatusCA = LocalReportService.shared.getReportStatus()
+                        }
+                    }
+                }
+                reportStatusCA = LocalReportService.shared.getReportStatus()
+            }
+            .onDisappear {
+                if let obs = tagsObserver {
+                    NotificationCenter.default.removeObserver(obs)
+                    tagsObserver = nil
+                }
+                if let obs = statusObserver {
+                    NotificationCenter.default.removeObserver(obs)
+                    statusObserver = nil
+                }
             }
             .onChange(of: Calendar.current.startOfDay(for: Date()), initial: false) { oldDay, newDay in
                 if newDay != lastPlanDate {
@@ -369,7 +405,7 @@ struct DailyReportView: View {
                 }
                 
                 // Показываем prompt для сохранения тега
-                if !newPlanItem.isEmpty && !(selectedTab == .good ? store.goodTags : store.badTags).contains(newPlanItem) {
+                if !newPlanItem.isEmpty && !(selectedTab == .good ? goodTagsCA : badTagsCA).contains(newPlanItem) {
                     HStack {
                         Text("Сохранить тег?")
                             .font(.caption)
@@ -389,14 +425,6 @@ struct DailyReportView: View {
                                     } catch {
                                         Logger.error("Failed to save tag from DailyReportView: \(error)", log: Logger.ui)
                                     }
-                                } else {
-                                    // fallback на legacy (не должно происходить)
-                                    if selectedTab == .good {
-                                        store.addGoodTag(tagText)
-                                    } else {
-                                        store.addBadTag(tagText)
-                                    }
-                                    addPlanItem()
                                 }
                             }
                         }
@@ -532,55 +560,42 @@ struct DailyReportView: View {
     }
     
     func saveAsReport() {
-        let today = Calendar.current.startOfDay(for: Date())
         let filteredGood = goodItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
         let filteredBad = badItems.map { $0.text }.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        
-
-        
-        if let idx = store.posts.firstIndex(where: { $0.type == .regular && Calendar.current.isDate($0.date, inSameDayAs: today) }) {
-            let updated = Post(
-                id: store.posts[idx].id,
-                date: Date(),
-                goodItems: filteredGood,
-                badItems: filteredBad,
-                published: false,
-                voiceNotes: voiceNotes,
-                type: .regular,
-                authorUsername: nil,
-                authorFirstName: nil,
-                authorLastName: nil,
-                isExternal: false,
-                externalVoiceNoteURLs: nil,
-                externalText: nil,
-                externalMessageId: nil,
-                authorId: nil
-            )
-            store.posts[idx] = updated
-            store.save()
-        } else {
-            let post = Post(
-                id: UUID(),
-                date: Date(),
-                goodItems: filteredGood,
-                badItems: filteredBad,
-                published: false,
-                voiceNotes: voiceNotes,
-                type: .regular,
-                authorUsername: nil,
-                authorFirstName: nil,
-                authorLastName: nil,
-                isExternal: false,
-                externalVoiceNoteURLs: nil,
-                externalText: nil,
-                externalMessageId: nil,
-                authorId: nil
-            )
-            store.add(post: post)
+        Task { @MainActor in
+            guard let getUC = DependencyContainer.shared.resolve(GetReportsUseCase.self),
+                  let createUC = DependencyContainer.shared.resolve(CreateReportUseCase.self),
+                  let updateUC = DependencyContainer.shared.resolve(UpdateReportUseCase.self) else {
+                Logger.error("DI error: use cases not resolved in DailyReportView.saveAsReport", log: Logger.ui)
+                return
+            }
+            do {
+                // Найти существующий регулярный отчёт за сегодня
+                let existing = try await getUC.execute(input: GetReportsInput(date: Date(), type: .regular, includeExternal: false))
+                    .first { Calendar.current.isDateInToday($0.date) }
+                if var report = existing {
+                    report.goodItems = filteredGood
+                    report.badItems = filteredBad
+                    report.voiceNotes = voiceNotes.map { VoiceNoteMapper.toDomainModel($0) }
+                    _ = try await updateUC.execute(input: UpdateReportInput(report: report))
+                } else {
+                    let input = CreateReportInput(
+                        goodItems: filteredGood,
+                        badItems: filteredBad,
+                        voiceNotes: voiceNotes.map { VoiceNoteMapper.toDomainModel($0) },
+                        type: .regular
+                    )
+                    _ = try await createUC.execute(input: input)
+                }
+                // Сбросить статус публикации и локально сохранить план
+                publishStatus = nil
+                savePlan()
+                // Уведомить о смене статуса (после сохранения редактирования статус должен быть notStarted)
+                NotificationCenter.default.post(name: .reportStatusDidChange, object: nil, userInfo: ["status": ReportStatus.notStarted.rawValue])
+            } catch {
+                Logger.error("Failed to saveAsReport in DailyReportView: \(error)", log: Logger.ui)
+            }
         }
-        // Очищаем статус публикации при сохранении
-        publishStatus = nil
-        savePlan()
     }
     
     func sendRegularReportCleanArch() {
@@ -644,7 +659,7 @@ struct DailyReportView: View {
         dateFormatter.locale = Locale(identifier: "ru_RU")
         dateFormatter.dateStyle = .full
         let dateStr = dateFormatter.string(from: post.date)
-        let deviceName = store.getDeviceName()
+        let deviceName = UIDevice.current.name
         var message = "\u{1F4C5} <b>Отчет за день - \(dateStr)</b>\n"
         message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
         if !post.goodItems.isEmpty {
@@ -802,9 +817,26 @@ struct DailyReportView: View {
         }
         task.resume()
     }
+    
+    // MARK: - Tags loading (Clean Architecture)
+    @MainActor
+    private func loadTagsFromRepository() async {
+        guard let tagRepo = DependencyContainer.shared.resolve((any TagRepositoryProtocol).self) else {
+            Logger.error("TagRepository not resolved in DailyReportView.loadTagsFromRepository", log: Logger.ui)
+            return
+        }
+        do {
+            let good = try await tagRepo.loadGoodTags()
+            let bad = try await tagRepo.loadBadTags()
+            self.goodTagsCA = good
+            self.badTagsCA = bad
+        } catch {
+            Logger.error("Failed to load tags in DailyReportView: \(error)", log: Logger.ui)
+        }
+    }
 }
 
 #Preview {
     DailyReportView()
-        .environmentObject(PostStore())
-} 
+}
+ 
