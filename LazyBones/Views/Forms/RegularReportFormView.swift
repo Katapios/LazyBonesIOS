@@ -3,7 +3,6 @@ import SwiftUI
 /// Форма создания/редактирования обычного отчета с полной функциональностью
 struct RegularReportFormView: View {
     @Environment(\.dismiss) var dismiss
-    @EnvironmentObject var store: PostStore
     @State private var goodItems: [ChecklistItem]
     @State private var badItems: [ChecklistItem]
     @State private var voiceNotes: [VoiceNote]
@@ -272,24 +271,12 @@ struct RegularReportFormView: View {
                                                         }
                                                     } catch {
                                                         Logger.error("Failed to save tag from RegularReportFormView: \(error)", log: Logger.ui)
-                                                        // Fallback на legacy (не должно происходить)
-                                                        if selectedTab == .good {
-                                                            store.addGoodTag(tagText)
-                                                            addGoodItem()
-                                                        } else {
-                                                            store.addBadTag(tagText)
-                                                            addBadItem()
-                                                        }
+                                                        // Не используем PostStore, просто добавляем пункт без сохранения тега
+                                                        if selectedTab == .good { addGoodItem() } else { addBadItem() }
                                                     }
                                                 } else {
-                                                    // Fallback на legacy (не должно происходить)
-                                                    if selectedTab == .good {
-                                                        store.addGoodTag(tagText)
-                                                        addGoodItem()
-                                                    } else {
-                                                        store.addBadTag(tagText)
-                                                        addBadItem()
-                                                    }
+                                                    // DI недоступен — просто добавим пункт без сохранения тега
+                                                    if selectedTab == .good { addGoodItem() } else { addBadItem() }
                                                 }
                                             }
                                         }
@@ -582,9 +569,7 @@ extension RegularReportFormView {
     @MainActor
     private func loadTagsFromRepository() async {
         guard let tagRepo = DependencyContainer.shared.resolve((any TagRepositoryProtocol).self) else {
-            // Fallback на legacy хранилище, если DI недоступен
-            goodTagsCA = store.goodTags
-            badTagsCA = store.badTags
+            // DI недоступен — оставим текущие значения без изменений
             return
         }
         do {
@@ -594,25 +579,8 @@ extension RegularReportFormView {
             badTagsCA = try await bad
         } catch {
             Logger.error("Failed to load tags in RegularReportFormView: \(error)", log: Logger.ui)
-            // Fallback на legacy
-            goodTagsCA = store.goodTags
-            badTagsCA = store.badTags
+            // Не используем PostStore; в случае ошибки просто не обновляем теги
         }
     }
 }
-
-#Preview {
-    RegularReportFormView(title: "Создать отчёт")
-        .environmentObject(PostStore())
-}
-
-#Preview("RegularReportFormView - Status Done") {
-    RegularReportFormView()
-        .environmentObject(createStoreWithDoneStatus())
-}
-
-private func createStoreWithDoneStatus() -> PostStore {
-    let store = PostStore()
-    store.reportStatus = .sent
-    return store
-} 
+ 

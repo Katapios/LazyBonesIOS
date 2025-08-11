@@ -430,12 +430,4 @@ struct PostFormView: View {
 
 }
 
-#Preview {
-    PostFormView(store: PostStore(), title: "Создать отчёт")
-}
-
-#Preview("PostFormView - Status Done") {
-    let store = PostStore()
-    store.reportStatus = .sent
-    return PostFormView(store: store)
-}
+// Previews removed to avoid legacy PostStore dependency

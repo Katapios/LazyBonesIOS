@@ -17,6 +17,7 @@ final class PlanningViewModelNew: ObservableObject {
     private let getReportsUseCase: GetReportsUseCase
     private let deleteReportUseCase: DeleteReportUseCase
     private let updateReportUseCase: UpdateReportUseCase
+    private let createReportUseCase: CreateReportUseCase
     private let postTelegramService: any PostTelegramServiceProtocol
     
     // MARK: - Init
@@ -25,12 +26,14 @@ final class PlanningViewModelNew: ObservableObject {
         getReportsUseCase: GetReportsUseCase,
         deleteReportUseCase: DeleteReportUseCase,
         updateReportUseCase: UpdateReportUseCase,
+        createReportUseCase: CreateReportUseCase,
         postTelegramService: any PostTelegramServiceProtocol
     ) {
         self.tagRepository = tagRepository
         self.getReportsUseCase = getReportsUseCase
         self.deleteReportUseCase = deleteReportUseCase
         self.updateReportUseCase = updateReportUseCase
+        self.createReportUseCase = createReportUseCase
         self.postTelegramService = postTelegramService
         
         // Подписка на изменения тегов
@@ -115,51 +118,38 @@ final class PlanningViewModelNew: ObservableObject {
         savePlanToStorage()
     }
     
-    // Сохранить план в кастомный отчёт (без отправки)
-    func savePlanAsCustomReport(using storeFallback: PostStore?) {
-        // Для обратной совместимости оставляем лёгкий fallback на PostStore
-        let today = Calendar.current.startOfDay(for: Date())
-        if let store = storeFallback, let idx = store.posts.firstIndex(where: { $0.type == .custom && Calendar.current.isDate($0.date, inSameDayAs: today) }) {
-            let updated = Post(
-                id: store.posts[idx].id,
-                date: Date(),
-                goodItems: planItems,
-                badItems: [],
-                published: false,
-                voiceNotes: [],
-                type: .custom,
-                authorUsername: nil,
-                authorFirstName: nil,
-                authorLastName: nil,
-                isExternal: false,
-                externalVoiceNoteURLs: nil,
-                externalText: nil,
-                externalMessageId: nil,
-                authorId: nil
-            )
-            store.posts[idx] = updated
-            store.save()
-        } else if let store = storeFallback {
-            let post = Post(
-                id: UUID(),
-                date: Date(),
-                goodItems: planItems,
-                badItems: [],
-                published: false,
-                voiceNotes: [],
-                type: .custom,
-                authorUsername: nil,
-                authorFirstName: nil,
-                authorLastName: nil,
-                isExternal: false,
-                externalVoiceNoteURLs: nil,
-                externalText: nil,
-                externalMessageId: nil,
-                authorId: nil
-            )
-            store.add(post: post)
+    // Сохранить план в кастомный отчёт (без отправки) через Use Cases
+    func savePlanAsCustomReport() async {
+        let trimmed = planItems.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        guard !trimmed.isEmpty else {
+            self.statusMessage = "План пуст — нечего сохранять"
+            return
         }
-        savePlanToStorage()
+        do {
+            let input = GetReportsInput(date: Date(), type: .custom, includeExternal: false)
+            let customs = try await getReportsUseCase.execute(input: input)
+            let today = Calendar.current.startOfDay(for: Date())
+            if let existing = customs.first(where: { Calendar.current.isDate($0.date, inSameDayAs: today) }) {
+                var updated = existing
+                updated.goodItems = trimmed
+                updated.badItems = []
+                updated.published = false
+                _ = try await updateReportUseCase.execute(input: UpdateReportInput(report: updated))
+            } else {
+                let createInput = CreateReportInput(
+                    goodItems: trimmed,
+                    badItems: [],
+                    voiceNotes: [],
+                    type: .custom
+                )
+                _ = try await createReportUseCase.execute(input: createInput)
+            }
+            self.statusMessage = "План сохранён"
+            savePlanToStorage()
+        } catch {
+            Logger.error("Failed to save custom report: \(error)", log: Logger.ui)
+            self.statusMessage = (error as? LocalizedError)?.errorDescription ?? "Ошибка сохранения"
+        }
     }
     
     // Отправка через ReportsViewModelNew

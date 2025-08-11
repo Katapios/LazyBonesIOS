@@ -69,12 +69,14 @@ struct PlanningContentView: View {
         let getUC = dc.resolve(GetReportsUseCase.self)!
         let delUC = dc.resolve(DeleteReportUseCase.self)!
         let updUC = dc.resolve(UpdateReportUseCase.self)!
+        let crtUC = dc.resolve(CreateReportUseCase.self)!
         let tgSvc = dc.resolve(PostTelegramServiceProtocol.self)!
         _vm = StateObject(wrappedValue: PlanningViewModelNew(
             tagRepository: tagRepo,
             getReportsUseCase: getUC,
             deleteReportUseCase: delUC,
             updateReportUseCase: updUC,
+            createReportUseCase: crtUC,
             postTelegramService: tgSvc
         ))
     }
@@ -260,7 +262,7 @@ struct PlanningContentView: View {
         }
         .padding()
         .alert("Сохранить план как отчет?", isPresented: $showSaveAlert) {
-            Button("Сохранить", role: .none) { vm.savePlanAsCustomReport(using: nil) }
+            Button("Сохранить", role: .none) { Task { await vm.savePlanAsCustomReport() } }
             Button("Отмена", role: .cancel) { }
         }
         .alert("Удалить пункт плана?", isPresented: $showDeletePlanAlert) {
