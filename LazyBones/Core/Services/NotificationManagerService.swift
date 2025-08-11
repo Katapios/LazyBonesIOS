@@ -70,6 +70,8 @@ class NotificationManagerService: NotificationManagerServiceProtocol {
     
     // MARK: - Private Properties
     private let appGroup = AppConfig.appGroup
+    private var isScheduling = false
+    private var lastScheduleAt: Date = .distantPast
     
     // MARK: - Initialization
     init(
@@ -127,31 +129,38 @@ class NotificationManagerService: NotificationManagerServiceProtocol {
     
     func scheduleNotifications() {
         guard notificationsEnabled else {
-            Logger.info("Notifications disabled, skipping scheduling", log: Logger.notifications)
+            Logger.debug("Notifications disabled, skipping scheduling", log: Logger.notifications)
             return
         }
-        
-        Logger.info("Scheduling notifications", log: Logger.notifications)
-        
-        // Отменяем старые уведомления
-        cancelAllNotifications()
+
+        // Простая защита от бурстов повторных вызовов
+        let now = Date()
+        if isScheduling || now.timeIntervalSince(lastScheduleAt) < 2 { // 2 сек debounce
+            Logger.debug("scheduleNotifications skipped (debounced)", log: Logger.notifications)
+            return
+        }
+        isScheduling = true
+        lastScheduleAt = now
+
+        Logger.debug("Scheduling notifications", log: Logger.notifications)
         
         Task {
             do {
                 // Проверяем разрешения на уведомления
                 let hasPermission = await notificationService.checkNotificationPermission()
                 guard hasPermission else {
-                    Logger.warning("No notification permission, skipping scheduling", log: Logger.notifications)
+                    Logger.debug("No notification permission, skipping scheduling", log: Logger.notifications)
                     await MainActor.run {
                         self.notificationsEnabled = false
                     }
+                    self.isScheduling = false
                     return
                 }
                 
                 // Сначала выводим debug информацию
                 await notificationService.debugNotificationStatus()
                 
-                // Используем правильную логику из NotificationService
+                // Используем правильную логику из NotificationService (он уже выполняет отмену существующих уведомлений)
                 try await notificationService.scheduleReportNotifications(
                     enabled: true,
                     intervalHours: notificationIntervalHours,
@@ -159,18 +168,19 @@ class NotificationManagerService: NotificationManagerServiceProtocol {
                     endHour: notificationEndHour,
                     mode: notificationMode.rawValue
                 )
-                Logger.info("Notifications scheduled successfully with mode: \(notificationMode.rawValue)", log: Logger.notifications)
+                Logger.debug("Notifications scheduled successfully with mode: \(notificationMode.rawValue)", log: Logger.notifications)
                 
                 // Выводим debug информацию после планирования
                 await notificationService.debugNotificationStatus()
             } catch {
                 Logger.error("Failed to schedule notifications: \(error)", log: Logger.notifications)
             }
+            self.isScheduling = false
         }
     }
     
     func cancelAllNotifications() {
-        Logger.info("Cancelling all notifications", log: Logger.notifications)
+        Logger.debug("Cancelling all notifications", log: Logger.notifications)
         Task {
             try? await notificationService.cancelAllNotifications()
         }

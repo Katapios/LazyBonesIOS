@@ -108,11 +108,27 @@ extension DependencyContainer {
         // UserDefaults Manager
         register(UserDefaultsManager.self, instance: UserDefaultsManager.shared)
         
-        // Posts Provider (PostStoreAdapter)
-        let postStoreAdapter = PostStoreAdapter()
-        register(PostsProviderProtocol.self, instance: postStoreAdapter)
+        // Post-specific services (регистрируем раньше адаптера, чтобы исключить раннюю инициализацию PostStore)
+        register(PostTelegramServiceProtocol.self, factory: {
+            let telegramService = self.resolve(TelegramServiceProtocol.self)!
+            let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
+            return PostTelegramService(telegramService: telegramService, userDefaultsManager: userDefaultsManager)
+        })
+        
+        register(PostNotificationServiceProtocol.self, factory: {
+            let notificationService = self.resolve(NotificationServiceProtocol.self)!
+            let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
+            return PostNotificationService(notificationService: notificationService, userDefaultsManager: userDefaultsManager)
+        })
+
+        // Posts Provider (PostStoreAdapter) — лениво через фабрику, чтобы не дергать PostStore.shared раньше времени
+        register(PostsProviderProtocol.self, factory: {
+            return PostStoreAdapter()
+        })
         // Регистрируем как any DomainPostsProviderProtocol для совместимости с Swift
-        register((any DomainPostsProviderProtocol).self, instance: postStoreAdapter)
+        register((any DomainPostsProviderProtocol).self, factory: {
+            return PostStoreAdapter()
+        })
         
         // Notification Service
         register(NotificationServiceProtocol.self, factory: {
@@ -128,18 +144,7 @@ extension DependencyContainer {
             return TelegramService(token: token)
         })
         
-        // Post-specific services
-        register(PostTelegramServiceProtocol.self, factory: {
-            let telegramService = self.resolve(TelegramServiceProtocol.self)!
-            let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
-            return PostTelegramService(telegramService: telegramService, userDefaultsManager: userDefaultsManager)
-        })
-        
-        register(PostNotificationServiceProtocol.self, factory: {
-            let notificationService = self.resolve(NotificationServiceProtocol.self)!
-            let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
-            return PostNotificationService(notificationService: notificationService, userDefaultsManager: userDefaultsManager)
-        })
+        // (перемещено выше)
         
         // Telegram Integration Service
         register(TelegramIntegrationServiceType.self, factory: {

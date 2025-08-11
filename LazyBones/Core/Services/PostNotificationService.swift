@@ -35,14 +35,11 @@ class PostNotificationService: PostNotificationServiceProtocol {
     
     func scheduleNotifications() {
         guard isNotificationsEnabled() else {
-            Logger.info("Notifications disabled, skipping scheduling", log: Logger.notifications)
+            Logger.debug("Notifications disabled, skipping scheduling", log: Logger.notifications)
             return
         }
         
-        Logger.info("Scheduling notifications", log: Logger.notifications)
-        
-        // Отменяем старые уведомления
-        cancelAllNotifications()
+        Logger.debug("Scheduling notifications", log: Logger.notifications)
         
         let startHour = getNotificationStartHour()
         let endHour = getNotificationEndHour()
@@ -51,7 +48,7 @@ class PostNotificationService: PostNotificationServiceProtocol {
         
         // Если отчет уже завершен, не планируем уведомления
         if reportStatus == .sent {
-            Logger.info("Report already done, no notifications needed", log: Logger.notifications)
+            Logger.debug("Report already done, no notifications needed", log: Logger.notifications)
             return
         }
         
@@ -69,7 +66,7 @@ class PostNotificationService: PostNotificationServiceProtocol {
                     endHour: endHour,
                     mode: notificationMode
                 )
-                Logger.info("Notifications scheduled successfully with mode: \(notificationMode)", log: Logger.notifications)
+                Logger.debug("Notifications scheduled successfully with mode: \(notificationMode)", log: Logger.notifications)
                 
                 // Выводим debug информацию после планирования
                 await notificationService.debugNotificationStatus()
@@ -80,7 +77,7 @@ class PostNotificationService: PostNotificationServiceProtocol {
     }
     
     func cancelAllNotifications() {
-        Logger.info("Cancelling all notifications", log: Logger.notifications)
+        Logger.debug("Cancelling all notifications", log: Logger.notifications)
         Task {
             try? await notificationService.cancelAllNotifications()
         }
@@ -117,7 +114,7 @@ class PostNotificationService: PostNotificationServiceProtocol {
     
     private func getNotificationMode() -> String {
         let modeString = userDefaultsManager.string(forKey: "notificationMode") ?? "hourly"
-        Logger.info("Notification mode loaded: \(modeString)", log: Logger.notifications)
+        Logger.debug("Notification mode loaded: \(modeString)", log: Logger.notifications)
         return modeString
     }
     

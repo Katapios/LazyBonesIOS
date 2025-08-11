@@ -76,7 +76,7 @@ class NotificationService: NotificationServiceProtocol {
         
         do {
             try await notificationCenter.add(request)
-            Logger.info("Notification scheduled successfully: \(identifier)", log: Logger.ui)
+            Logger.debug("Notification scheduled successfully: \(identifier)", log: Logger.ui)
         } catch {
             Logger.error("Failed to schedule notification: \(error)", log: Logger.ui)
             throw NotificationServiceError.schedulingFailed
@@ -102,7 +102,7 @@ class NotificationService: NotificationServiceProtocol {
         
         do {
             try await notificationCenter.add(request)
-            Logger.info("Repeating notification scheduled successfully: \(identifier) for \(hour):\(minute) daily", log: Logger.ui)
+            Logger.debug("Repeating notification scheduled successfully: \(identifier) for \(hour):\(minute) daily", log: Logger.ui)
         } catch {
             Logger.error("Failed to schedule repeating notification: \(error)", log: Logger.ui)
             throw NotificationServiceError.schedulingFailed
@@ -113,7 +113,7 @@ class NotificationService: NotificationServiceProtocol {
         Logger.debug("Cancelling notification: \(identifier)", log: Logger.ui)
         
         notificationCenter.removePendingNotificationRequests(withIdentifiers: [identifier])
-        Logger.info("Notification cancelled successfully: \(identifier)", log: Logger.ui)
+        Logger.debug("Notification cancelled successfully: \(identifier)", log: Logger.ui)
     }
     
     func cancelAllNotifications() async throws {
@@ -121,14 +121,14 @@ class NotificationService: NotificationServiceProtocol {
         
         notificationCenter.removeAllPendingNotificationRequests()
         notificationCenter.removeAllDeliveredNotifications()
-        Logger.info("All notifications cancelled successfully", log: Logger.ui)
+        Logger.debug("All notifications cancelled successfully", log: Logger.ui)
     }
     
     func getPendingNotifications() async throws -> [UNNotificationRequest] {
         Logger.debug("Getting pending notifications", log: Logger.ui)
         
         let requests = await notificationCenter.pendingNotificationRequests()
-        Logger.info("Found \(requests.count) pending notifications", log: Logger.ui)
+        Logger.debug("Found \(requests.count) pending notifications", log: Logger.ui)
         return requests
     }
     
@@ -136,7 +136,7 @@ class NotificationService: NotificationServiceProtocol {
         Logger.debug("Getting delivered notifications", log: Logger.ui)
         
         let notifications = await notificationCenter.deliveredNotifications()
-        Logger.info("Found \(notifications.count) delivered notifications", log: Logger.ui)
+        Logger.debug("Found \(notifications.count) delivered notifications", log: Logger.ui)
         return notifications
     }
     
@@ -150,7 +150,7 @@ class NotificationService: NotificationServiceProtocol {
         try await cancelAllNotifications()
         
         guard enabled else {
-            Logger.info("Notifications disabled, skipping scheduling", log: Logger.ui)
+            Logger.debug("Notifications disabled, skipping scheduling", log: Logger.ui)
             return
         }
         
@@ -225,22 +225,22 @@ class NotificationService: NotificationServiceProtocol {
     
     /// Проверить и вывести статус уведомлений
     func debugNotificationStatus() async {
-        Logger.info("=== DEBUG: Notification Status ===", log: Logger.ui)
+        Logger.debug("=== DEBUG: Notification Status ===", log: Logger.ui)
         
         let settings = await getNotificationSettings()
-        Logger.info("Authorization status: \(settings.authorizationStatus.rawValue)", log: Logger.ui)
-        Logger.info("Alert setting: \(settings.alertSetting.rawValue)", log: Logger.ui)
-        Logger.info("Sound setting: \(settings.soundSetting.rawValue)", log: Logger.ui)
-        Logger.info("Badge setting: \(settings.badgeSetting.rawValue)", log: Logger.ui)
+        Logger.debug("Authorization status: \(settings.authorizationStatus.rawValue)", log: Logger.ui)
+        Logger.debug("Alert setting: \(settings.alertSetting.rawValue)", log: Logger.ui)
+        Logger.debug("Sound setting: \(settings.soundSetting.rawValue)", log: Logger.ui)
+        Logger.debug("Badge setting: \(settings.badgeSetting.rawValue)", log: Logger.ui)
         
         let pendingRequests = await notificationCenter.pendingNotificationRequests()
-        Logger.info("Pending notifications: \(pendingRequests.count)", log: Logger.ui)
+        Logger.debug("Pending notifications: \(pendingRequests.count)", log: Logger.ui)
         
         for request in pendingRequests {
-            Logger.info("Pending: \(request.identifier)", log: Logger.ui)
+            Logger.debug("Pending: \(request.identifier)", log: Logger.ui)
         }
         
         let deliveredNotifications = await notificationCenter.deliveredNotifications()
-        Logger.info("Delivered notifications: \(deliveredNotifications.count)", log: Logger.ui)
+        Logger.debug("Delivered notifications: \(deliveredNotifications.count)", log: Logger.ui)
     }
 } 
