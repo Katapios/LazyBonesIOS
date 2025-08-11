@@ -202,6 +202,21 @@ struct SettingsView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            // Кнопка сброса разблокировки
+            Button {
+                Task { await viewModel.handle(.resetReportUnlock) }
+            } label: {
+                Text("Сбросить разблокировку отчёта")
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .buttonStyle(.bordered)
+            .tint(.red)
+            .padding(.vertical, 4)
+            Text("Выключает форс‑разблокировку и возвращает стандартные ограничения по времени.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

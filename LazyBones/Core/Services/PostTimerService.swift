@@ -1,6 +1,10 @@
 import Foundation
 import Combine
 
+extension Notification.Name {
+    static let reportPeriodActivityChanged = Notification.Name("ReportPeriodActivityChanged")
+}
+
 /// Сервис для управления таймерами отчетов
 protocol PostTimerServiceProtocol {
     /// Запустить таймер
@@ -30,6 +34,7 @@ class PostTimerService: PostTimerServiceProtocol, ObservableObject {
     private let userDefaultsManager: UserDefaultsManagerProtocol
     private let onTimeUpdate: (String, Double) -> Void
     private var currentReportStatus: ReportStatus = .notStarted
+    private var wasPeriodActive: Bool?
     
     init(userDefaultsManager: UserDefaultsManagerProtocol, onTimeUpdate: @escaping (String, Double) -> Void) {
         self.userDefaultsManager = userDefaultsManager
@@ -83,6 +88,10 @@ class PostTimerService: PostTimerServiceProtocol, ObservableObject {
         
         let start = calendar.date(bySettingHour: startHour, minute: 0, second: 0, of: now)!
         let end = calendar.date(bySettingHour: endHour, minute: 0, second: 0, of: now)!
+        let isActiveNow = (now >= start && now < end)
+        // Уведомляем об активности окна отчётности каждый тик, чтобы статус гарантированно пересчитывался
+        NotificationCenter.default.post(name: .reportPeriodActivityChanged, object: self, userInfo: ["isActive": isActiveNow])
+        wasPeriodActive = isActiveNow
         
         // Вычисляем новое значение timeLeft
         let newTimeLeft: String

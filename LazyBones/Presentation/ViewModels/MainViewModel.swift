@@ -93,7 +93,7 @@ class MainViewModel: ObservableObject {
     }
     
     var canEditReport: Bool {
-        store.reportStatus == .notStarted || store.reportStatus == .inProgress
+        (isReportPeriodActive || store.forceUnlock) && (store.reportStatus == .notStarted || store.reportStatus == .inProgress)
     }
     
     var buttonTitle: String {

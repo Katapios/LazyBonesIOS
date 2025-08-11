@@ -39,6 +39,7 @@ class ReportStatusManager: ReportStatusManagerProtocol {
     private let notificationService: PostNotificationServiceProtocol
     private let factory: ReportStatusFactory
     private let postsProvider: PostsProviderProtocol
+    private var activityObserver: Any?
     
     // MARK: - Initialization
     init(
@@ -54,9 +55,25 @@ class ReportStatusManager: ReportStatusManagerProtocol {
         self.postsProvider = postsProvider
         self.factory = factory
         
+        // Подписка на смену активности периода (начало/конец окна отчётности)
+        activityObserver = NotificationCenter.default.addObserver(
+            forName: .reportPeriodActivityChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            // Пересчитываем статус немедленно, чтобы убрать "заполни отчёт" после конца окна
+            self?.updateStatus()
+        }
+
         loadStatus()
         checkForNewDay()
         updateStatus()
+    }
+
+    deinit {
+        if let observer = activityObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
     
     // MARK: - Public Methods
@@ -77,11 +94,16 @@ class ReportStatusManager: ReportStatusManagerProtocol {
 
         // Получаем отчеты за сегодня
         let posts = postsProvider.getPosts()
-        // Если посты ещё не загружены (на старте приложения), не переопределяем сохранённый статус
+        // Если посты ещё не загружены (на старте приложения), определяем статус по активности периода
         if posts.isEmpty {
-            if forceUnlockChanged {
-                // Статус не меняем, но уведомим зависимости/UI о возможном изменении forceUnlock
-                updateDependencies(reportStatus)
+            let newStatus: ReportStatus = forceUnlock ? .notStarted : (isPeriodActive ? .notStarted : .notCreated)
+            if reportStatus != newStatus {
+                reportStatus = newStatus
+                saveStatus()
+                updateDependencies(newStatus)
+            } else if forceUnlockChanged {
+                // Статус не изменился, но forceUnlock изменился — уведомим UI
+                updateDependencies(newStatus)
             }
             return
         }

@@ -19,6 +19,7 @@ enum SettingsEvent {
 
     // MARK: - Data
     case unlockReports
+    case resetReportUnlock
 
     // MARK: - Background Fetch Test
     case setBackgroundFetchTestEnabled(Bool)

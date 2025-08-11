@@ -57,6 +57,8 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
             await checkICloudAvailability()
         case .unlockReports:
             await unlockReports()
+        case .resetReportUnlock:
+            await resetReportUnlock()
         case let .setBackgroundFetchTestEnabled(value):
             await setBackgroundFetchTestEnabled(value)
         }
@@ -263,6 +265,17 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
         // Синхронизируем легаси PostStore, чтобы UI обновился мгновенно
         PostStore.shared.updateReportStatus()
         // Обновим состояние настроек, чтобы диагностические лейблы отобразили актуальные значения
+        await loadSettings()
+    }
+
+    private func resetReportUnlock() async {
+        // Сбрасываем принудительную разблокировку
+        statusManager.forceUnlock = false
+        LocalReportService.shared.saveForceUnlock(false)
+        // Пересчитываем статус и обновляем UI
+        statusManager.updateStatus()
+        PostStore.shared.updateReportStatus()
+        WidgetCenter.shared.reloadAllTimelines()
         await loadSettings()
     }
 

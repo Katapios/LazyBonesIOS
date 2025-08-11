@@ -64,7 +64,8 @@ struct RegularReportFormView: View {
     }
 
     var body: some View {
-        if store.reportStatus == .sent || store.reportStatus == .notCreated || store.reportStatus == .notSent {
+        // Заглушка отображается только если блокирующий статус И нет форс-разблокировки
+        if (store.reportStatus == .sent || store.reportStatus == .notCreated || store.reportStatus == .notSent) && !store.forceUnlock {
             VStack(spacing: 24) {
                 Spacer()
                 Image(systemName: "clock.arrow.circlepath")
