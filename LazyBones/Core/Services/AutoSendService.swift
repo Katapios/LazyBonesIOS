@@ -123,18 +123,20 @@ class AutoSendService: AutoSendServiceProtocol {
             return 
         }
         
-        // Schedule the background task
-        do {
-            let backgroundTaskService = DependencyContainer.shared.resolve(BackgroundTaskServiceProtocol.self)!
-            try backgroundTaskService.scheduleSendReportTask()
-            Logger.info("✅ Background task scheduled successfully", log: Logger.background)
-        } catch {
-            Logger.error("❌ Failed to schedule background task: \(error)", log: Logger.background)
-            
-            // Try to recover by rescheduling after a delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 60) { [weak self] in
-                Logger.info("Retrying background task scheduling after error", log: Logger.background)
-                self?.scheduleAutoSendIfNeeded()
+        // Schedule the background task on MainActor (required for UIApplication APIs)
+        let backgroundTaskService = DependencyContainer.shared.resolve(BackgroundTaskServiceProtocol.self)!
+        Task { @MainActor in
+            do {
+                try backgroundTaskService.scheduleSendReportTask()
+                Logger.info("✅ Background task scheduled successfully", log: Logger.background)
+            } catch {
+                Logger.error("❌ Failed to schedule background task: \(error)", log: Logger.background)
+                
+                // Try to recover by rescheduling after a delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 60) { [weak self] in
+                    Logger.info("Retrying background task scheduling after error", log: Logger.background)
+                    self?.scheduleAutoSendIfNeeded()
+                }
             }
         }
         

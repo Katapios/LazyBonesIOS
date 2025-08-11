@@ -5,7 +5,7 @@ import UIKit
 /// Протокол сервиса фоновых задач
 protocol BackgroundTaskServiceProtocol {
     func registerBackgroundTasks() throws
-    func scheduleSendReportTask() throws
+    @MainActor func scheduleSendReportTask() throws
     func handleSendReportTask(_ task: BGAppRefreshTask) async
 }
 
@@ -119,6 +119,7 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
         }
     }
     
+    @MainActor
     func scheduleSendReportTask() throws {
         #if targetEnvironment(simulator)
         Logger.info("Skipping BGTask scheduling on Simulator (using DEBUG timer instead)", log: Logger.background)
@@ -210,7 +211,7 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
             }
             
             // Планируем следующую задачу
-            try self.scheduleSendReportTask()
+            try await self.scheduleSendReportTask()
             
             // Завершаем задачу успешно
             task.setTaskCompleted(success: true)
