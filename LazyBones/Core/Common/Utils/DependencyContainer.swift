@@ -11,6 +11,8 @@ class DependencyContainer {
     
     private var services: [String: Any] = [:]
     private var factories: [String: () -> Any] = [:]
+    private let queue = DispatchQueue(label: "com.katapios.LazyBones.di", attributes: .concurrent)
+    private var coreServicesRegistered = false
     
     private init() {}
     
@@ -19,7 +21,9 @@ class DependencyContainer {
     /// Зарегистрировать сервис как синглтон
     func register<T>(_ type: T.Type, instance: T) {
         let key = String(describing: type)
-        services[key] = instance
+        queue.async(flags: .barrier) {
+            self.services[key] = instance
+        }
         Logger.debug("Registered singleton: \(key)", log: Logger.general)
     }
     
@@ -27,7 +31,9 @@ class DependencyContainer {
     /// Зарегистрировать фабрику для создания сервиса
     func register<T>(_ type: T.Type, factory: @escaping () -> T) {
         let key = String(describing: type)
-        factories[key] = factory
+        queue.async(flags: .barrier) {
+            self.factories[key] = factory
+        }
         Logger.debug("Registered factory: \(key)", log: Logger.general)
     }
     
@@ -36,22 +42,19 @@ class DependencyContainer {
     /// Получить экземпляр сервиса
     func resolve<T>(_ type: T.Type) -> T? {
         let key = String(describing: type)
-        
-        // Сначала проверяем синглтоны
-        if let instance = services[key] as? T {
-            return instance
+        var singleton: Any?
+        queue.sync {
+            singleton = self.services[key]
         }
-        
-        // Затем проверяем фабрики
-        if let factory = factories[key] {
-            let instance = factory()
-            if let typedInstance = instance as? T {
-                // noisy: resolved from factory — отключаем спам
-                // Logger.debug("Resolved from factory: \(key)", log: Logger.general)
-                return typedInstance
-            }
+        if let s = singleton as? T { return s }
+        var factory: (() -> Any)?
+        queue.sync {
+            factory = self.factories[key]
         }
-        
+        if let f = factory {
+            let instance = f()
+            if let typed = instance as? T { return typed }
+        }
         Logger.warning("Failed to resolve: \(key)", log: Logger.general)
         return nil
     }
@@ -75,16 +78,21 @@ class DependencyContainer {
     
     /// Очистить все зарегистрированные сервисы
     func clear() {
-        services.removeAll()
-        factories.removeAll()
+        queue.async(flags: .barrier) {
+            self.services.removeAll()
+            self.factories.removeAll()
+            self.coreServicesRegistered = false
+        }
         Logger.info("Dependency container cleared", log: Logger.general)
     }
     
     /// Удалить конкретный сервис
     func remove<T>(_ type: T.Type) {
         let key = String(describing: type)
-        services.removeValue(forKey: key)
-        factories.removeValue(forKey: key)
+        queue.async(flags: .barrier) {
+            self.services.removeValue(forKey: key)
+            self.factories.removeValue(forKey: key)
+        }
         Logger.debug("Removed service: \(key)", log: Logger.general)
     }
     
@@ -103,6 +111,14 @@ extension DependencyContainer {
     
     /// Зарегистрировать основные сервисы приложения
     func registerCoreServices() {
+        var shouldRegister = false
+        queue.sync {
+            shouldRegister = !self.coreServicesRegistered
+        }
+        guard shouldRegister else {
+            Logger.info("Core services already registered — skip", log: Logger.general)
+            return
+        }
         Logger.info("Registering core services", log: Logger.general)
         
         // UserDefaults Manager
@@ -267,6 +283,9 @@ extension DependencyContainer {
         // iCloud Services
         registerICloudServices()
         
+        queue.async(flags: .barrier) {
+            self.coreServicesRegistered = true
+        }
         Logger.info("Core services registered successfully", log: Logger.general)
     }
     

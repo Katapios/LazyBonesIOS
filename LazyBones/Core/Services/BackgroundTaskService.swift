@@ -256,6 +256,28 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
         
         return earliest
     }
+
+    // MARK: - Testing helpers (internal for @testable)
+    func safeEarliestBeginDate(now: Date) -> Date {
+        let computed = calculateEarliestBeginDate(now: now)
+        let minDate = now.addingTimeInterval(20 * 60)
+        return max(computed, minDate)
+    }
+
+    func calculateEarliestBeginDate(now: Date) -> Date {
+        let calendar = Calendar.current
+        // Планируем на 22:01 сегодня или завтра
+        let today2201 = calendar.date(bySettingHour: 22, minute: 1, second: 0, of: now)!
+        let today2359 = calendar.date(bySettingHour: 23, minute: 59, second: 0, of: now)!
+        if now < today2201 {
+            return today2201
+        } else if now >= today2201 && now <= today2359 {
+            return now
+        } else {
+            let tomorrow2201 = calendar.date(byAdding: .day, value: 1, to: today2201)!
+            return tomorrow2201
+        }
+    }
     
     private func processAutoSendReports() async {
         Logger.info("Processing auto-send reports", log: Logger.background)
