@@ -78,11 +78,23 @@ class ReportStatusManager: ReportStatusManagerProtocol {
 
         // Получаем отчеты за сегодня
         let posts = postsProvider.getPosts()
-        // Если посты ещё не загружены (на старте приложения), не переопределяем сохранённый статус
+        // Если посты ещё не загружены (на старте приложения), определяем статус по окну периода и forceUnlock
         if posts.isEmpty {
-            if forceUnlockChanged {
-                // Статус не меняем, но уведомим зависимости/UI о возможном изменении forceUnlock
-                updateDependencies(reportStatus)
+            let derivedStatus: ReportStatus
+            if forceUnlock {
+                // Разблокировано пользователем — разрешаем редактирование сразу
+                derivedStatus = .notStarted
+            } else {
+                // До старта периода — блокируем создание (заглушка)
+                derivedStatus = isPeriodActive ? .notStarted : .notCreated
+            }
+            if reportStatus != derivedStatus {
+                reportStatus = derivedStatus
+                saveStatus()
+                updateDependencies(derivedStatus)
+            } else if forceUnlockChanged {
+                // Статус не изменился, но forceUnlock изменился — уведомим UI
+                updateDependencies(derivedStatus)
             }
             return
         }

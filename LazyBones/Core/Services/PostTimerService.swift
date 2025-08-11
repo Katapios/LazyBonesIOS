@@ -88,7 +88,9 @@ class PostTimerService: PostTimerServiceProtocol, ObservableObject {
         let newTimeLeft: String
         let newProgress: Double
         
-        if currentReportStatus == .sent || currentReportStatus == .notCreated || currentReportStatus == .notSent {
+        if currentReportStatus == .sent || currentReportStatus == .notSent {
+            // Для отправленного отчёта и статуса не отправлен (после окончания периода)
+            // показываем обратный отсчёт до следующего старта (завтра)
             let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
             let nextStart = calendar.date(bySettingHour: startHour, minute: 0, second: 0, of: tomorrow)!
             let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: nextStart)
