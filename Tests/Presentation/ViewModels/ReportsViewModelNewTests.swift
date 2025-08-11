@@ -9,6 +9,7 @@ final class ReportsViewModelNewTests: XCTestCase {
     var mockDeleteReportUseCase: MockDeleteReportUseCase!
     var mockUpdateReportUseCase: MockUpdateReportUseCase!
     var mockTagRepository: MockTagRepository!
+    var mockPostTelegramService: MockPostTelegramService!
     
     override func setUp() {
         super.setUp()
@@ -17,14 +18,32 @@ final class ReportsViewModelNewTests: XCTestCase {
         mockDeleteReportUseCase = MockDeleteReportUseCase()
         mockUpdateReportUseCase = MockUpdateReportUseCase()
         mockTagRepository = MockTagRepository()
+        mockPostTelegramService = MockPostTelegramService()
         
         viewModel = ReportsViewModelNew(
             getReportsUseCase: mockGetReportsUseCase,
             deleteReportUseCase: mockDeleteReportUseCase,
             updateReportUseCase: mockUpdateReportUseCase,
-            tagRepository: mockTagRepository
+            tagRepository: mockTagRepository,
+            postTelegramService: mockPostTelegramService
         )
     }
+
+// MARK: - Telegram Service Mock
+class MockPostTelegramService: PostTelegramServiceProtocol {
+    var stubSendToTelegram: Bool = true
+    var stubSendVoice: Bool = true
+    
+    func sendToTelegram(text: String, completion: @escaping (Bool) -> Void) {
+        completion(stubSendToTelegram)
+    }
+    func sendVoice(fileURL: URL, caption: String?, completion: @escaping (Bool) -> Void) {
+        completion(stubSendVoice)
+    }
+    func performAutoSendReport(completion: (() -> Void)?) { completion?() }
+    func autoSendAllReportsForToday() {}
+    func sendUnsentReportsFromPreviousDays() {}
+}
     
     override func tearDown() {
         viewModel = nil
@@ -32,6 +51,7 @@ final class ReportsViewModelNewTests: XCTestCase {
         mockDeleteReportUseCase = nil
         mockUpdateReportUseCase = nil
         mockTagRepository = nil
+        mockPostTelegramService = nil
         super.tearDown()
     }
     
@@ -275,6 +295,106 @@ final class ReportsViewModelNewTests: XCTestCase {
         // Then
         XCTAssertFalse(viewModel.isReportEvaluated(evaluatedReport))
     }
+
+    // MARK: - Sending Custom Report
+    func testSendCustomReport_Success() async throws {
+        // Given
+        var post = DomainPost.mockCustom()
+        post.goodItems = ["A"]
+        post.isEvaluated = true
+        viewModel.state.customReports = [post]
+        mockPostTelegramService.stubSendToTelegram = true
+
+        let exp = expectation(forNotification: .reportStatusDidChange, object: nil)
+
+        // When
+        await viewModel.handle(.sendCustomReport(post))
+
+        // Then
+        await fulfillment(of: [exp], timeout: 1.0)
+        XCTAssertEqual(mockUpdateReportUseCase.callCount, 1)
+        XCTAssertTrue(mockUpdateReportUseCase.lastInput?.report.published == true)
+        // state list updated to published
+        XCTAssertEqual(viewModel.state.customReports.first?.published, true)
+        XCTAssertNil(viewModel.state.error)
+    }
+
+    func testSendCustomReport_ValidationFails_NoGoodItems() async {
+        // Given
+        var post = DomainPost.mockCustom()
+        post.goodItems = []
+        post.isEvaluated = true
+
+        // When
+        await viewModel.handle(.sendCustomReport(post))
+
+        // Then
+        XCTAssertNotNil(viewModel.state.error)
+        XCTAssertEqual(mockUpdateReportUseCase.callCount, 0)
+    }
+
+    func testSendCustomReport_ValidationFails_NotEvaluated() async {
+        // Given
+        var post = DomainPost.mockCustom()
+        post.goodItems = ["A"]
+        post.isEvaluated = false
+
+        // When
+        await viewModel.handle(.sendCustomReport(post))
+
+        // Then
+        XCTAssertNotNil(viewModel.state.error)
+        XCTAssertEqual(mockUpdateReportUseCase.callCount, 0)
+    }
+
+    // MARK: - Sending Regular Report
+    func testSendRegularReport_Success_WithVoices() async throws {
+        // Given
+        var post = DomainPost.mockRegular()
+        post.goodItems = ["G1"]
+        // Create two temp voice files
+        let tmp1 = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".m4a")
+        let tmp2 = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".m4a")
+        FileManager.default.createFile(atPath: tmp1.path, contents: Data("1".utf8))
+        FileManager.default.createFile(atPath: tmp2.path, contents: Data("2".utf8))
+        post.voiceNotes = [
+            DomainVoiceNote(url: tmp1, duration: 1),
+            DomainVoiceNote(url: tmp2, duration: 1)
+        ]
+        viewModel.state.regularReports = [post]
+        mockPostTelegramService.stubSendToTelegram = true
+        mockPostTelegramService.stubSendVoice = true
+
+        let exp = expectation(forNotification: .reportStatusDidChange, object: nil)
+
+        // When
+        await viewModel.handle(.sendRegularReport(post))
+
+        // Then
+        await fulfillment(of: [exp], timeout: 1.0)
+        XCTAssertEqual(mockUpdateReportUseCase.callCount, 1)
+        let updated = mockUpdateReportUseCase.lastInput?.report
+        XCTAssertEqual(updated?.published, true)
+        XCTAssertEqual(updated?.voiceNotes.isEmpty, true)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: tmp1.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: tmp2.path))
+        XCTAssertNil(viewModel.state.error)
+    }
+
+    func testSendRegularReport_Failure_Telegram() async {
+        // Given
+        var post = DomainPost.mockRegular()
+        post.goodItems = ["G1"]
+        viewModel.state.regularReports = [post]
+        mockPostTelegramService.stubSendToTelegram = false
+
+        // When
+        await viewModel.handle(.sendRegularReport(post))
+
+        // Then
+        XCTAssertNotNil(viewModel.state.error)
+        XCTAssertEqual(mockUpdateReportUseCase.callCount, 0)
+    }
 }
 
 // MARK: - Mock Objects
@@ -316,11 +436,15 @@ class MockDeleteReportUseCase: DeleteReportUseCase {
 class MockUpdateReportUseCase: UpdateReportUseCase {
     var shouldThrowError = false
     var mockError: Error?
+    private(set) var lastInput: UpdateReportInput?
+    private(set) var callCount: Int = 0
     
     override func execute(input: UpdateReportInput) async throws -> DomainPost {
         if shouldThrowError {
             throw mockError ?? NSError(domain: "Test", code: 1, userInfo: nil)
         }
+        lastInput = input
+        callCount += 1
         return input.report
     }
 }
