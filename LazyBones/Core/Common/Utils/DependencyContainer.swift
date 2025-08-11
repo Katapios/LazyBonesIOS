@@ -46,7 +46,8 @@ class DependencyContainer {
         if let factory = factories[key] {
             let instance = factory()
             if let typedInstance = instance as? T {
-                Logger.debug("Resolved from factory: \(key)", log: Logger.general)
+                // noisy: resolved from factory — отключаем спам
+                // Logger.debug("Resolved from factory: \(key)", log: Logger.general)
                 return typedInstance
             }
         }

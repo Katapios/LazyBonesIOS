@@ -37,21 +37,27 @@ class ICloudFileManager {
     
     private let fileName = "LazyBonesReports.report"
     private let folderName = "LazyBonesReports"
+    private var cachedFolderURL: URL?
     
     /// Получить URL папки LazyBonesReports в iCloud Drive
     private func getICloudFolderURL() throws -> URL {
-        Logger.info("ICloudFileManager: Starting getICloudFolderURL", log: Logger.general)
+        if let cached = cachedFolderURL {
+            // Быстрый возврат из кэша, чтобы не спамить логами
+            return cached
+        }
+        Logger.debug("ICloudFileManager: Starting getICloudFolderURL", log: Logger.general)
         
         // Сначала пробуем получить URL через ubiquity container
         if let iCloudURL = FileManager.default.url(forUbiquityContainerIdentifier: nil) {
             let documentsURL = iCloudURL.appendingPathComponent("Documents")
             let folderURL = documentsURL.appendingPathComponent(folderName)
             
-            Logger.info("ICloudFileManager: Using ubiquity container URL: \(folderURL.path)", log: Logger.general)
+            Logger.debug("ICloudFileManager: Using ubiquity container URL: \(folderURL.path)", log: Logger.general)
+            cachedFolderURL = folderURL
             return folderURL
         }
         
-        Logger.info("ICloudFileManager: Ubiquity container not available, trying Documents directory", log: Logger.general)
+        Logger.debug("ICloudFileManager: Ubiquity container not available, trying Documents directory", log: Logger.general)
         
         // Fallback: используем Documents Directory (доступно в iCloud Drive)
         guard let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
@@ -59,41 +65,32 @@ class ICloudFileManager {
             throw ICloudFileError.accessDenied
         }
         
-        // Попробуем использовать Desktop Directory для лучшей видимости в Finder
+        // На iOS/Desktop контейнер внутри sandbox — пропускаем проверку Desktop на реальных устройствах
+        #if targetEnvironment(macCatalyst)
         if let desktopURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first {
-            Logger.info("ICloudFileManager: Desktop directory available: \(desktopURL.path)", log: Logger.general)
-            
-            // Проверяем, можем ли мы писать в Desktop
+            Logger.debug("ICloudFileManager: Desktop directory available: \(desktopURL.path)", log: Logger.general)
             let testFileURL = desktopURL.appendingPathComponent(".test")
             do {
                 try "test".write(to: testFileURL, atomically: true, encoding: .utf8)
                 try FileManager.default.removeItem(at: testFileURL)
-                Logger.info("ICloudFileManager: Desktop directory is writable", log: Logger.general)
+                Logger.debug("ICloudFileManager: Desktop directory is writable", log: Logger.general)
                 let folderURL = desktopURL.appendingPathComponent(folderName)
-                Logger.info("ICloudFileManager: Using Desktop directory for folder: \(folderURL.path)", log: Logger.general)
+                Logger.debug("ICloudFileManager: Using Desktop directory for folder: \(folderURL.path)", log: Logger.general)
+                cachedFolderURL = folderURL
                 return folderURL
             } catch {
-                Logger.warning("ICloudFileManager: Desktop directory is not writable: \(error)", log: Logger.general)
+                Logger.debug("ICloudFileManager: Desktop not writable: \(error)", log: Logger.general)
             }
         }
+        #endif
         
-        Logger.info("ICloudFileManager: Using Documents directory as fallback", log: Logger.general)
+        Logger.debug("ICloudFileManager: Using Documents directory as fallback", log: Logger.general)
         let folderURL = documentsURL.appendingPathComponent(folderName)
         
-        Logger.info("ICloudFileManager: Using Documents directory URL: \(folderURL.path)", log: Logger.general)
+        Logger.debug("ICloudFileManager: Using Documents directory URL: \(folderURL.path)", log: Logger.general)
         
-        // Проверяем, существует ли Documents directory
-        let documentsExists = FileManager.default.fileExists(atPath: documentsURL.path)
-        Logger.info("ICloudFileManager: Documents directory exists: \(documentsExists)", log: Logger.general)
-        
-        // Показываем содержимое Documents directory
-        do {
-            let documentsContents = try FileManager.default.contentsOfDirectory(at: documentsURL, includingPropertiesForKeys: nil)
-            Logger.info("ICloudFileManager: Documents directory contents: \(documentsContents.map { $0.lastPathComponent })", log: Logger.general)
-        } catch {
-            Logger.error("ICloudFileManager: Cannot read Documents directory contents: \(error)", log: Logger.general)
-        }
-        
+        // Лишние проверки/вывод содержимого убираем, чтобы не спамить
+        cachedFolderURL = folderURL
         return folderURL
     }
     
@@ -105,15 +102,15 @@ class ICloudFileManager {
     
     /// Создать папку если она не существует
     private func createFolderIfNeeded() throws {
-        Logger.info("ICloudFileManager: Starting createFolderIfNeeded", log: Logger.general)
+        Logger.debug("ICloudFileManager: Starting createFolderIfNeeded", log: Logger.general)
         
         let folderURL = try getICloudFolderURL()
         let folderExists = FileManager.default.fileExists(atPath: folderURL.path)
         
-        Logger.info("ICloudFileManager: Folder exists before creation: \(folderExists)", log: Logger.general)
+        Logger.debug("ICloudFileManager: Folder exists before creation: \(folderExists)", log: Logger.general)
         
         if !folderExists {
-            Logger.info("ICloudFileManager: Creating folder at: \(folderURL.path)", log: Logger.general)
+            Logger.debug("ICloudFileManager: Creating folder at: \(folderURL.path)", log: Logger.general)
             
             try FileManager.default.createDirectory(
                 at: folderURL,
@@ -122,15 +119,15 @@ class ICloudFileManager {
             )
             
             let folderCreated = FileManager.default.fileExists(atPath: folderURL.path)
-            Logger.info("ICloudFileManager: Folder created successfully: \(folderCreated)", log: Logger.general)
+            Logger.debug("ICloudFileManager: Folder created successfully: \(folderCreated)", log: Logger.general)
             
             if folderCreated {
-                Logger.info("ICloudFileManager: Created iCloud folder: \(folderURL.path)", log: Logger.general)
+                Logger.debug("ICloudFileManager: Created iCloud folder: \(folderURL.path)", log: Logger.general)
             } else {
                 Logger.error("ICloudFileManager: Failed to create folder", log: Logger.general)
             }
         } else {
-            Logger.info("ICloudFileManager: Folder already exists: \(folderURL.path)", log: Logger.general)
+            Logger.debug("ICloudFileManager: Folder already exists: \(folderURL.path)", log: Logger.general)
         }
     }
     
@@ -140,14 +137,14 @@ class ICloudFileManager {
         let canAccessICloud = FileManager.default.url(forUbiquityContainerIdentifier: nil) != nil
         let canAccessDocuments = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first != nil
         
-        Logger.info("ICloudFileManager: iCloud check - hasToken: \(hasToken), canAccessICloud: \(canAccessICloud), canAccessDocuments: \(canAccessDocuments)", log: Logger.general)
+        Logger.debug("ICloudFileManager: iCloud check - hasToken: \(hasToken), canAccessICloud: \(canAccessICloud), canAccessDocuments: \(canAccessDocuments)", log: Logger.general)
         
         if !hasToken {
-            Logger.warning("ICloudFileManager: No ubiquityIdentityToken - user not signed into iCloud", log: Logger.general)
+            Logger.debug("ICloudFileManager: No ubiquityIdentityToken - user not signed into iCloud", log: Logger.general)
         }
         
         if !canAccessICloud && !canAccessDocuments {
-            Logger.warning("ICloudFileManager: Cannot access iCloud or Documents directory", log: Logger.general)
+            Logger.debug("ICloudFileManager: Cannot access iCloud or Documents directory", log: Logger.general)
         }
         
         // Возвращаем true, если есть хотя бы один способ доступа к файловой системе
