@@ -111,6 +111,30 @@ class ReportStatusManagerTests: XCTestCase {
         let today = Calendar.current.startOfDay(for: Date())
         XCTAssertEqual(statusManager.currentDay, today)
     }
+
+    func testUnlockReportsAfterPublishedReport_StatusNotStartedAndPostKept() {
+        // Given: есть опубликованный регулярный отчет за сегодня
+        let post = Post(
+            id: UUID(),
+            date: Date(),
+            goodItems: ["Good"],
+            badItems: ["Bad"],
+            published: true,
+            voiceNotes: [],
+            type: .regular
+        )
+        mockPostsProvider.posts = [post]
+
+        // When: выполняем разблокировку через менеджер
+        statusManager.unlockReportCreation()
+
+        // Then: статус сбрасывается на notStarted, пост НЕ удалён, но published снят
+        XCTAssertEqual(statusManager.reportStatus, .notStarted)
+        XCTAssertEqual(mockPostsProvider.posts.count, 1)
+        XCTAssertFalse(mockPostsProvider.posts[0].published)
+        // и флаг forceUnlock сохранён в локальном сервисе (одноразовая разблокировка)
+        XCTAssertTrue(mockLocalService.savedForceUnlock)
+    }
 }
 
 // MARK: - Mock Classes
