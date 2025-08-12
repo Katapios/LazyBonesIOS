@@ -474,32 +474,45 @@ struct RegularReportFormView: View {
     func sendToTelegram(post: Post) {
         isSending = true
         sendStatus = nil
-        sendTextMessage(post: post) { success in
-            // Отправляем голосовые только если есть валидные файлы
-            let validVoicePaths = post.voiceNotes
-                .map { $0.path }
-                .filter { FileManager.default.fileExists(atPath: $0) }
-            if success && !validVoicePaths.isEmpty {
-                self.sendAllVoiceNotes(
-                    voiceNotes: validVoicePaths
-                ) { allSuccess in
-                    DispatchQueue.main.async {
-                        self.isSending = false
-                        if allSuccess {
-                            self.finalizePublish(post: post)
-                        } else {
-                            self.sendStatus = "Ошибка отправки голосовых заметок"
-                        }
-                    }
-                }
-            } else {
-                DispatchQueue.main.async {
-                    self.isSending = false
-                    if success {
-                        self.finalizePublish(post: post)
-                    } else {
-                        self.sendStatus = "Ошибка отправки: неверный токен или chat_id"
-                    }
+
+        // Формируем текст сообщения (дублируем логику из sendTextMessage, чтобы использовать единый publish)
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "ru_RU")
+        dateFormatter.dateStyle = .full
+        let dateStr = dateFormatter.string(from: post.date)
+        let deviceName = store.getDeviceName()
+        var message = "\u{1F4C5} <b>Отчёт за \(dateStr)</b>\n"
+        message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
+        if !post.goodItems.isEmpty {
+            message += "<b>✅ Я молодец:</b>\n"
+            for (index, item) in post.goodItems.enumerated() {
+                let icon = getIconForItem(item, isGood: true)
+                message += "\(index + 1). \(icon) \(item)\n"
+            }
+            message += "\n"
+        }
+        if !post.badItems.isEmpty {
+            message += "<b>❌ Я не молодец:</b>\n"
+            for (index, item) in post.badItems.enumerated() {
+                let icon = getIconForItem(item, isGood: false)
+                message += "\(index + 1). \(icon) \(item)\n"
+            }
+        }
+        let validVoicePaths = post.voiceNotes
+            .map { $0.path }
+            .filter { FileManager.default.fileExists(atPath: $0) }
+        if !validVoicePaths.isEmpty {
+            message += "\n\u{1F3A4} <i>Голосовая заметка прикреплена</i>"
+        }
+
+        store.publish(text: message, voicePaths: validVoicePaths) { success in
+            DispatchQueue.main.async {
+                self.isSending = false
+                if success {
+                    self.finalizePublish(post: post)
+                } else {
+                    // Если голосовых не было — вероятно проблема с токеном/chatId, иначе считаем ошибкой голосовых
+                    self.sendStatus = validVoicePaths.isEmpty ? "Ошибка отправки: неверный токен или chat_id" : "Ошибка отправки голосовых заметок"
                 }
             }
         }

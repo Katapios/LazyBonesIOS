@@ -79,6 +79,10 @@ struct ContentView: View {
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 Logger.debug("App became active, updating widgets", log: Logger.ui)
+                // Обновляем Telegram настройки и сервисы при возврате из бэкграунда
+                store.loadTelegramSettings()
+                store.refreshTelegramServices()
+                store.updateReportStatus()
                 WidgetCenter.shared.reloadAllTimelines()
                 appCoordinator.updateWidgets()
             }

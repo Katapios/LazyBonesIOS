@@ -402,6 +402,59 @@ class PostStore: ObservableObject, PostStoreProtocol {
         // Обновляем локальное свойство для обратной совместимости
         externalPosts = telegramIntegrationService.externalPosts
     }
+    
+    /// Универсальная публикация отчета: сначала текст, затем (опционально) голосовые заметки
+    func publish(text: String, voicePaths: [String], completion: @escaping (Bool) -> Void) {
+        // 1) Отправляем текст
+        sendToTelegram(text: text) { [weak self] success in
+            guard let self else { completion(false); return }
+            if !success {
+                completion(false)
+                return
+            }
+            // 2) Фильтруем реально существующие файлы и отправляем по очереди, если есть
+            let validPaths = voicePaths.filter { FileManager.default.fileExists(atPath: $0) }
+            if validPaths.isEmpty {
+                completion(true)
+                return
+            }
+            self.sendVoicesSequentially(paths: validPaths) { voicesSuccess in
+                completion(voicesSuccess)
+            }
+        }
+    }
+    
+    /// Последовательная отправка голосовых заметок
+    private func sendVoicesSequentially(paths: [String], completion: @escaping (Bool) -> Void) {
+        // Получаем сервис и chatId
+        guard let chatId = userDefaultsManager.string(forKey: "telegramChatId"), !chatId.isEmpty,
+              let telegramService = DependencyContainer.shared.resolve(TelegramServiceProtocol.self) else {
+            completion(false)
+            return
+        }
+        var index = 0
+        var allSuccess = true
+        func sendNext() {
+            if index >= paths.count {
+                completion(allSuccess)
+                return
+            }
+            let path = paths[index]
+            let url = URL(fileURLWithPath: path)
+            Task {
+                do {
+                    try await telegramService.sendVoice(url, caption: nil, to: chatId)
+                    index += 1
+                    sendNext()
+                } catch {
+                    allSuccess = false
+                    index += 1
+                    sendNext()
+                }
+            }
+        }
+        sendNext()
+    }
     func deleteBotMessages(completion: @escaping (Bool) -> Void) {
         // Делегируем к telegramIntegrationService
         telegramIntegrationService.deleteBotMessages(completion: completion)

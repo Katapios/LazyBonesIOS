@@ -564,49 +564,47 @@ struct DailyReportView: View {
         
         // Загружаем настройки Telegram и отправляем текст через сервис
         store.loadTelegramSettings()
-        sendTextMessage(post: regular) { success in
-            // Отправляем голосовые только если есть валидные файлы
-            let validVoicePaths = regular.voiceNotes
-                .map { $0.path }
-                .filter { FileManager.default.fileExists(atPath: $0) }
-            if success && !validVoicePaths.isEmpty {
-                // Отправляем голосовые заметки
-                self.sendAllVoiceNotes(
-                    voiceNotes: validVoicePaths
-                ) { allSuccess in
-                    DispatchQueue.main.async {
-                        if allSuccess {
-                            // Помечаем отчет как отправленный
-                            if let idx = self.store.posts.firstIndex(where: { $0.id == regular.id }) {
-                                var updated = self.store.posts[idx]
-                                updated.published = true
-                                self.store.posts[idx] = updated
-                                self.store.save()
-                                // Обновляем статус после отправки
-                                self.store.updateReportStatus()
-                            }
-                            self.publishStatus = "Отчет успешно опубликован с голосовыми заметками!"
-                        } else {
-                            self.publishStatus = "Ошибка отправки голосовых заметок"
-                        }
+        // Формируем текст сообщения локально
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "ru_RU")
+        dateFormatter.dateStyle = .full
+        let dateStr = dateFormatter.string(from: regular.date)
+        let deviceName = store.getDeviceName()
+        var message = "\u{1F4C5} <b>Отчет за день - \(dateStr)</b>\n"
+        message += "\u{1F4F1} <b>Устройство: \(deviceName)</b>\n\n"
+        if !regular.goodItems.isEmpty {
+            message += "<b>✅ Я молодец:</b>\n"
+            for (index, item) in regular.goodItems.enumerated() {
+                message += "\(index + 1). \(item)\n"
+            }
+            message += "\n"
+        }
+        if !regular.badItems.isEmpty {
+            message += "<b>❌ Я не молодец:</b>\n"
+            for (index, item) in regular.badItems.enumerated() {
+                message += "\(index + 1). \(item)\n"
+            }
+        }
+        let validVoicePaths = regular.voiceNotes
+            .map { $0.path }
+            .filter { FileManager.default.fileExists(atPath: $0) }
+        if !validVoicePaths.isEmpty {
+            message += "\n\u{1F3A4} <i>Голосовая заметка прикреплена</i>"
+        }
+
+        store.publish(text: message, voicePaths: validVoicePaths) { success in
+            DispatchQueue.main.async {
+                if success {
+                    if let idx = self.store.posts.firstIndex(where: { $0.id == regular.id }) {
+                        var updated = self.store.posts[idx]
+                        updated.published = true
+                        self.store.posts[idx] = updated
+                        self.store.save()
+                        self.store.updateReportStatus()
                     }
-                }
-            } else {
-                DispatchQueue.main.async {
-                    if success {
-                        // Помечаем отчет как отправленный
-                        if let idx = self.store.posts.firstIndex(where: { $0.id == regular.id }) {
-                            var updated = self.store.posts[idx]
-                            updated.published = true
-                            self.store.posts[idx] = updated
-                            self.store.save()
-                            // Обновляем статус после отправки
-                            self.store.updateReportStatus()
-                        }
-                        self.publishStatus = "Отчет успешно опубликован!"
-                    } else {
-                        self.publishStatus = "Ошибка отправки"
-                    }
+                    self.publishStatus = validVoicePaths.isEmpty ? "Отчет успешно опубликован!" : "Отчет успешно опубликован с голосовыми заметками!"
+                } else {
+                    self.publishStatus = validVoicePaths.isEmpty ? "Ошибка отправки" : "Ошибка отправки голосовых заметок"
                 }
             }
         }
