@@ -42,6 +42,10 @@ struct DailyPlanningFormView: View {
                     .tag(1)
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+            .onAppear {
+                // Гарантируем инициализацию тегов при показе формы
+                store.loadTags()
+            }
         }
     }
     
@@ -80,6 +84,9 @@ struct PlanningContentView: View {
         }
         .hideKeyboardOnTap()
         .onAppear {
+            // Подстраховочно загружаем теги и Telegram-настройки
+            store.loadTags()
+            store.loadTelegramSettings()
             loadPlan()
             lastPlanDate = Calendar.current.startOfDay(for: Date())
         }
@@ -151,7 +158,9 @@ struct PlanningContentView: View {
                         )
                         .clipped()
                         
-                        let selectedTag = planTags[pickerIndex]
+                        // Безопасная коррекция индекса, чтобы избежать падения при изменении списка тегов
+                        let safeIndex = min(max(0, pickerIndex), max(planTags.count - 1, 0))
+                        let selectedTag = planTags[safeIndex]
                         let isTagAdded = planItems.contains(where: { $0 == selectedTag.text })
                         Button(action: {
                             if (!isTagAdded) {
@@ -342,38 +351,19 @@ struct PlanningContentView: View {
             publishStatus = "Сначала оцените план!"
             return
         }
-        guard let token = store.telegramToken, let chatId = store.telegramChatId, !token.isEmpty, !chatId.isEmpty else {
-            publishStatus = "Заполните токен и chat_id в настройках"
-            return
-        }
+        // Перезагружаем актуальные настройки Telegram и отправляем через сервис PostStore
+        store.loadTelegramSettings()
         let deviceName = store.getDeviceName()
         let message = store.telegramIntegrationService.formatCustomReportForTelegram(custom, deviceName: deviceName)
-        let urlString = "https://api.telegram.org/bot\(token)/sendMessage"
-        let params = [
-            "chat_id": chatId,
-            "text": message,
-            "parse_mode": "HTML"
-        ]
-        var urlComponents = URLComponents(string: urlString)!
-        urlComponents.queryItems = params.map { URLQueryItem(name: $0.key, value: $0.value) }
-        guard let url = urlComponents.url else {
-            publishStatus = "Ошибка формирования URL"
-            return
-        }
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+        store.sendToTelegram(text: message) { success in
             DispatchQueue.main.async {
-                if let error = error {
-                    publishStatus = "Ошибка отправки: \(error.localizedDescription)"
-                } else if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                if success {
                     publishStatus = "План успешно опубликован!"
                 } else {
                     publishStatus = "Ошибка отправки: неверный токен или chat_id"
                 }
             }
         }
-        task.resume()
     }
 }
 

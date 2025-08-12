@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Combine
 import WidgetKit
 
 /// ViewModel-адаптер для PostFormView, который оборачивает PostStore
@@ -17,6 +18,9 @@ class PostFormViewModel: ObservableObject {
     @Published var selectedTab: TabType = .good
     @Published var pickerIndexGood: Int = 0
     @Published var pickerIndexBad: Int = 0
+    
+    // MARK: - Subscriptions
+    private var storeCancellable: AnyCancellable?
     
     // MARK: - Properties
     let title: String
@@ -52,6 +56,14 @@ class PostFormViewModel: ObservableObject {
             self.goodItems = [ChecklistItem(id: UUID(), text: "")]
             self.badItems = [ChecklistItem(id: UUID(), text: "")]
             self.voiceNotes = []
+        }
+        
+        // Гарантируем загрузку начальных тегов (дефолтные при первом запуске)
+        self.store.loadTags()
+        
+        // Подписка на изменения стора, чтобы пробрасывать их во вью-модель
+        self.storeCancellable = store.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
         }
     }
     

@@ -69,11 +69,14 @@ struct SettingsView: View {
             .buttonStyle(.borderedProminent)
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.vertical, 4)
-            if viewModel.state.showSaved {
-                Text("Сохранено!")
-                    .font(.caption)
-                    .foregroundColor(.green)
+            Group {
+                if viewModel.state.showSaved {
+                    Text("Сохранено!")
+                        .font(.caption)
+                        .foregroundColor(.green)
+                }
             }
+            .animation(.none, value: viewModel.state.showSaved)
         }
     }
     
@@ -119,11 +122,14 @@ struct SettingsView: View {
             .buttonStyle(.bordered)
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.vertical, 4)
-            if let status = viewModel.state.telegramStatus {
-                Text(status)
-                    .font(.caption)
-                    .foregroundColor(status == "Успешно!" ? .green : .red)
+            Group {
+                if let status = viewModel.state.telegramStatus {
+                    Text(status)
+                        .font(.caption)
+                        .foregroundColor(status == "Успешно!" ? .green : .red)
+                }
             }
+            .animation(.none, value: viewModel.state.telegramStatus)
         }
     }
     
@@ -161,6 +167,7 @@ struct SettingsView: View {
                             .foregroundColor(.secondary)
                     }
                 }
+                .animation(.none, value: viewModel.state.notificationMode)
             }
         }
     }

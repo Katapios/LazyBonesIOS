@@ -313,6 +313,10 @@ struct RegularReportFormView: View {
                     }
                 }
             }
+            .onAppear {
+                // Гарантируем инициализацию тегов при открытии формы
+                store.loadTags()
+            }
         }
     }
 

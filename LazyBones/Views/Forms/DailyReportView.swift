@@ -66,6 +66,8 @@ struct DailyReportView: View {
             .hideKeyboardOnTap()
             .onAppear {
                 // Загружаем сохраненные данные при появлении
+                // Подстраховочно загружаем теги, чтобы TagPicker имел данные
+                store.loadTags()
                 loadSavedData()
                 lastPlanDate = Calendar.current.startOfDay(for: Date())
             }
@@ -251,7 +253,9 @@ struct DailyReportView: View {
                         .clipped()
                         .id(selectedTab) // Пересоздаем при смене вкладки
                         
-                        let selectedTag = planTags[pickerIndex]
+                        // Безопасная коррекция индекса, чтобы избежать падения при изменении списка тегов
+                        let safeIndex = min(max(0, pickerIndex), max(planTags.count - 1, 0))
+                        let selectedTag = planTags[safeIndex]
                         let isTagAdded = (selectedTab == .good ? goodItems : badItems).contains(where: { $0.text == selectedTag.text })
                         Button(action: {
                             if (!isTagAdded) {
