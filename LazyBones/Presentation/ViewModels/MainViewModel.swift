@@ -187,6 +187,11 @@ class MainViewModel: ObservableObject {
         if !calendar.isDate(store.currentDay, inSameDayAs: today) {
             return "Новый день"
         }
+
+        // Исключение: если статус отправлен, всегда показываем обратный отсчет до СТАРТА
+        if store.reportStatus == .sent {
+            return "До старта"
+        }
         
         if now < start {
             return "До старта"
@@ -218,6 +223,14 @@ class MainViewModel: ObservableObject {
         let today = calendar.startOfDay(for: now)
         if !calendar.isDate(store.currentDay, inSameDayAs: today) {
             return "00:00:00"
+        }
+
+        // Исключение: если отправлено — считаем до СЛЕДУЮЩЕГО старта
+        if store.reportStatus == .sent {
+            let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
+            let nextStart = calendar.date(bySettingHour: store.notificationStartHour, minute: 0, second: 0, of: tomorrow)!
+            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: nextStart)
+            return String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
         }
         
         if now < start {
@@ -253,6 +266,11 @@ class MainViewModel: ObservableObject {
         // Проверяем, не наступил ли новый день
         let today = calendar.startOfDay(for: now)
         if !calendar.isDate(store.currentDay, inSameDayAs: today) {
+            return 0.0
+        }
+
+        // Исключение: если отправлено — прогресс 0.0
+        if store.reportStatus == .sent {
             return 0.0
         }
         
