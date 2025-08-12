@@ -561,18 +561,13 @@ struct DailyReportView: View {
             publishStatus = "Сначала сохраните план как отчет!"
             return
         }
-        guard let token = store.telegramToken, let chatId = store.telegramChatId, !token.isEmpty, !chatId.isEmpty else {
-            publishStatus = "Заполните токен и chat_id в настройках"
-            return
-        }
         
-        // Отправляем текстовое сообщение
-        sendTextMessage(token: token, chatId: chatId, post: regular) { success in
+        // Загружаем настройки Telegram и отправляем текст через сервис
+        store.loadTelegramSettings()
+        sendTextMessage(post: regular) { success in
             if success && regular.voiceNotes.count > 0 {
                 // Отправляем голосовые заметки
                 self.sendAllVoiceNotes(
-                    token: token,
-                    chatId: chatId,
                     voiceNotes: regular.voiceNotes.map { $0.path }
                 ) { allSuccess in
                     DispatchQueue.main.async {
@@ -606,7 +601,7 @@ struct DailyReportView: View {
                         }
                         self.publishStatus = "Отчет успешно опубликован!"
                     } else {
-                        self.publishStatus = "Ошибка отправки: неверный токен или chat_id"
+                        self.publishStatus = "Ошибка отправки"
                     }
                 }
             }
@@ -614,8 +609,6 @@ struct DailyReportView: View {
     }
     
     private func sendTextMessage(
-        token: String,
-        chatId: String,
         post: Post,
         completion: @escaping (Bool) -> Void
     ) {
@@ -644,37 +637,12 @@ struct DailyReportView: View {
             message += "\n\u{1F3A4} <i>Голосовая заметка прикреплена</i>"
         }
         
-        let urlString = "https://api.telegram.org/bot\(token)/sendMessage"
-        let params = [
-            "chat_id": chatId,
-            "text": message,
-            "parse_mode": "HTML"
-        ]
-        var urlComponents = URLComponents(string: urlString)!
-        urlComponents.queryItems = params.map { URLQueryItem(name: $0.key, value: $0.value) }
-        guard let url = urlComponents.url else {
-            completion(false)
-            return
+        store.sendToTelegram(text: message) { success in
+            completion(success)
         }
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        let task = URLSession.shared.dataTask(with: request) { _, response, error in
-            DispatchQueue.main.async {
-                if error != nil {
-                    completion(false)
-                } else if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
-                    completion(true)
-                } else {
-                    completion(false)
-                }
-            }
-        }
-        task.resume()
     }
     
     private func sendAllVoiceNotes(
-        token: String,
-        chatId: String,
         voiceNotes: [String],
         completion: @escaping (Bool) -> Void
     ) {
@@ -686,7 +654,7 @@ struct DailyReportView: View {
             }
             let path = voiceNotes[index]
             let url = URL(fileURLWithPath: path)
-            sendSingleVoice(token: token, chatId: chatId, voiceURL: url) { success in
+            sendSingleVoice(voiceURL: url) { success in
                 index += 1
                 sendNext(successSoFar: successSoFar && success)
             }
@@ -695,75 +663,25 @@ struct DailyReportView: View {
     }
     
     private func sendSingleVoice(
-        token: String,
-        chatId: String,
         voiceURL: URL,
         completion: @escaping (Bool) -> Void
     ) {
-        let urlString = "https://api.telegram.org/bot\(token)/sendVoice"
-        guard let tgURL = URL(string: urlString) else {
+        guard let chatId = UserDefaultsManager.shared.string(forKey: "telegramChatId"), !chatId.isEmpty else {
             completion(false)
             return
         }
-        var request = URLRequest(url: tgURL)
-        request.httpMethod = "POST"
-        let boundary = UUID().uuidString
-        request.setValue(
-            "multipart/form-data; boundary=\(boundary)",
-            forHTTPHeaderField: "Content-Type"
-        )
-        var body = Data()
-        
-        // Добавляем chat_id
-        guard let boundaryData = "--\(boundary)\r\n".data(using: .utf8),
-              let chatIdHeader = "Content-Disposition: form-data; name=\"chat_id\"\r\n\r\n".data(using: .utf8),
-              let chatIdData = "\(chatId)\r\n".data(using: .utf8) else {
+        guard let telegramService = DependencyContainer.shared.resolve(TelegramServiceProtocol.self) else {
             completion(false)
             return
         }
-        
-        body.append(boundaryData)
-        body.append(chatIdHeader)
-        body.append(chatIdData)
-        
-        // Добавляем аудиофайл
-        do {
-            let audioData = try Data(contentsOf: voiceURL)
-            guard let voiceHeader = "--\(boundary)\r\n".data(using: .utf8),
-                  let voiceDisposition = "Content-Disposition: form-data; name=\"voice\"; filename=\"voice_note.m4a\"\r\n".data(using: .utf8),
-                  let voiceContentType = "Content-Type: audio/m4a\r\n\r\n".data(using: .utf8),
-                  let newline = "\r\n".data(using: .utf8),
-                  let endBoundary = "--\(boundary)--\r\n".data(using: .utf8) else {
-                completion(false)
-                return
-            }
-            
-            body.append(voiceHeader)
-            body.append(voiceDisposition)
-            body.append(voiceContentType)
-            body.append(audioData)
-            body.append(newline)
-            body.append(endBoundary)
-        } catch {
-            completion(false)
-            return
-        }
-        
-        request.httpBody = body
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    print("Ошибка отправки аудио: \(error.localizedDescription)")
-                    completion(false)
-                } else if let httpResponse = response as? HTTPURLResponse,
-                          httpResponse.statusCode == 200 {
-                    completion(true)
-                } else {
-                    completion(false)
-                }
+        Task {
+            do {
+                try await telegramService.sendVoice(voiceURL, caption: nil, to: chatId)
+                await MainActor.run { completion(true) }
+            } catch {
+                await MainActor.run { completion(false) }
             }
         }
-        task.resume()
     }
 }
 

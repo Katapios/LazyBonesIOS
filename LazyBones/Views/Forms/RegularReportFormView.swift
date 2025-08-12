@@ -465,22 +465,16 @@ struct RegularReportFormView: View {
             store.add(post: draftPost)
         }
         
-        // Гарантируем, что Published-поля токена/чата загружены из хранилища после перезапуска
+        // Загружаем настройки Telegram и отправляем через сервис (chatId берётся внутри сервиса)
         store.loadTelegramSettings()
-        if let token = store.telegramToken, let chatId = store.telegramChatId,
-           !token.isEmpty, !chatId.isEmpty {
-            sendToTelegram(token: token, chatId: chatId, post: draftPost)
-        } else {
-            // Даже если локальные поля ещё пустые, пробуем отправить через сервис, который читает chatId из UserDefaults
-            sendToTelegram(token: "", chatId: "", post: draftPost)
-        }
+        sendToTelegram(post: draftPost)
     }
 
     // MARK: - Telegram Integration
-    func sendToTelegram(token: String, chatId: String, post: Post) {
+    func sendToTelegram(post: Post) {
         isSending = true
         sendStatus = nil
-        sendTextMessage(token: token, chatId: chatId, post: post) { success in
+        sendTextMessage(post: post) { success in
             if success && post.voiceNotes.count > 0 {
                 self.sendAllVoiceNotes(
                     voiceNotes: post.voiceNotes.map { $0.path }
@@ -525,8 +519,6 @@ struct RegularReportFormView: View {
     }
 
     private func sendTextMessage(
-        token: String,
-        chatId: String,
         post: Post,
         completion: @escaping (Bool) -> Void
     ) {
