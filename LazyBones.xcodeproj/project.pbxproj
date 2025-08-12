@@ -12,6 +12,11 @@
 		7C4605002E3BB3B9003863E7 /* ReportStatusFlexibilityTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4604FC2E3BB3B9003863E7 /* ReportStatusFlexibilityTest.swift */; };
 		7C4605012E3BB3B9003863E7 /* NewDayLogicTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4604F92E3BB3B9003863E7 /* NewDayLogicTest.swift */; };
 		7C4605022E3BB3B9003863E7 /* ServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4604F52E3BB3B9003863E7 /* ServiceTests.swift */; };
+		7C6137852E4B1C2E0069F15B /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 7C61377E2E4B1C2E0069F15B /* README.md */; };
+		7C6137882E4B1C2E0069F15B /* SERVICE_GUIDE.md in Resources */ = {isa = PBXBuildFile; fileRef = 7C6137802E4B1C2E0069F15B /* SERVICE_GUIDE.md */; };
+		7C6137892E4B1C2E0069F15B /* STATUS_MODEL_README.md in Resources */ = {isa = PBXBuildFile; fileRef = 7C6137822E4B1C2E0069F15B /* STATUS_MODEL_README.md */; };
+		7C6137902E4B1C2E0069F15B /* TESTING_GUIDE.md in Resources */ = {isa = PBXBuildFile; fileRef = 7C6137832E4B1C2E0069F15B /* TESTING_GUIDE.md */; };
+		7C6137932E4B1C2E0069F15B /* CONFIGURATION_GUIDE.md in Resources */ = {isa = PBXBuildFile; fileRef = 7C61376D2E4B1C2E0069F15B /* CONFIGURATION_GUIDE.md */; };
 		7C8266262E1F92BA00365472 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7C8266252E1F92B900365472 /* WidgetKit.framework */; };
 		7C8266282E1F92BA00365472 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7C8266272E1F92BA00365472 /* SwiftUI.framework */; };
 		7C8266392E1F92BC00365472 /* LazyBonesWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7C8266232E1F92B900365472 /* LazyBonesWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -57,6 +62,11 @@
 		7C4604FB2E3BB3B9003863E7 /* ReportPeriodLogicTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportPeriodLogicTest.swift; sourceTree = "<group>"; };
 		7C4604FC2E3BB3B9003863E7 /* ReportStatusFlexibilityTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportStatusFlexibilityTest.swift; sourceTree = "<group>"; };
 		7C4B25752E20F66900602163 /* LazyBonesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LazyBonesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7C61376D2E4B1C2E0069F15B /* CONFIGURATION_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CONFIGURATION_GUIDE.md; sourceTree = "<group>"; };
+		7C61377E2E4B1C2E0069F15B /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		7C6137802E4B1C2E0069F15B /* SERVICE_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SERVICE_GUIDE.md; sourceTree = "<group>"; };
+		7C6137822E4B1C2E0069F15B /* STATUS_MODEL_README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = STATUS_MODEL_README.md; sourceTree = "<group>"; };
+		7C6137832E4B1C2E0069F15B /* TESTING_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TESTING_GUIDE.md; sourceTree = "<group>"; };
 		7C8266092E1F903200365472 /* LazyBones.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LazyBones.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7C8266232E1F92B900365472 /* LazyBonesWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LazyBonesWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		7C8266252E1F92B900365472 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
@@ -140,6 +150,11 @@
 		7C8266002E1F903200365472 = {
 			isa = PBXGroup;
 			children = (
+				7C61376D2E4B1C2E0069F15B /* CONFIGURATION_GUIDE.md */,
+				7C61377E2E4B1C2E0069F15B /* README.md */,
+				7C6137802E4B1C2E0069F15B /* SERVICE_GUIDE.md */,
+				7C6137822E4B1C2E0069F15B /* STATUS_MODEL_README.md */,
+				7C6137832E4B1C2E0069F15B /* TESTING_GUIDE.md */,
 				7CB9111A2E213A81005E97AD /* Tests */,
 				7C8266402E1F9DD500365472 /* LazyBonesWidgetExtension.entitlements */,
 				7C82660B2E1F903200365472 /* LazyBones */,
@@ -306,6 +321,11 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7C6137852E4B1C2E0069F15B /* README.md in Resources */,
+				7C6137882E4B1C2E0069F15B /* SERVICE_GUIDE.md in Resources */,
+				7C6137892E4B1C2E0069F15B /* STATUS_MODEL_README.md in Resources */,
+				7C6137902E4B1C2E0069F15B /* TESTING_GUIDE.md in Resources */,
+				7C6137932E4B1C2E0069F15B /* CONFIGURATION_GUIDE.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

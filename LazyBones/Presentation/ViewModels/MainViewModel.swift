@@ -188,14 +188,13 @@ class MainViewModel: ObservableObject {
             return "Новый день"
         }
         
-        if store.reportStatus == .sent || store.reportStatus == .notCreated || store.reportStatus == .notSent {
-            return "До старта"
-        } else if now < start {
+        if now < start {
             return "До старта"
         } else if now >= start && now < end {
             return "До конца"
         } else {
-            return "Время истекло"
+            // После конца — всегда показываем «До старта» следующего дня
+            return "До старта"
         }
     }
     
@@ -221,19 +220,17 @@ class MainViewModel: ObservableObject {
             return "00:00:00"
         }
         
-        if store.reportStatus == .sent || store.reportStatus == .notCreated || store.reportStatus == .notSent {
-            let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
-            let nextStart = calendar.date(bySettingHour: store.notificationStartHour, minute: 0, second: 0, of: tomorrow)!
-            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: nextStart)
-            return String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
-        } else if now < start {
+        if now < start {
             let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: start)
             return String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
         } else if now >= start && now < end {
             let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: end)
             return String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
         } else {
-            return "00:00:00"
+            let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
+            let nextStart = calendar.date(bySettingHour: store.notificationStartHour, minute: 0, second: 0, of: tomorrow)!
+            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: nextStart)
+            return String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
         }
     }
     
@@ -259,16 +256,15 @@ class MainViewModel: ObservableObject {
             return 0.0
         }
         
-        if store.reportStatus == .sent || store.reportStatus == .notCreated || store.reportStatus == .notSent {
-            return 0.0
-        } else if now < start {
+        if now < start {
             return 0.0
         } else if now >= start && now < end {
             let totalDuration = end.timeIntervalSince(start)
             let elapsed = now.timeIntervalSince(start)
             return min(max(elapsed / totalDuration, 0.0), 1.0)
         } else {
-            return 1.0
+            // После конца — прогресс сбрасываем (таймер считает до старта)
+            return 0.0
         }
     }
     

@@ -92,30 +92,30 @@ class PostTimerService: PostTimerServiceProtocol, ObservableObject {
         // Уведомляем об активности окна отчётности каждый тик, чтобы статус гарантированно пересчитывался
         NotificationCenter.default.post(name: .reportPeriodActivityChanged, object: self, userInfo: ["isActive": isActiveNow])
         wasPeriodActive = isActiveNow
-        
-        // Вычисляем новое значение timeLeft
+
+        // Вычисляем новое значение timeLeft строго по границам периода (без учета статуса)
         let newTimeLeft: String
         let newProgress: Double
-        
-        if currentReportStatus == .sent || currentReportStatus == .notCreated || currentReportStatus == .notSent {
+
+        if now < start {
+            // До старта сегодняшнего окна
+            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: start)
+            newTimeLeft = "До старта: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+            newProgress = 0.0
+        } else if now >= start && now < end {
+            // Во время активного окна
+            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: end)
+            newTimeLeft = "До конца: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+            let totalDuration = end.timeIntervalSince(start)
+            let elapsed = now.timeIntervalSince(start)
+            newProgress = min(max(elapsed / totalDuration, 0.0), 1.0)
+        } else {
+            // После конца — считаем до завтрашнего старта
             let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
             let nextStart = calendar.date(bySettingHour: startHour, minute: 0, second: 0, of: tomorrow)!
             let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: nextStart)
             newTimeLeft = "До старта: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
             newProgress = 0.0
-        } else if now < start {
-            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: start)
-            newTimeLeft = "До старта: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
-            newProgress = 0.0
-        } else if now >= start && now < end {
-            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: end)
-            newTimeLeft = "До конца: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
-            let totalDuration = end.timeIntervalSince(start)
-            let elapsed = now.timeIntervalSince(start)
-            newProgress = min(elapsed / totalDuration, 1.0)
-        } else {
-            newTimeLeft = "Время отчёта истекло"
-            newProgress = 1.0
         }
         
         // Обновляем только если значение изменилось
