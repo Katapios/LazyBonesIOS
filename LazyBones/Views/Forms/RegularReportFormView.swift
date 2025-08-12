@@ -475,9 +475,13 @@ struct RegularReportFormView: View {
         isSending = true
         sendStatus = nil
         sendTextMessage(post: post) { success in
-            if success && post.voiceNotes.count > 0 {
+            // Отправляем голосовые только если есть валидные файлы
+            let validVoicePaths = post.voiceNotes
+                .map { $0.path }
+                .filter { FileManager.default.fileExists(atPath: $0) }
+            if success && !validVoicePaths.isEmpty {
                 self.sendAllVoiceNotes(
-                    voiceNotes: post.voiceNotes.map { $0.path }
+                    voiceNotes: validVoicePaths
                 ) { allSuccess in
                     DispatchQueue.main.async {
                         self.isSending = false
@@ -547,7 +551,11 @@ struct RegularReportFormView: View {
             }
         }
 
-        if post.voiceNotes.count > 0 {
+        // Показываем метку о голосовой заметке только если файл(ы) существуют
+        let hasExistingVoices = post.voiceNotes
+            .map { $0.path }
+            .contains { FileManager.default.fileExists(atPath: $0) }
+        if hasExistingVoices {
             message += "\n\u{1F3A4} <i>Голосовая заметка прикреплена</i>"
         }
 

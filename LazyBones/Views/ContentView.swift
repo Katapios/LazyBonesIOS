@@ -67,6 +67,13 @@ struct ContentView: View {
         .environmentObject(appCoordinator)
         .onAppear {
             Logger.info("ContentView initialized", log: Logger.ui)
+            // Гарантированно загружаем данные до запуска координации и таймеров
+            store.load()
+            store.loadTags()
+            store.loadTelegramSettings()
+            // Переинициализируем Telegram сервисы из DI, чтобы не требовать ручного сохранения настроек после перезапуска
+            store.refreshTelegramServices()
+            store.updateReportStatus()
             appCoordinator.start()
         }
         .onChange(of: scenePhase) { _, newPhase in

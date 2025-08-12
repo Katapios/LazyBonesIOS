@@ -565,10 +565,14 @@ struct DailyReportView: View {
         // Загружаем настройки Telegram и отправляем текст через сервис
         store.loadTelegramSettings()
         sendTextMessage(post: regular) { success in
-            if success && regular.voiceNotes.count > 0 {
+            // Отправляем голосовые только если есть валидные файлы
+            let validVoicePaths = regular.voiceNotes
+                .map { $0.path }
+                .filter { FileManager.default.fileExists(atPath: $0) }
+            if success && !validVoicePaths.isEmpty {
                 // Отправляем голосовые заметки
                 self.sendAllVoiceNotes(
-                    voiceNotes: regular.voiceNotes.map { $0.path }
+                    voiceNotes: validVoicePaths
                 ) { allSuccess in
                     DispatchQueue.main.async {
                         if allSuccess {
@@ -633,7 +637,11 @@ struct DailyReportView: View {
             }
         }
         
-        if post.voiceNotes.count > 0 {
+        // Показываем метку о голосовой заметке только если файл(ы) существуют
+        let hasExistingVoices = post.voiceNotes
+            .map { $0.path }
+            .contains { FileManager.default.fileExists(atPath: $0) }
+        if hasExistingVoices {
             message += "\n\u{1F3A4} <i>Голосовая заметка прикреплена</i>"
         }
         
