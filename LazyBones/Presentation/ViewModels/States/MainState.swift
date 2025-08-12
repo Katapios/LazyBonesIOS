@@ -5,6 +5,8 @@ import SwiftUI
 struct MainState {
     /// Текущий статус отчета
     var reportStatus: ReportStatus = .notStarted
+    /// Принудительная разблокировка на сегодня
+    var forceUnlock: Bool = false
     
     /// Текущее время
     var currentTime: Date = Date()
@@ -52,11 +54,12 @@ struct MainState {
     
     /// Можно ли редактировать отчет
     var canEditReport: Bool {
-        return reportStatus == .notStarted || reportStatus == .inProgress
+        return reportStatus == .notStarted || reportStatus == .inProgress || (forceUnlock && reportStatus == .sent)
     }
     
     /// Заголовок кнопки
     var buttonTitle: String {
+        if forceUnlock && reportStatus == .sent { return "Создать отчёт" }
         return hasReportForToday ? "Редактировать отчёт" : "Создать отчёт"
     }
     
@@ -67,6 +70,7 @@ struct MainState {
     
     /// Цвет кнопки
     var buttonColor: Color {
+        if forceUnlock { return .black }
         return (reportStatus == .sent || reportStatus == .notCreated || reportStatus == .notSent) ? .gray : .black
     }
     

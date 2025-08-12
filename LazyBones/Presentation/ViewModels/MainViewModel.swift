@@ -93,11 +93,24 @@ class MainViewModel: ObservableObject {
     }
     
     var canEditReport: Bool {
-        (isReportPeriodActive || store.forceUnlock) && (store.reportStatus == .notStarted || store.reportStatus == .inProgress)
+        // Базовое правило: активный период и редактируемые статусы
+        if isReportPeriodActive && (store.reportStatus == .notStarted || store.reportStatus == .inProgress) {
+            return true
+        }
+        // Исключение: при форс‑разблокировке разрешаем редактирование даже если статус .sent
+        if store.forceUnlock && store.reportStatus == .sent {
+            return true
+        }
+        // Остальные случаи — как раньше
+        return false
     }
     
     var buttonTitle: String {
-        hasReportForToday ? "Редактировать отчёт" : "Создать отчёт"
+        // При форс‑разблокировке и статусе .sent — предлагаем создать новый отчёт
+        if store.forceUnlock && store.reportStatus == .sent {
+            return "Создать отчёт"
+        }
+        return hasReportForToday ? "Редактировать отчёт" : "Создать отчёт"
     }
     
     var buttonIcon: String {
@@ -105,7 +118,8 @@ class MainViewModel: ObservableObject {
     }
     
     var buttonColor: Color {
-        (store.reportStatus == .sent || store.reportStatus == .notCreated || store.reportStatus == .notSent) ? .gray : .black
+        if store.forceUnlock { return .black }
+        return (store.reportStatus == .sent || store.reportStatus == .notCreated || store.reportStatus == .notSent) ? .gray : .black
     }
     
     // MARK: - Progress Counters (учитывает разные типы отчетов)

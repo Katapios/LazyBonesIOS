@@ -92,6 +92,9 @@ class MainViewModelNew: BaseViewModel<MainState, MainEvent>, LoadableViewModel {
             // Загружаем текущий статус
             let reportStatus = try await settingsRepository.loadReportStatus()
             state.reportStatus = reportStatus
+            // Загружаем forceUnlock
+            let forceUnlock = try await settingsRepository.loadForceUnlock()
+            state.forceUnlock = forceUnlock
             
             // Загружаем отчеты за сегодня
             await loadTodayReports()
@@ -165,6 +168,9 @@ class MainViewModelNew: BaseViewModel<MainState, MainEvent>, LoadableViewModel {
             let input = UpdateStatusInput(checkNewDay: true)
             let newStatus = try await updateStatusUseCase.execute(input: input)
             state.reportStatus = newStatus
+            // Синхронизируем forceUnlock из SettingsRepository, т.к. он может меняться вне VM
+            let forceUnlock = try await settingsRepository.loadForceUnlock()
+            state.forceUnlock = forceUnlock
             
             // Обновляем таймер с новым статусом
             timerService.updateReportStatus(newStatus)
@@ -189,6 +195,8 @@ class MainViewModelNew: BaseViewModel<MainState, MainEvent>, LoadableViewModel {
         // Получаем время от таймер-сервиса
         state.timeLeft = timerService.timeLeft
         state.timeProgress = timerService.timeProgress
+        // Исключение для отправленного отчета: прогресс = 0.0
+        if state.reportStatus == .sent { state.timeProgress = 0.0 }
         
         // Вычисляем подпись таймера
         state.timerLabel = calculateTimerLabel()

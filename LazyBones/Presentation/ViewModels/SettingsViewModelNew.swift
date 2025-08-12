@@ -140,6 +140,8 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
                 // Удаляем существующий сервис, чтобы последующие resolve получили пустой токен из UserDefaults
                 container.remove(TelegramServiceProtocol.self)
             }
+            // Пересоздаем PostTelegramService в PostStore, чтобы он подхватил новый TelegramService
+            PostStore.shared.refreshTelegramServices()
             state.telegramStatus = "Сохранено!"
         } catch {
             state.telegramStatus = "Ошибка сохранения"
@@ -264,6 +266,10 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
         WidgetCenter.shared.reloadAllTimelines()
         // Синхронизируем легаси PostStore, чтобы UI обновился мгновенно
         PostStore.shared.updateReportStatus()
+        // Дополнительный триггер UI, чтобы не потерять обновление при активных View-апдейтах
+        DispatchQueue.main.async {
+            PostStore.shared.objectWillChange.send()
+        }
         // Обновим состояние настроек, чтобы диагностические лейблы отобразили актуальные значения
         await loadSettings()
     }

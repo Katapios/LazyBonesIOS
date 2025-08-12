@@ -12,7 +12,7 @@ import Foundation
 /// Корневой TabView приложения с новой архитектурой
 struct ContentView: View {
     @StateObject var appCoordinator: AppCoordinator
-    @StateObject var store = PostStore()
+    @StateObject var store = PostStore.shared
     @Environment(\.scenePhase) private var scenePhase
     
     init() {

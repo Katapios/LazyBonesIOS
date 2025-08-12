@@ -181,60 +181,25 @@ class PostFormViewModel: ObservableObject {
     
     /// Отправить в Telegram
     private func sendToTelegram(post: Post) {
-        guard let token = store.telegramToken, !token.isEmpty,
-              let chatId = store.telegramChatId, !chatId.isEmpty else {
-            sendStatus = "Ошибка: не настроен Telegram"
-            return
-        }
+        // Загружаем настройки в Published-поля для обратной совместимости после перезапуска
+        store.loadTelegramSettings()
         
         isSending = true
         sendStatus = "Отправка в Telegram..."
         
         let message = formatMessageForTelegram(post: post)
-        
-        let urlString = "https://api.telegram.org/bot\(token)/sendMessage"
-        guard let url = URL(string: urlString) else {
-            sendStatus = "Ошибка: неверный URL"
-            isSending = false
-            return
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let body: [String: Any] = [
-            "chat_id": chatId,
-            "text": message,
-            "parse_mode": "HTML"
-        ]
-        
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        } catch {
-            sendStatus = "Ошибка: не удалось создать запрос"
-            isSending = false
-            return
-        }
-        
-        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+        store.sendToTelegram(text: message) { [weak self] success in
             DispatchQueue.main.async {
-                self?.isSending = false
-                
-                if let error = error {
-                    self?.sendStatus = "Ошибка: \(error.localizedDescription)"
-                } else if let httpResponse = response as? HTTPURLResponse {
-                    if httpResponse.statusCode == 200 {
-                        self?.sendStatus = "Отправлено успешно!"
-                        self?.finalizePublish(post: post)
-                    } else {
-                        self?.sendStatus = "Ошибка: HTTP \(httpResponse.statusCode)"
-                    }
+                guard let self = self else { return }
+                self.isSending = false
+                if success {
+                    self.sendStatus = "Отправлено успешно!"
+                    self.finalizePublish(post: post)
                 } else {
-                    self?.sendStatus = "Неизвестная ошибка"
+                    self.sendStatus = "Ошибка отправки"
                 }
             }
-        }.resume()
+        }
     }
     
     /// Завершить публикацию

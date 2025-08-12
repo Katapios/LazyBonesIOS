@@ -461,11 +461,14 @@ struct RegularReportFormView: View {
             store.add(post: draftPost)
         }
         
+        // Гарантируем, что Published-поля токена/чата загружены из хранилища после перезапуска
+        store.loadTelegramSettings()
         if let token = store.telegramToken, let chatId = store.telegramChatId,
            !token.isEmpty, !chatId.isEmpty {
             sendToTelegram(token: token, chatId: chatId, post: draftPost)
         } else {
-            self.sendStatus = "Ошибка: заполните токен и chat_id в настройках"
+            // Даже если локальные поля ещё пустые, пробуем отправить через сервис, который читает chatId из UserDefaults
+            sendToTelegram(token: "", chatId: "", post: draftPost)
         }
     }
 
@@ -476,8 +479,6 @@ struct RegularReportFormView: View {
         sendTextMessage(token: token, chatId: chatId, post: post) { success in
             if success && post.voiceNotes.count > 0 {
                 self.sendAllVoiceNotes(
-                    token: token,
-                    chatId: chatId,
                     voiceNotes: post.voiceNotes.map { $0.path }
                 ) { allSuccess in
                     DispatchQueue.main.async {
@@ -554,41 +555,13 @@ struct RegularReportFormView: View {
             message += "\n\u{1F3A4} <i>Голосовая заметка прикреплена</i>"
         }
 
-        let urlString = "https://api.telegram.org/bot\(token)/sendMessage"
-        let params = [
-            "chat_id": chatId,
-            "text": message,
-            "parse_mode": "HTML",
-        ]
-        var urlComponents = URLComponents(string: urlString)!
-        urlComponents.queryItems = params.map {
-            URLQueryItem(name: $0.key, value: $0.value)
+        // Отправляем через PostStore, который использует PostTelegramService и актуальные настройки из UserDefaults
+        store.sendToTelegram(text: message) { success in
+            completion(success)
         }
-        guard let url = urlComponents.url else {
-            completion(false)
-            return
-        }
-
-        let task = URLSession.shared.dataTask(with: url) { data, response, error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    self.sendStatus = "Ошибка: \(error.localizedDescription)"
-                    completion(false)
-                } else if let httpResponse = response as? HTTPURLResponse,
-                          httpResponse.statusCode == 200 {
-                    completion(true)
-                } else {
-                    self.sendStatus = "Ошибка отправки: неверный токен или chat_id"
-                    completion(false)
-                }
-            }
-        }
-        task.resume()
     }
 
     private func sendAllVoiceNotes(
-        token: String,
-        chatId: String,
         voiceNotes: [String],
         completion: @escaping (Bool) -> Void
     ) {
@@ -600,7 +573,7 @@ struct RegularReportFormView: View {
             }
             let path = voiceNotes[index]
             let url = URL(fileURLWithPath: path)
-            sendSingleVoice(token: token, chatId: chatId, voiceURL: url) { success in
+            sendSingleVoice(voiceURL: url) { success in
                 index += 1
                 sendNext(successSoFar: successSoFar && success)
             }
@@ -609,59 +582,26 @@ struct RegularReportFormView: View {
     }
 
     private func sendSingleVoice(
-        token: String,
-        chatId: String,
         voiceURL: URL,
         completion: @escaping (Bool) -> Void
     ) {
-        let urlString = "https://api.telegram.org/bot\(token)/sendVoice"
-        guard let tgURL = URL(string: urlString) else {
+        // Получаем актуальный chat_id из UserDefaults и сервис из DI
+        guard let chatId = UserDefaultsManager.shared.string(forKey: "telegramChatId"), !chatId.isEmpty else {
             completion(false)
             return
         }
-        var request = URLRequest(url: tgURL)
-        request.httpMethod = "POST"
-        let boundary = UUID().uuidString
-        request.setValue(
-            "multipart/form-data; boundary=\(boundary)",
-            forHTTPHeaderField: "Content-Type"
-        )
-        var body = Data()
-        
-        // Добавляем chat_id
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"chat_id\"\r\n\r\n".data(using: .utf8)!)
-        body.append("\(chatId)\r\n".data(using: .utf8)!)
-        
-        // Добавляем аудиофайл
-        do {
-            let audioData = try Data(contentsOf: voiceURL)
-            body.append("--\(boundary)\r\n".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"voice\"; filename=\"voice_note.m4a\"\r\n".data(using: .utf8)!)
-            body.append("Content-Type: audio/m4a\r\n\r\n".data(using: .utf8)!)
-            body.append(audioData)
-            body.append("\r\n".data(using: .utf8)!)
-            body.append("--\(boundary)--\r\n".data(using: .utf8)!)
-        } catch {
+        guard let telegramService = DependencyContainer.shared.resolve(TelegramServiceProtocol.self) else {
             completion(false)
             return
         }
-        
-        request.httpBody = body
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    print("Ошибка отправки аудио: \(error.localizedDescription)")
-                    completion(false)
-                } else if let httpResponse = response as? HTTPURLResponse,
-                          httpResponse.statusCode == 200 {
-                    completion(true)
-                } else {
-                    completion(false)
-                }
+        Task {
+            do {
+                try await telegramService.sendVoice(voiceURL, caption: nil, to: chatId)
+                await MainActor.run { completion(true) }
+            } catch {
+                await MainActor.run { completion(false) }
             }
         }
-        task.resume()
     }
 }
 

@@ -63,6 +63,27 @@ class PostStore: ObservableObject, PostStoreProtocol {
         get { return statusManager.reportStatus }
         set { /* Делегируем к statusManager */ }
     }
+    
+    // Пересоздаёт Telegram сервисы после изменения токена в DI
+    func refreshTelegramServices() {
+        Logger.info("Refreshing Telegram services in PostStore", log: Logger.general)
+        if let newPostTelegramService = DependencyContainer.shared.resolve(PostTelegramServiceProtocol.self) {
+            self.telegramService = newPostTelegramService
+        } else {
+            // На случай, если DI ещё не готов — создадим с текущим токеном из UserDefaults
+            let token = UserDefaultsManager.shared.string(forKey: "telegramToken") ?? ""
+            let telegramService = TelegramService(token: token)
+            self.telegramService = PostTelegramService(
+                telegramService: telegramService,
+                userDefaultsManager: UserDefaultsManager.shared
+            )
+        }
+        // Синхронизируем Published-поля для легаси UI
+        DispatchQueue.main.async {
+            self.loadTelegramSettings()
+            self.objectWillChange.send()
+        }
+    }
     var forceUnlock: Bool {
         get { return statusManager.forceUnlock }
         set { statusManager.forceUnlock = newValue }
@@ -74,13 +95,15 @@ class PostStore: ObservableObject, PostStoreProtocol {
     }
     
     // Сервисы
-    private let telegramService: PostTelegramServiceProtocol
+    private var telegramService: PostTelegramServiceProtocol
     private let notificationService: PostNotificationServiceProtocol
     private lazy var timerService: PostTimerServiceProtocol = {
         return PostTimerService(
             userDefaultsManager: userDefaultsManager
         ) { [weak self] timeLeft, progress in
-            self?.timeLeft = timeLeft
+            DispatchQueue.main.async {
+                self?.timeLeft = timeLeft
+            }
         }
     }()
     private let userDefaultsManager: UserDefaultsManagerProtocol
@@ -181,10 +204,12 @@ class PostStore: ObservableObject, PostStoreProtocol {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            // Синхронизируем локальный statusManager с сохранённым состоянием,
-            // затем проксируем событие в SwiftUI, чтобы @EnvironmentObject PostStore обновил экраны
-            self?.statusManager.loadStatus()
-            self?.objectWillChange.send()
+            // Синхронизируем локальный statusManager и уведомляем SwiftUI на следующем тике,
+            // чтобы не публиковать изменения во время обновления вью
+            DispatchQueue.main.async {
+                self?.statusManager.loadStatus()
+                self?.objectWillChange.send()
+            }
         }
         
         loadSettings()
