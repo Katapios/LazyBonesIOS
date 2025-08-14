@@ -256,7 +256,10 @@ extension DependencyContainer {
         
         // iCloud Services
         registerICloudServices()
-        
+
+        // File existence checker
+        register(FileExistenceChecking.self, instance: DefaultFileExistenceChecker())
+
         Logger.info("Core services registered successfully", log: Logger.general)
     }
     

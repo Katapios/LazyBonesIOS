@@ -56,6 +56,17 @@
                ReferencedContainer = "container:LazyBones.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "7C10ECC12E4E488000D1C36B"
+               BuildableName = "LazyBonesPublishTests.xctest"
+               BlueprintName = "LazyBonesPublishTests"
+               ReferencedContainer = "container:LazyBones.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

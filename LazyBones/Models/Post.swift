@@ -108,6 +108,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
     }()
     private let userDefaultsManager: UserDefaultsManagerProtocol
     private let localService: LocalReportService
+    private let fileChecker: FileExistenceChecking
     
     // НОВОЕ: ReportStatusManager для управления статусной моделью
     private lazy var statusManager: any ReportStatusManagerProtocol = {
@@ -157,6 +158,8 @@ class PostStore: ObservableObject, PostStoreProtocol {
             self.telegramIntegrationService = TelegramIntegrationService(userDefaultsManager: UserDefaultsManager.shared, telegramService: nil)
             self.autoSendService = AutoSendService(userDefaultsManager: UserDefaultsManager.shared, postTelegramService: PostTelegramService(telegramService: TelegramService(token: ""), userDefaultsManager: UserDefaultsManager.shared))
             self.localService = LocalReportService.shared
+            // Позволяем тестам переопределять через DI даже в фолбэке
+            self.fileChecker = DependencyContainer.shared.resolve(FileExistenceChecking.self) ?? DefaultFileExistenceChecker()
             self.statusManager = ReportStatusManager(
                 localService: LocalReportService.shared,
                 timerService: PostTimerService(userDefaultsManager: UserDefaultsManager.shared) { _, _ in },
@@ -173,6 +176,8 @@ class PostStore: ObservableObject, PostStoreProtocol {
         self.notificationManagerService = notificationManagerService
         self.telegramIntegrationService = telegramIntegrationService
         self.autoSendService = autoSendService
+        // fileChecker из DI с дефолтным фолбэком
+        self.fileChecker = DependencyContainer.shared.resolve(FileExistenceChecking.self) ?? DefaultFileExistenceChecker()
         
         // Инициализируем statusManager
         self.statusManager = ReportStatusManager(
@@ -413,7 +418,7 @@ class PostStore: ObservableObject, PostStoreProtocol {
                 return
             }
             // 2) Фильтруем реально существующие файлы и отправляем по очереди, если есть
-            let validPaths = voicePaths.filter { FileManager.default.fileExists(atPath: $0) }
+            let validPaths = voicePaths.filter { self.fileChecker.exists(atPath: $0) }
             if validPaths.isEmpty {
                 completion(true)
                 return

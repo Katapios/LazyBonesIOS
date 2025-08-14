@@ -7,11 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		7C4604FE2E3BB3B9003863E7 /* NewStatusLogicTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4604FA2E3BB3B9003863E7 /* NewStatusLogicTest.swift */; };
-		7C4604FF2E3BB3B9003863E7 /* ReportPeriodLogicTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4604FB2E3BB3B9003863E7 /* ReportPeriodLogicTest.swift */; };
-		7C4605002E3BB3B9003863E7 /* ReportStatusFlexibilityTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4604FC2E3BB3B9003863E7 /* ReportStatusFlexibilityTest.swift */; };
-		7C4605012E3BB3B9003863E7 /* NewDayLogicTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4604F92E3BB3B9003863E7 /* NewDayLogicTest.swift */; };
-		7C4605022E3BB3B9003863E7 /* ServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4604F52E3BB3B9003863E7 /* ServiceTests.swift */; };
+		7C10ECCB2E4E488800D1C36B /* PostStorePublishTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91D52E4E2AEE004162B5 /* PostStorePublishTests.swift */; };
 		7C6137852E4B1C2E0069F15B /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 7C61377E2E4B1C2E0069F15B /* README.md */; };
 		7C6137882E4B1C2E0069F15B /* SERVICE_GUIDE.md in Resources */ = {isa = PBXBuildFile; fileRef = 7C6137802E4B1C2E0069F15B /* SERVICE_GUIDE.md */; };
 		7C6137892E4B1C2E0069F15B /* STATUS_MODEL_README.md in Resources */ = {isa = PBXBuildFile; fileRef = 7C6137822E4B1C2E0069F15B /* STATUS_MODEL_README.md */; };
@@ -20,11 +16,56 @@
 		7C8266262E1F92BA00365472 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7C8266252E1F92B900365472 /* WidgetKit.framework */; };
 		7C8266282E1F92BA00365472 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7C8266272E1F92BA00365472 /* SwiftUI.framework */; };
 		7C8266392E1F92BC00365472 /* LazyBonesWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7C8266232E1F92B900365472 /* LazyBonesWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		7CB9111B2E213A81005E97AD /* LazyBonesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CB911182E213A81005E97AD /* LazyBonesTests.swift */; };
-		7CB9111C2E213A81005E97AD /* VoiceRecorderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CB911192E213A81005E97AD /* VoiceRecorderTests.swift */; };
+		7CFB92052E4E2AEE004162B5 /* ReportStatusManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB92002E4E2AEE004162B5 /* ReportStatusManagerTests.swift */; };
+		7CFB92062E4E2AEE004162B5 /* ReportStatusRulesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB92012E4E2AEE004162B5 /* ReportStatusRulesTests.swift */; };
+		7CFB92072E4E2AEE004162B5 /* ServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91D02E4E2AEE004162B5 /* ServiceTests.swift */; };
+		7CFB92082E4E2AEE004162B5 /* ReportListViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91EF2E4E2AEE004162B5 /* ReportListViewModelTests.swift */; };
+		7CFB92092E4E2AEE004162B5 /* MainViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91EB2E4E2AEE004162B5 /* MainViewModelTests.swift */; };
+		7CFB920A2E4E2AEE004162B5 /* PostFormViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91ED2E4E2AEE004162B5 /* PostFormViewModelTests.swift */; };
+		7CFB920B2E4E2AEE004162B5 /* PostRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91DD2E4E2AEE004162B5 /* PostRepositoryTests.swift */; };
+		7CFB920C2E4E2AEE004162B5 /* AppCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91CD2E4E2AEE004162B5 /* AppCoordinatorTests.swift */; };
+		7CFB920D2E4E2AEE004162B5 /* AutoSendIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91F82E4E2AEE004162B5 /* AutoSendIntegrationTests.swift */; };
+		7CFB920E2E4E2AEE004162B5 /* ICloudServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91CF2E4E2AEE004162B5 /* ICloudServiceTests.swift */; };
+		7CFB920F2E4E2AEE004162B5 /* ExternalReportsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91E82E4E2AEE004162B5 /* ExternalReportsViewModelTests.swift */; };
+		7CFB92102E4E2AEE004162B5 /* CustomReportsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91E72E4E2AEE004162B5 /* CustomReportsViewModelTests.swift */; };
+		7CFB92112E4E2AEE004162B5 /* ExternalReportsIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91E42E4E2AEE004162B5 /* ExternalReportsIntegrationTests.swift */; };
+		7CFB92132E4E2AEE004162B5 /* CoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91CE2E4E2AEE004162B5 /* CoordinatorTests.swift */; };
+		7CFB92142E4E2AEE004162B5 /* ICloudIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91E52E4E2AEE004162B5 /* ICloudIntegrationTests.swift */; };
+		7CFB92152E4E2AEE004162B5 /* RegularReportsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91EE2E4E2AEE004162B5 /* RegularReportsViewModelTests.swift */; };
+		7CFB92162E4E2AEE004162B5 /* NotificationManagerServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91FD2E4E2AEE004162B5 /* NotificationManagerServiceTests.swift */; };
+		7CFB92172E4E2AEE004162B5 /* LazyBonesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91FA2E4E2AEE004162B5 /* LazyBonesTests.swift */; };
+		7CFB92182E4E2AEE004162B5 /* SettingsRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91DE2E4E2AEE004162B5 /* SettingsRepositoryTests.swift */; };
+		7CFB92192E4E2AEE004162B5 /* ExternalReportsViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91F52E4E2AEE004162B5 /* ExternalReportsViewTests.swift */; };
+		7CFB921A2E4E2AEE004162B5 /* AutoSendServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91F92E4E2AEE004162B5 /* AutoSendServiceTests.swift */; };
+		7CFB921B2E4E2AEE004162B5 /* ReportStatusMigratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91D82E4E2AEE004162B5 /* ReportStatusMigratorTests.swift */; };
+		7CFB921C2E4E2AEE004162B5 /* CreateReportUseCaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91E12E4E2AEE004162B5 /* CreateReportUseCaseTests.swift */; };
+		7CFB921D2E4E2AEE004162B5 /* PostAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91D22E4E2AEE004162B5 /* PostAdapterTests.swift */; };
+		7CFB921E2E4E2AEE004162B5 /* PostTimerServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91D62E4E2AEE004162B5 /* PostTimerServiceTests.swift */; };
+		7CFB921F2E4E2AEE004162B5 /* NewStatusLogicTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91FC2E4E2AEE004162B5 /* NewStatusLogicTest.swift */; };
+		7CFB92202E4E2AEE004162B5 /* PostStoreAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91D32E4E2AEE004162B5 /* PostStoreAdapterTests.swift */; };
+		7CFB92212E4E2AEE004162B5 /* MainViewModelTimerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91EC2E4E2AEE004162B5 /* MainViewModelTimerTests.swift */; };
+		7CFB92222E4E2AEE004162B5 /* MainViewModelNewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91EA2E4E2AEE004162B5 /* MainViewModelNewTests.swift */; };
+		7CFB92232E4E2AEE004162B5 /* ReportsViewModelNewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91F02E4E2AEE004162B5 /* ReportsViewModelNewTests.swift */; };
+		7CFB92242E4E2AEE004162B5 /* TagManagerViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91F32E4E2AEE004162B5 /* TagManagerViewModelTests.swift */; };
+		7CFB92252E4E2AEE004162B5 /* NewDayLogicTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91FB2E4E2AEE004162B5 /* NewDayLogicTest.swift */; };
+		7CFB92262E4E2AEE004162B5 /* TelegramIntegrationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB92022E4E2AEE004162B5 /* TelegramIntegrationServiceTests.swift */; };
+		7CFB92272E4E2AEE004162B5 /* ReportsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91F12E4E2AEE004162B5 /* ReportsViewModelTests.swift */; };
+		7CFB92282E4E2AEE004162B5 /* VoiceRecorderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB92032E4E2AEE004162B5 /* VoiceRecorderTests.swift */; };
+		7CFB92292E4E2AEE004162B5 /* ReportStatusFlexibilityTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91FF2E4E2AEE004162B5 /* ReportStatusFlexibilityTest.swift */; };
+		7CFB922A2E4E2AEE004162B5 /* SettingsViewModelNewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91F22E4E2AEE004162B5 /* SettingsViewModelNewTests.swift */; };
+		7CFB922B2E4E2AEE004162B5 /* PostMapperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91DB2E4E2AEE004162B5 /* PostMapperTests.swift */; };
+		7CFB922C2E4E2AEE004162B5 /* ICloudReportsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91E92E4E2AEE004162B5 /* ICloudReportsViewModelTests.swift */; };
+		7CFB922D2E4E2AEE004162B5 /* ReportPeriodLogicTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91FE2E4E2AEE004162B5 /* ReportPeriodLogicTest.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		7C10ECC62E4E488000D1C36B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7C8266012E1F903200365472 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7C8266082E1F903200365472;
+			remoteInfo = LazyBones;
+		};
 		7C4B25792E20F66900602163 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 7C8266012E1F903200365472 /* Project object */;
@@ -56,11 +97,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		7C4604F52E3BB3B9003863E7 /* ServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceTests.swift; sourceTree = "<group>"; };
-		7C4604F92E3BB3B9003863E7 /* NewDayLogicTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewDayLogicTest.swift; sourceTree = "<group>"; };
-		7C4604FA2E3BB3B9003863E7 /* NewStatusLogicTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewStatusLogicTest.swift; sourceTree = "<group>"; };
-		7C4604FB2E3BB3B9003863E7 /* ReportPeriodLogicTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportPeriodLogicTest.swift; sourceTree = "<group>"; };
-		7C4604FC2E3BB3B9003863E7 /* ReportStatusFlexibilityTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportStatusFlexibilityTest.swift; sourceTree = "<group>"; };
+		7C10ECC22E4E488000D1C36B /* LazyBonesPublishTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LazyBonesPublishTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7C4B25752E20F66900602163 /* LazyBonesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LazyBonesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7C61376D2E4B1C2E0069F15B /* CONFIGURATION_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CONFIGURATION_GUIDE.md; sourceTree = "<group>"; };
 		7C61377E2E4B1C2E0069F15B /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -72,8 +109,47 @@
 		7C8266252E1F92B900365472 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		7C8266272E1F92BA00365472 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		7C8266402E1F9DD500365472 /* LazyBonesWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LazyBonesWidgetExtension.entitlements; sourceTree = "<group>"; };
-		7CB911182E213A81005E97AD /* LazyBonesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LazyBonesTests.swift; sourceTree = "<group>"; };
-		7CB911192E213A81005E97AD /* VoiceRecorderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceRecorderTests.swift; sourceTree = "<group>"; };
+		7CFB91CD2E4E2AEE004162B5 /* AppCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinatorTests.swift; sourceTree = "<group>"; };
+		7CFB91CE2E4E2AEE004162B5 /* CoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoordinatorTests.swift; sourceTree = "<group>"; };
+		7CFB91CF2E4E2AEE004162B5 /* ICloudServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudServiceTests.swift; sourceTree = "<group>"; };
+		7CFB91D02E4E2AEE004162B5 /* ServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceTests.swift; sourceTree = "<group>"; };
+		7CFB91D22E4E2AEE004162B5 /* PostAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostAdapterTests.swift; sourceTree = "<group>"; };
+		7CFB91D32E4E2AEE004162B5 /* PostStoreAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostStoreAdapterTests.swift; sourceTree = "<group>"; };
+		7CFB91D52E4E2AEE004162B5 /* PostStorePublishTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostStorePublishTests.swift; sourceTree = "<group>"; };
+		7CFB91D62E4E2AEE004162B5 /* PostTimerServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostTimerServiceTests.swift; sourceTree = "<group>"; };
+		7CFB91D82E4E2AEE004162B5 /* ReportStatusMigratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportStatusMigratorTests.swift; sourceTree = "<group>"; };
+		7CFB91DB2E4E2AEE004162B5 /* PostMapperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostMapperTests.swift; sourceTree = "<group>"; };
+		7CFB91DD2E4E2AEE004162B5 /* PostRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostRepositoryTests.swift; sourceTree = "<group>"; };
+		7CFB91DE2E4E2AEE004162B5 /* SettingsRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRepositoryTests.swift; sourceTree = "<group>"; };
+		7CFB91E12E4E2AEE004162B5 /* CreateReportUseCaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateReportUseCaseTests.swift; sourceTree = "<group>"; };
+		7CFB91E42E4E2AEE004162B5 /* ExternalReportsIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalReportsIntegrationTests.swift; sourceTree = "<group>"; };
+		7CFB91E52E4E2AEE004162B5 /* ICloudIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudIntegrationTests.swift; sourceTree = "<group>"; };
+		7CFB91E72E4E2AEE004162B5 /* CustomReportsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomReportsViewModelTests.swift; sourceTree = "<group>"; };
+		7CFB91E82E4E2AEE004162B5 /* ExternalReportsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalReportsViewModelTests.swift; sourceTree = "<group>"; };
+		7CFB91E92E4E2AEE004162B5 /* ICloudReportsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudReportsViewModelTests.swift; sourceTree = "<group>"; };
+		7CFB91EA2E4E2AEE004162B5 /* MainViewModelNewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewModelNewTests.swift; sourceTree = "<group>"; };
+		7CFB91EB2E4E2AEE004162B5 /* MainViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewModelTests.swift; sourceTree = "<group>"; };
+		7CFB91EC2E4E2AEE004162B5 /* MainViewModelTimerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewModelTimerTests.swift; sourceTree = "<group>"; };
+		7CFB91ED2E4E2AEE004162B5 /* PostFormViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostFormViewModelTests.swift; sourceTree = "<group>"; };
+		7CFB91EE2E4E2AEE004162B5 /* RegularReportsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegularReportsViewModelTests.swift; sourceTree = "<group>"; };
+		7CFB91EF2E4E2AEE004162B5 /* ReportListViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportListViewModelTests.swift; sourceTree = "<group>"; };
+		7CFB91F02E4E2AEE004162B5 /* ReportsViewModelNewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportsViewModelNewTests.swift; sourceTree = "<group>"; };
+		7CFB91F12E4E2AEE004162B5 /* ReportsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportsViewModelTests.swift; sourceTree = "<group>"; };
+		7CFB91F22E4E2AEE004162B5 /* SettingsViewModelNewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModelNewTests.swift; sourceTree = "<group>"; };
+		7CFB91F32E4E2AEE004162B5 /* TagManagerViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagManagerViewModelTests.swift; sourceTree = "<group>"; };
+		7CFB91F52E4E2AEE004162B5 /* ExternalReportsViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalReportsViewTests.swift; sourceTree = "<group>"; };
+		7CFB91F82E4E2AEE004162B5 /* AutoSendIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoSendIntegrationTests.swift; sourceTree = "<group>"; };
+		7CFB91F92E4E2AEE004162B5 /* AutoSendServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoSendServiceTests.swift; sourceTree = "<group>"; };
+		7CFB91FA2E4E2AEE004162B5 /* LazyBonesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LazyBonesTests.swift; sourceTree = "<group>"; };
+		7CFB91FB2E4E2AEE004162B5 /* NewDayLogicTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewDayLogicTest.swift; sourceTree = "<group>"; };
+		7CFB91FC2E4E2AEE004162B5 /* NewStatusLogicTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewStatusLogicTest.swift; sourceTree = "<group>"; };
+		7CFB91FD2E4E2AEE004162B5 /* NotificationManagerServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManagerServiceTests.swift; sourceTree = "<group>"; };
+		7CFB91FE2E4E2AEE004162B5 /* ReportPeriodLogicTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportPeriodLogicTest.swift; sourceTree = "<group>"; };
+		7CFB91FF2E4E2AEE004162B5 /* ReportStatusFlexibilityTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportStatusFlexibilityTest.swift; sourceTree = "<group>"; };
+		7CFB92002E4E2AEE004162B5 /* ReportStatusManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportStatusManagerTests.swift; sourceTree = "<group>"; };
+		7CFB92012E4E2AEE004162B5 /* ReportStatusRulesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportStatusRulesTests.swift; sourceTree = "<group>"; };
+		7CFB92022E4E2AEE004162B5 /* TelegramIntegrationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelegramIntegrationServiceTests.swift; sourceTree = "<group>"; };
+		7CFB92032E4E2AEE004162B5 /* VoiceRecorderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceRecorderTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -94,6 +170,11 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		7C10ECC32E4E488000D1C36B /* LazyBonesPublishTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = LazyBonesPublishTests;
+			sourceTree = "<group>";
+		};
 		7C82660B2E1F903200365472 /* LazyBones */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -113,6 +194,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		7C10ECBF2E4E488000D1C36B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		7C4B25722E20F66900602163 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -139,14 +227,6 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		7C4604F82E3BB3B9003863E7 /* ArchitectureTests */ = {
-			isa = PBXGroup;
-			children = (
-				7C4604F52E3BB3B9003863E7 /* ServiceTests.swift */,
-			);
-			path = ArchitectureTests;
-			sourceTree = "<group>";
-		};
 		7C8266002E1F903200365472 = {
 			isa = PBXGroup;
 			children = (
@@ -155,12 +235,13 @@
 				7C6137802E4B1C2E0069F15B /* SERVICE_GUIDE.md */,
 				7C6137822E4B1C2E0069F15B /* STATUS_MODEL_README.md */,
 				7C6137832E4B1C2E0069F15B /* TESTING_GUIDE.md */,
-				7CB9111A2E213A81005E97AD /* Tests */,
 				7C8266402E1F9DD500365472 /* LazyBonesWidgetExtension.entitlements */,
 				7C82660B2E1F903200365472 /* LazyBones */,
 				7C8266292E1F92BA00365472 /* LazyBonesWidget */,
+				7C10ECC32E4E488000D1C36B /* LazyBonesPublishTests */,
 				7C8266242E1F92B900365472 /* Frameworks */,
 				7C82660A2E1F903200365472 /* Products */,
+				7CFB92042E4E2AEE004162B5 /* Tests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -170,6 +251,7 @@
 				7C8266092E1F903200365472 /* LazyBones.app */,
 				7C8266232E1F92B900365472 /* LazyBonesWidgetExtension.appex */,
 				7C4B25752E20F66900602163 /* LazyBonesTests.xctest */,
+				7C10ECC22E4E488000D1C36B /* LazyBonesPublishTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -183,16 +265,162 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		7CB9111A2E213A81005E97AD /* Tests */ = {
+		7CFB91D12E4E2AEE004162B5 /* ArchitectureTests */ = {
 			isa = PBXGroup;
 			children = (
-				7C4604F82E3BB3B9003863E7 /* ArchitectureTests */,
-				7C4604F92E3BB3B9003863E7 /* NewDayLogicTest.swift */,
-				7C4604FA2E3BB3B9003863E7 /* NewStatusLogicTest.swift */,
-				7C4604FB2E3BB3B9003863E7 /* ReportPeriodLogicTest.swift */,
-				7C4604FC2E3BB3B9003863E7 /* ReportStatusFlexibilityTest.swift */,
-				7CB911182E213A81005E97AD /* LazyBonesTests.swift */,
-				7CB911192E213A81005E97AD /* VoiceRecorderTests.swift */,
+				7CFB91CD2E4E2AEE004162B5 /* AppCoordinatorTests.swift */,
+				7CFB91CE2E4E2AEE004162B5 /* CoordinatorTests.swift */,
+				7CFB91CF2E4E2AEE004162B5 /* ICloudServiceTests.swift */,
+				7CFB91D02E4E2AEE004162B5 /* ServiceTests.swift */,
+			);
+			path = ArchitectureTests;
+			sourceTree = "<group>";
+		};
+		7CFB91D42E4E2AEE004162B5 /* Adapters */ = {
+			isa = PBXGroup;
+			children = (
+				7CFB91D22E4E2AEE004162B5 /* PostAdapterTests.swift */,
+				7CFB91D32E4E2AEE004162B5 /* PostStoreAdapterTests.swift */,
+			);
+			path = Adapters;
+			sourceTree = "<group>";
+		};
+		7CFB91D72E4E2AEE004162B5 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				7CFB91D52E4E2AEE004162B5 /* PostStorePublishTests.swift */,
+				7CFB91D62E4E2AEE004162B5 /* PostTimerServiceTests.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		7CFB91D92E4E2AEE004162B5 /* Utils */ = {
+			isa = PBXGroup;
+			children = (
+				7CFB91D82E4E2AEE004162B5 /* ReportStatusMigratorTests.swift */,
+			);
+			path = Utils;
+			sourceTree = "<group>";
+		};
+		7CFB91DA2E4E2AEE004162B5 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				7CFB91D42E4E2AEE004162B5 /* Adapters */,
+				7CFB91D72E4E2AEE004162B5 /* Services */,
+				7CFB91D92E4E2AEE004162B5 /* Utils */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		7CFB91DC2E4E2AEE004162B5 /* Mappers */ = {
+			isa = PBXGroup;
+			children = (
+				7CFB91DB2E4E2AEE004162B5 /* PostMapperTests.swift */,
+			);
+			path = Mappers;
+			sourceTree = "<group>";
+		};
+		7CFB91DF2E4E2AEE004162B5 /* Repositories */ = {
+			isa = PBXGroup;
+			children = (
+				7CFB91DD2E4E2AEE004162B5 /* PostRepositoryTests.swift */,
+				7CFB91DE2E4E2AEE004162B5 /* SettingsRepositoryTests.swift */,
+			);
+			path = Repositories;
+			sourceTree = "<group>";
+		};
+		7CFB91E02E4E2AEE004162B5 /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				7CFB91DC2E4E2AEE004162B5 /* Mappers */,
+				7CFB91DF2E4E2AEE004162B5 /* Repositories */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
+		7CFB91E22E4E2AEE004162B5 /* UseCases */ = {
+			isa = PBXGroup;
+			children = (
+				7CFB91E12E4E2AEE004162B5 /* CreateReportUseCaseTests.swift */,
+			);
+			path = UseCases;
+			sourceTree = "<group>";
+		};
+		7CFB91E32E4E2AEE004162B5 /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				7CFB91E22E4E2AEE004162B5 /* UseCases */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
+		7CFB91E62E4E2AEE004162B5 /* Integration */ = {
+			isa = PBXGroup;
+			children = (
+				7CFB91E42E4E2AEE004162B5 /* ExternalReportsIntegrationTests.swift */,
+				7CFB91E52E4E2AEE004162B5 /* ICloudIntegrationTests.swift */,
+			);
+			path = Integration;
+			sourceTree = "<group>";
+		};
+		7CFB91F42E4E2AEE004162B5 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				7CFB91E72E4E2AEE004162B5 /* CustomReportsViewModelTests.swift */,
+				7CFB91E82E4E2AEE004162B5 /* ExternalReportsViewModelTests.swift */,
+				7CFB91E92E4E2AEE004162B5 /* ICloudReportsViewModelTests.swift */,
+				7CFB91EA2E4E2AEE004162B5 /* MainViewModelNewTests.swift */,
+				7CFB91EB2E4E2AEE004162B5 /* MainViewModelTests.swift */,
+				7CFB91EC2E4E2AEE004162B5 /* MainViewModelTimerTests.swift */,
+				7CFB91ED2E4E2AEE004162B5 /* PostFormViewModelTests.swift */,
+				7CFB91EE2E4E2AEE004162B5 /* RegularReportsViewModelTests.swift */,
+				7CFB91EF2E4E2AEE004162B5 /* ReportListViewModelTests.swift */,
+				7CFB91F02E4E2AEE004162B5 /* ReportsViewModelNewTests.swift */,
+				7CFB91F12E4E2AEE004162B5 /* ReportsViewModelTests.swift */,
+				7CFB91F22E4E2AEE004162B5 /* SettingsViewModelNewTests.swift */,
+				7CFB91F32E4E2AEE004162B5 /* TagManagerViewModelTests.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		7CFB91F62E4E2AEE004162B5 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				7CFB91F52E4E2AEE004162B5 /* ExternalReportsViewTests.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		7CFB91F72E4E2AEE004162B5 /* Presentation */ = {
+			isa = PBXGroup;
+			children = (
+				7CFB91F42E4E2AEE004162B5 /* ViewModels */,
+				7CFB91F62E4E2AEE004162B5 /* Views */,
+			);
+			path = Presentation;
+			sourceTree = "<group>";
+		};
+		7CFB92042E4E2AEE004162B5 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				7CFB91D12E4E2AEE004162B5 /* ArchitectureTests */,
+				7CFB91DA2E4E2AEE004162B5 /* Core */,
+				7CFB91E02E4E2AEE004162B5 /* Data */,
+				7CFB91E32E4E2AEE004162B5 /* Domain */,
+				7CFB91E62E4E2AEE004162B5 /* Integration */,
+				7CFB91F72E4E2AEE004162B5 /* Presentation */,
+				7CFB91F82E4E2AEE004162B5 /* AutoSendIntegrationTests.swift */,
+				7CFB91F92E4E2AEE004162B5 /* AutoSendServiceTests.swift */,
+				7CFB91FA2E4E2AEE004162B5 /* LazyBonesTests.swift */,
+				7CFB91FB2E4E2AEE004162B5 /* NewDayLogicTest.swift */,
+				7CFB91FC2E4E2AEE004162B5 /* NewStatusLogicTest.swift */,
+				7CFB91FD2E4E2AEE004162B5 /* NotificationManagerServiceTests.swift */,
+				7CFB91FE2E4E2AEE004162B5 /* ReportPeriodLogicTest.swift */,
+				7CFB91FF2E4E2AEE004162B5 /* ReportStatusFlexibilityTest.swift */,
+				7CFB92002E4E2AEE004162B5 /* ReportStatusManagerTests.swift */,
+				7CFB92012E4E2AEE004162B5 /* ReportStatusRulesTests.swift */,
+				7CFB92022E4E2AEE004162B5 /* TelegramIntegrationServiceTests.swift */,
+				7CFB92032E4E2AEE004162B5 /* VoiceRecorderTests.swift */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -200,6 +428,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		7C10ECC12E4E488000D1C36B /* LazyBonesPublishTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7C10ECC82E4E488000D1C36B /* Build configuration list for PBXNativeTarget "LazyBonesPublishTests" */;
+			buildPhases = (
+				7C10ECBE2E4E488000D1C36B /* Sources */,
+				7C10ECBF2E4E488000D1C36B /* Frameworks */,
+				7C10ECC02E4E488000D1C36B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7C10ECC72E4E488000D1C36B /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				7C10ECC32E4E488000D1C36B /* LazyBonesPublishTests */,
+			);
+			name = LazyBonesPublishTests;
+			packageProductDependencies = (
+			);
+			productName = LazyBonesPublishTests;
+			productReference = 7C10ECC22E4E488000D1C36B /* LazyBonesPublishTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		7C4B25742E20F66900602163 /* LazyBonesTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 7C4B257B2E20F66900602163 /* Build configuration list for PBXNativeTarget "LazyBonesTests" */;
@@ -276,6 +527,10 @@
 				LastSwiftUpdateCheck = 1640;
 				LastUpgradeCheck = 1640;
 				TargetAttributes = {
+					7C10ECC12E4E488000D1C36B = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = 7C8266082E1F903200365472;
+					};
 					7C4B25742E20F66900602163 = {
 						CreatedOnToolsVersion = 16.4;
 						TestTargetID = 7C8266082E1F903200365472;
@@ -305,11 +560,19 @@
 				7C8266082E1F903200365472 /* LazyBones */,
 				7C8266222E1F92B900365472 /* LazyBonesWidgetExtension */,
 				7C4B25742E20F66900602163 /* LazyBonesTests */,
+				7C10ECC12E4E488000D1C36B /* LazyBonesPublishTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		7C10ECC02E4E488000D1C36B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		7C4B25732E20F66900602163 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -339,17 +602,58 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		7C10ECBE2E4E488000D1C36B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7C10ECCB2E4E488800D1C36B /* PostStorePublishTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		7C4B25712E20F66900602163 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7CB9111B2E213A81005E97AD /* LazyBonesTests.swift in Sources */,
-				7C4604FE2E3BB3B9003863E7 /* NewStatusLogicTest.swift in Sources */,
-				7C4604FF2E3BB3B9003863E7 /* ReportPeriodLogicTest.swift in Sources */,
-				7C4605002E3BB3B9003863E7 /* ReportStatusFlexibilityTest.swift in Sources */,
-				7C4605012E3BB3B9003863E7 /* NewDayLogicTest.swift in Sources */,
-				7C4605022E3BB3B9003863E7 /* ServiceTests.swift in Sources */,
-				7CB9111C2E213A81005E97AD /* VoiceRecorderTests.swift in Sources */,
+				7CFB92052E4E2AEE004162B5 /* ReportStatusManagerTests.swift in Sources */,
+				7CFB92062E4E2AEE004162B5 /* ReportStatusRulesTests.swift in Sources */,
+				7CFB92072E4E2AEE004162B5 /* ServiceTests.swift in Sources */,
+				7CFB92082E4E2AEE004162B5 /* ReportListViewModelTests.swift in Sources */,
+				7CFB92092E4E2AEE004162B5 /* MainViewModelTests.swift in Sources */,
+				7CFB920A2E4E2AEE004162B5 /* PostFormViewModelTests.swift in Sources */,
+				7CFB920B2E4E2AEE004162B5 /* PostRepositoryTests.swift in Sources */,
+				7CFB920C2E4E2AEE004162B5 /* AppCoordinatorTests.swift in Sources */,
+				7CFB920D2E4E2AEE004162B5 /* AutoSendIntegrationTests.swift in Sources */,
+				7CFB920E2E4E2AEE004162B5 /* ICloudServiceTests.swift in Sources */,
+				7CFB920F2E4E2AEE004162B5 /* ExternalReportsViewModelTests.swift in Sources */,
+				7CFB92102E4E2AEE004162B5 /* CustomReportsViewModelTests.swift in Sources */,
+				7CFB92112E4E2AEE004162B5 /* ExternalReportsIntegrationTests.swift in Sources */,
+				7CFB92132E4E2AEE004162B5 /* CoordinatorTests.swift in Sources */,
+				7CFB92142E4E2AEE004162B5 /* ICloudIntegrationTests.swift in Sources */,
+				7CFB92152E4E2AEE004162B5 /* RegularReportsViewModelTests.swift in Sources */,
+				7CFB92162E4E2AEE004162B5 /* NotificationManagerServiceTests.swift in Sources */,
+				7CFB92172E4E2AEE004162B5 /* LazyBonesTests.swift in Sources */,
+				7CFB92182E4E2AEE004162B5 /* SettingsRepositoryTests.swift in Sources */,
+				7CFB92192E4E2AEE004162B5 /* ExternalReportsViewTests.swift in Sources */,
+				7CFB921A2E4E2AEE004162B5 /* AutoSendServiceTests.swift in Sources */,
+				7CFB921B2E4E2AEE004162B5 /* ReportStatusMigratorTests.swift in Sources */,
+				7CFB921C2E4E2AEE004162B5 /* CreateReportUseCaseTests.swift in Sources */,
+				7CFB921D2E4E2AEE004162B5 /* PostAdapterTests.swift in Sources */,
+				7CFB921E2E4E2AEE004162B5 /* PostTimerServiceTests.swift in Sources */,
+				7CFB921F2E4E2AEE004162B5 /* NewStatusLogicTest.swift in Sources */,
+				7CFB92202E4E2AEE004162B5 /* PostStoreAdapterTests.swift in Sources */,
+				7CFB92212E4E2AEE004162B5 /* MainViewModelTimerTests.swift in Sources */,
+				7CFB92222E4E2AEE004162B5 /* MainViewModelNewTests.swift in Sources */,
+				7CFB92232E4E2AEE004162B5 /* ReportsViewModelNewTests.swift in Sources */,
+				7CFB92242E4E2AEE004162B5 /* TagManagerViewModelTests.swift in Sources */,
+				7CFB92252E4E2AEE004162B5 /* NewDayLogicTest.swift in Sources */,
+				7CFB92262E4E2AEE004162B5 /* TelegramIntegrationServiceTests.swift in Sources */,
+				7CFB92272E4E2AEE004162B5 /* ReportsViewModelTests.swift in Sources */,
+				7CFB92282E4E2AEE004162B5 /* VoiceRecorderTests.swift in Sources */,
+				7CFB92292E4E2AEE004162B5 /* ReportStatusFlexibilityTest.swift in Sources */,
+				7CFB922A2E4E2AEE004162B5 /* SettingsViewModelNewTests.swift in Sources */,
+				7CFB922B2E4E2AEE004162B5 /* PostMapperTests.swift in Sources */,
+				7CFB922C2E4E2AEE004162B5 /* ICloudReportsViewModelTests.swift in Sources */,
+				7CFB922D2E4E2AEE004162B5 /* ReportPeriodLogicTest.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -370,6 +674,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		7C10ECC72E4E488000D1C36B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7C8266082E1F903200365472 /* LazyBones */;
+			targetProxy = 7C10ECC62E4E488000D1C36B /* PBXContainerItemProxy */;
+		};
 		7C4B257A2E20F66900602163 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 7C8266082E1F903200365472 /* LazyBones */;
@@ -383,6 +692,42 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		7C10ECC92E4E488000D1C36B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = H3N3UYMDNL;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.katapios.LazyBones1.LazyBonesPublishTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LazyBones.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LazyBones";
+			};
+			name = Debug;
+		};
+		7C10ECCA2E4E488000D1C36B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = H3N3UYMDNL;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.katapios.LazyBones1.LazyBonesPublishTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LazyBones.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LazyBones";
+			};
+			name = Release;
+		};
 		7C4B257C2E20F66900602163 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -675,6 +1020,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		7C10ECC82E4E488000D1C36B /* Build configuration list for PBXNativeTarget "LazyBonesPublishTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7C10ECC92E4E488000D1C36B /* Debug */,
+				7C10ECCA2E4E488000D1C36B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		7C4B257B2E20F66900602163 /* Build configuration list for PBXNativeTarget "LazyBonesTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
