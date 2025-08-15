@@ -73,11 +73,11 @@ private func setupDependencyInjection() {
     // Регистрация ViewModels
     container.registerReportViewModels()
     
-    // Регистрация Telegram сервиса (если есть токен)
+    // Регистрация Telegram сервиса через абстракцию (без прямого обращения к DI)
     let userDefaultsManager = UserDefaultsManager.shared
     let (token, _, _) = userDefaultsManager.loadTelegramSettings()
-    if let token = token {
-        container.registerTelegramService(token: token)
+    if let updater = container.resolve(TelegramConfigUpdaterProtocol.self) {
+        updater.applyTelegramToken(token)
     }
     
     Logger.info("Dependency injection setup completed", log: Logger.general)

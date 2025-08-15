@@ -146,7 +146,8 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
             var telegramService = container.resolve(TelegramServiceProtocol.self)
             // Если сервис не зарегистрирован, но токен введён — зарегистрируем на лету
             if telegramService == nil {
-                container.registerTelegramService(token: state.telegramToken)
+                // Используем абстракцию обновления конфигурации, чтобы не дергать DI напрямую
+                telegramConfigUpdater.applyTelegramToken(state.telegramToken)
                 telegramService = container.resolve(TelegramServiceProtocol.self)
             }
             guard let telegramService else {

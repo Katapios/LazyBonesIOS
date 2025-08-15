@@ -70,9 +70,10 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
         // Используем специальный метод для сохранения настроек Telegram
         userDefaultsManager.saveTelegramSettings(token: token, chatId: chatId, botId: botId)
         
-        // Обновляем TelegramService в DI контейнере только если есть валидный токен
-        if let token = token, !token.isEmpty {
-            DependencyContainer.shared.registerTelegramService(token: token)
+        // Обновляем TelegramService через абстракцию конфигурации
+        let container = DependencyContainer.shared
+        if let updater = container.resolve(TelegramConfigUpdaterProtocol.self) {
+            updater.applyTelegramToken(token)
         }
     }
     
@@ -82,9 +83,10 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
         telegramBotId = userDefaultsManager.string(forKey: "telegramBotId")
         lastUpdateId = userDefaultsManager.integer(forKey: "lastUpdateId")
         
-        // Обновляем TelegramService в DI контейнере если есть токен
-        if let token = telegramToken, !token.isEmpty {
-            DependencyContainer.shared.registerTelegramService(token: token)
+        // Обновляем TelegramService через абстракцию конфигурации
+        let container = DependencyContainer.shared
+        if let updater = container.resolve(TelegramConfigUpdaterProtocol.self) {
+            updater.applyTelegramToken(telegramToken)
         }
         
         return (telegramToken, telegramChatId, telegramBotId)
@@ -102,9 +104,10 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
     }
     
     func refreshTelegramService() {
-        // Обновляем TelegramService с новым токеном, если он доступен
-        if let token = telegramToken, !token.isEmpty {
-            DependencyContainer.shared.registerTelegramService(token: token)
+        // Обновляем TelegramService через абстракцию конфигурации
+        let container = DependencyContainer.shared
+        if let updater = container.resolve(TelegramConfigUpdaterProtocol.self) {
+            updater.applyTelegramToken(telegramToken)
         }
     }
     
