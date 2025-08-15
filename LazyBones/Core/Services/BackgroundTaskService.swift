@@ -73,7 +73,7 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
         #if targetEnvironment(simulator)
         Logger.info("Skipping BGTask registration on Simulator", log: Logger.background)
         return
-        #endif
+        #else
         var registrationError: Error?
         
         registrationQueue.sync {
@@ -117,13 +117,14 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
         if let error = registrationError {
             throw error
         }
+        #endif
     }
     
     func scheduleSendReportTask() throws {
         #if targetEnvironment(simulator)
         Logger.info("Skipping BGTask scheduling on Simulator (using DEBUG timer instead)", log: Logger.background)
         return
-        #endif
+        #else
         
         // Availability guard
         if #unavailable(iOS 13.0) {
@@ -189,6 +190,7 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
             Logger.error("❌ Failed to schedule background task: \(error)", log: Logger.background)
             throw BackgroundTaskServiceError.schedulingFailed
         }
+        #endif
     }
     
     func handleSendReportTask(_ task: BGAppRefreshTask) async {
@@ -267,7 +269,11 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
         
         // Use AutoSendService to send reports
         Logger.info("Initiating auto-send via AutoSendService", log: Logger.background)
-        self.autoSendService.performAutoSendReport()
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            self.autoSendService.performAutoSendReport {
+                continuation.resume()
+            }
+        }
         
         // Log completion
         Logger.info("Auto-send reports processing completed", log: Logger.background)

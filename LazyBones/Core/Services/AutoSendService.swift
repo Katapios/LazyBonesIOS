@@ -15,6 +15,7 @@ protocol AutoSendServiceProtocol: ObservableObject {
     func saveAutoSendSettings()
     func scheduleAutoSendIfNeeded()
     func performAutoSendReport()
+    func performAutoSendReport(completion: (() -> Void)?)
     func autoSendAllReportsForToday(completion: (() -> Void)?)
 }
 
@@ -164,6 +165,10 @@ class AutoSendService: AutoSendServiceProtocol {
     }
     
     func performAutoSendReport() {
+        performAutoSendReport(completion: nil)
+    }
+    
+    func performAutoSendReport(completion: (() -> Void)? = nil) {
         Logger.info("Starting auto-send report process", log: Logger.background)
         
         // Update last auto-send status
@@ -196,6 +201,9 @@ class AutoSendService: AutoSendServiceProtocol {
                 self.scheduleAutoSendIfNeeded()
                 
                 Logger.info("Auto-send process completed successfully", log: Logger.background)
+                
+                // Notify external completion if provided (for BG task coordination)
+                completion?()
             }
         }
     }

@@ -10,10 +10,31 @@ import BackgroundTasks
 
 @main
 struct LazyBonesApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     
     var body: some Scene {
         WindowGroup {
             ContentView()
+        }
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            guard newPhase == .background else { return }
+            Logger.info("Scene moved to background: attempting to (re)schedule BG task", log: Logger.background)
+            #if !targetEnvironment(simulator)
+            Task { @MainActor in
+                let refreshStatus = UIApplication.shared.backgroundRefreshStatus
+                if refreshStatus == .available,
+                   let autoSend = DependencyContainer.shared.resolve(AutoSendServiceType.self),
+                   autoSend.autoSendEnabled,
+                   let backgroundTaskService = DependencyContainer.shared.resolve(BackgroundTaskServiceProtocol.self) {
+                    do { try backgroundTaskService.scheduleSendReportTask() }
+                    catch { Logger.error("Failed to schedule BG task on background: \(error)", log: Logger.background) }
+                } else {
+                    Logger.info("Skip scheduling on background (refresh unavailable or auto-send disabled)", log: Logger.background)
+                }
+            }
+            #else
+            Logger.info("Simulator: skip BG task scheduling on background transition", log: Logger.background)
+            #endif
         }
     }
 

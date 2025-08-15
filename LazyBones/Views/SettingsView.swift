@@ -178,10 +178,6 @@ struct SettingsView: View {
                 get: { viewModel.state.autoSendEnabled },
                 set: { viewModel.setAutoSendEnabled($0) }
             ))
-            DatePicker("Время автоотправки", selection: Binding(
-                get: { viewModel.state.autoSendTime },
-                set: { viewModel.setAutoSendTime($0) }
-            ), displayedComponents: .hourAndMinute)
             if let status = viewModel.state.lastAutoSendStatus {
                 Text(status)
                     .font(.caption)
