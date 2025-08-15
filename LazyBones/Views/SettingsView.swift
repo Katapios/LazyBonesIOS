@@ -22,7 +22,8 @@ struct SettingsView: View {
                 factory: ReportStatusFactory()
             ),
             iCloudService: container.resolve(ICloudServiceProtocol.self)!,
-            autoSendService: container.resolve(AutoSendServiceType.self)!
+            autoSendService: container.resolve(AutoSendServiceType.self)!,
+            telegramConfigUpdater: container.resolve(TelegramConfigUpdaterProtocol.self)!
         ))
     }
     var body: some View {

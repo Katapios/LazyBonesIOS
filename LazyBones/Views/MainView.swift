@@ -12,19 +12,18 @@ struct MainView: View {
 
     var body: some View {
         VStack(spacing: 14) {
+            // Таймер и статус — зависят от тиков времени
             MainStatusBarView().environmentObject(viewModel)
-            MercuryThermometerView(goodCount: viewModel.goodCountToday, badCount: viewModel.badCountToday)
-            LargeButtonView(
-                title: viewModel.buttonTitle,
-                icon: viewModel.buttonIcon,
-                color: viewModel.buttonColor,
-                action: { 
-                    appCoordinator.switchToTab(.planning)
-                },
-                isEnabled: viewModel.canEditReport
+            // Действия и счётчики — не зависят от тиков времени
+            MainActionsSectionView(
+                goodCount: viewModel.goodCountToday,
+                badCount: viewModel.badCountToday,
+                buttonTitle: viewModel.buttonTitle,
+                buttonIcon: viewModel.buttonIcon,
+                buttonColor: viewModel.buttonColor,
+                isEnabled: viewModel.canEditReport,
+                onTap: { appCoordinator.switchToTab(.planning) }
             )
-            .padding(.horizontal)
-            .padding(.vertical, 40)
         }
         .padding(.vertical, 16)
         .frame(maxHeight: .infinity, alignment: .center)

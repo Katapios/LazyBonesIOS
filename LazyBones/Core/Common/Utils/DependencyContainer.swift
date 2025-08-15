@@ -170,6 +170,11 @@ extension DependencyContainer {
             )
         })
         
+        // Telegram Config Updater
+        register(TelegramConfigUpdaterProtocol.self, factory: {
+            TelegramConfigUpdater(container: self)
+        })
+        
         // Use Cases
         register(CreateReportUseCase.self, factory: {
             let postRepository = self.resolve(PostRepository.self)!

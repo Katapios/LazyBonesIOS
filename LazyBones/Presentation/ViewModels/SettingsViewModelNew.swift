@@ -15,6 +15,7 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
     private let statusManager: any ReportStatusManagerProtocol
     private let iCloudService: ICloudServiceProtocol
     private let autoSendService: AutoSendServiceType
+    private let telegramConfigUpdater: TelegramConfigUpdaterProtocol
 
     init(
         settingsRepository: any SettingsRepositoryProtocol,
@@ -23,7 +24,8 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
         timerService: any PostTimerServiceProtocol,
         statusManager: any ReportStatusManagerProtocol,
         iCloudService: ICloudServiceProtocol,
-        autoSendService: AutoSendServiceType
+        autoSendService: AutoSendServiceType,
+        telegramConfigUpdater: TelegramConfigUpdaterProtocol
     ) {
         self.settingsRepository = settingsRepository
         self.notificationManager = notificationManager
@@ -32,6 +34,7 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
         self.statusManager = statusManager
         self.iCloudService = iCloudService
         self.autoSendService = autoSendService
+        self.telegramConfigUpdater = telegramConfigUpdater
         super.init(initialState: SettingsState())
     }
 
@@ -73,13 +76,6 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
         state.lastAutoSendStatus = autoSendService.lastAutoSendStatus
     }
 
-    func setAutoSendTime(_ date: Date) {
-        state.autoSendTime = date
-        autoSendService.autoSendTime = date
-        autoSendService.scheduleAutoSendIfNeeded()
-        state.lastAutoSendStatus = autoSendService.lastAutoSendStatus
-    }
-
     func setNotificationsEnabled(_ enabled: Bool) {
         state.notificationsEnabled = enabled
         notificationManager.notificationsEnabled = enabled
@@ -109,7 +105,6 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
         state.isICloudAvailable = await iCloudService.isICloudAvailable()
         // AutoSend
         state.autoSendEnabled = autoSendService.autoSendEnabled
-        state.autoSendTime = autoSendService.autoSendTime
         state.lastAutoSendStatus = autoSendService.lastAutoSendStatus
         // Notifications UI
         state.notificationsEnabled = notificationManager.notificationsEnabled
@@ -132,16 +127,8 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
     private func saveTelegramSettings(token: String?, chatId: String?, botId: String?) async {
         do {
             try await settingsRepository.saveTelegramSettings(token: token, chatId: chatId, botId: botId)
-            // Обновляем TelegramService в DI, чтобы сразу подхватить новый токен
-            let container = DependencyContainer.shared
-            if let token = token, !token.isEmpty {
-                container.registerTelegramService(token: token)
-            } else {
-                // Удаляем существующий сервис, чтобы последующие resolve получили пустой токен из UserDefaults
-                container.remove(TelegramServiceProtocol.self)
-            }
-            // Пересоздаем PostTelegramService в PostStore, чтобы он подхватил новый TelegramService
-            PostStore.shared.refreshTelegramServices()
+            // Обновляем конфигурацию Telegram через абстракцию Infrastructure
+            telegramConfigUpdater.applyTelegramToken(token)
             state.telegramStatus = "Сохранено!"
         } catch {
             state.telegramStatus = "Ошибка сохранения"

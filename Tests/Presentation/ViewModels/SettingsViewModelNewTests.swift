@@ -21,6 +21,11 @@ final class SettingsViewModelNewTests: XCTestCase {
             savedEndHour = endHour
         }
 
+    final class MockTelegramConfigUpdater: TelegramConfigUpdaterProtocol {
+        var appliedToken: String?
+        func applyTelegramToken(_ token: String?) { appliedToken = token }
+    }
+
         func loadNotificationSettings() async throws -> (enabled: Bool, mode: NotificationMode, intervalHours: Int, startHour: Int, endHour: Int) {
             return (true, .twice, 4, 9, 21)
         }
@@ -136,6 +141,7 @@ final class SettingsViewModelNewTests: XCTestCase {
     var status: MockStatusManager!
     var icloud: MockICloudService!
     var autosend: MockAutoSendService!
+    var tgUpdater: MockTelegramConfigUpdater!
 
     override func setUp() {
         super.setUp()
@@ -146,6 +152,7 @@ final class SettingsViewModelNewTests: XCTestCase {
         status = MockStatusManager()
         icloud = MockICloudService()
         autosend = MockAutoSendService()
+        tgUpdater = MockTelegramConfigUpdater()
         vm = SettingsViewModelNew(
             settingsRepository: repo,
             notificationManager: notif,
@@ -153,7 +160,8 @@ final class SettingsViewModelNewTests: XCTestCase {
             timerService: timer,
             statusManager: status,
             iCloudService: icloud,
-            autoSendService: autosend
+            autoSendService: autosend,
+            telegramConfigUpdater: tgUpdater
         )
     }
 
@@ -166,6 +174,7 @@ final class SettingsViewModelNewTests: XCTestCase {
         status = nil
         icloud = nil
         autosend = nil
+        tgUpdater = nil
         super.tearDown()
     }
 
@@ -176,7 +185,6 @@ final class SettingsViewModelNewTests: XCTestCase {
         XCTAssertTrue(vm.state.notificationsEnabled == notif.notificationsEnabled)
         XCTAssertEqual(vm.state.notificationMode, notif.notificationMode)
         XCTAssertEqual(vm.state.autoSendEnabled, autosend.autoSendEnabled)
-        XCTAssertEqual(vm.state.autoSendTime.timeIntervalSince1970, autosend.autoSendTime.timeIntervalSince1970, accuracy: 1)
     }
 
     func testSetNotificationsEnabled_PropagatesToService() {
@@ -206,7 +214,8 @@ final class SettingsViewModelNewTests: XCTestCase {
             timerService: timer,
             statusManager: spy,
             iCloudService: icloud,
-            autoSendService: autosend
+            autoSendService: autosend,
+            telegramConfigUpdater: tgUpdater
         )
         // When
         await vm.handle(.unlockReports)
@@ -222,6 +231,7 @@ final class SettingsViewModelNewTests: XCTestCase {
         XCTAssertEqual(repo.lastSavedTelegram?.chatId, "123")
         XCTAssertEqual(repo.lastSavedTelegram?.botId, "777")
         XCTAssertEqual(vm.state.telegramStatus, "Сохранено!")
+        XCTAssertEqual(tgUpdater.appliedToken, "newTok")
     }
 
     func testExportToICloud_SuccessSetsResult() async {
@@ -236,9 +246,5 @@ final class SettingsViewModelNewTests: XCTestCase {
         // enable
         vm.setAutoSendEnabled(true)
         XCTAssertTrue(autosend.autoSendEnabled)
-        // change time
-        let newDate = Date().addingTimeInterval(3600)
-        vm.setAutoSendTime(newDate)
-        XCTAssertEqual(autosend.autoSendTime.timeIntervalSince1970, newDate.timeIntervalSince1970, accuracy: 1)
     }
 }

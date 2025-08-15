@@ -22,7 +22,6 @@ struct SettingsState {
 
     // MARK: - AutoSend
     var autoSendEnabled: Bool = false
-    var autoSendTime: Date = Date()
     var lastAutoSendStatus: String? = nil
 
     // MARK: - Notifications UI State
