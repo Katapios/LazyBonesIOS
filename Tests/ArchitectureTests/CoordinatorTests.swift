@@ -1,6 +1,7 @@
 import XCTest
 @testable import LazyBones
 
+@MainActor
 class CoordinatorTests: XCTestCase {
     
     var coordinator: TestCoordinator!

@@ -5,7 +5,7 @@ import XCTest
 class CreateReportUseCaseTests: XCTestCase {
     
     var useCase: CreateReportUseCase!
-    var mockRepository: MockPostRepository!
+    fileprivate var mockRepository: MockPostRepository!
     
     override func setUp() {
         super.setUp()
@@ -124,7 +124,7 @@ class CreateReportUseCaseTests: XCTestCase {
 
 // MARK: - Mock Repository
 
-class MockPostRepository: PostRepositoryProtocol {
+fileprivate final class MockPostRepository: PostRepositoryProtocol {
     var saveCalled = false
     var savedPost: DomainPost?
     var shouldThrowError = false

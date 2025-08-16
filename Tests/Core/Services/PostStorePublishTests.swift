@@ -102,6 +102,7 @@ final class PostStorePublishTests: XCTestCase {
         func saveAutoSendSettings() {}
         func scheduleAutoSendIfNeeded() {}
         func performAutoSendReport() {}
+        func performAutoSendReport(completion: (() -> Void)?) { completion?() }
         func autoSendAllReportsForToday(completion: (() -> Void)? = nil) { completion?() }
     }
 

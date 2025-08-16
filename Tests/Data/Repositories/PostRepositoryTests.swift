@@ -5,11 +5,11 @@ import XCTest
 class PostRepositoryTests: XCTestCase {
     
     var repository: PostRepository!
-    var mockDataSource: MockPostDataSource!
+    var mockDataSource: PRT_MockPostDataSource!
     
     override func setUp() {
         super.setUp()
-        mockDataSource = MockPostDataSource()
+        mockDataSource = PRT_MockPostDataSource()
         repository = PostRepository(dataSource: mockDataSource)
     }
     
@@ -95,7 +95,7 @@ class PostRepositoryTests: XCTestCase {
 }
 
 // MARK: - Mock Data Source
-class MockPostDataSource: PostDataSourceProtocol {
+class PRT_MockPostDataSource: PostDataSourceProtocol {
     var mockPosts: [Post] = []
     var saveCallCount = 0
     var loadCallCount = 0

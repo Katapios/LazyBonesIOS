@@ -11,8 +11,8 @@ class ICloudIntegrationTests: XCTestCase {
     override func setUp() {
         super.setUp()
         
-        // Создаем новый контейнер для тестов
-        dependencyContainer = DependencyContainer()
+        // Используем shared контейнер
+        dependencyContainer = DependencyContainer.shared
         
         // Регистрируем моки вместо реальных сервисов
         registerMockServices()
@@ -104,7 +104,11 @@ class ICloudIntegrationTests: XCTestCase {
             )
             XCTFail("Expected error to be thrown")
         } catch {
-            XCTAssertEqual(error as? ExportReportsError, .noReportsToExport)
+            if case .some(.noReportsToExport) = (error as? ExportReportsError) {
+                // ok
+            } else {
+                XCTFail("Expected ExportReportsError.noReportsToExport, got: \(error)")
+            }
         }
     }
     
@@ -123,7 +127,11 @@ class ICloudIntegrationTests: XCTestCase {
             )
             XCTFail("Expected error to be thrown")
         } catch {
-            XCTAssertEqual(error as? ImportICloudReportsError, .noReportsFound)
+            if case .some(.noReportsFound) = (error as? ImportICloudReportsError) {
+                // ok
+            } else {
+                XCTFail("Expected ImportICloudReportsError.noReportsFound, got: \(error)")
+            }
         }
     }
     
@@ -165,16 +173,12 @@ class ICloudIntegrationTests: XCTestCase {
             return MockReportFormatter()
         })
         
-        dependencyContainer.register(ICloudReportRepositoryProtocol.self, factory: {
-            let fileManager = self.dependencyContainer.resolve(MockICloudFileManager.self)!
-            let formatter = self.dependencyContainer.resolve(ReportFormatterProtocol.self)!
-            return MockICloudReportRepository(fileManager: fileManager, reportFormatter: formatter)
-        })
+        let mockRepo = MockICloudReportRepository()
+        dependencyContainer.register(ICloudReportRepositoryProtocol.self, instance: mockRepo)
         
-        dependencyContainer.register(PostRepositoryProtocol.self, factory: {
-            let dataSource = MockPostDataSource()
-            return MockPostRepository(dataSource: dataSource)
-        })
+        let mockDataSource = ICloud_MockPostDataSource()
+        let mockPostRepository = MockPostRepository(dataSource: mockDataSource)
+        dependencyContainer.register(PostRepositoryProtocol.self, instance: mockPostRepository)
         
         dependencyContainer.register(ExportReportsUseCase.self, factory: {
             let postRepository = self.dependencyContainer.resolve(PostRepositoryProtocol.self)!
@@ -245,12 +249,23 @@ class MockReportFormatter: ReportFormatterProtocol {
             throw ImportICloudReportsError.noReportsFound
         }
         
+        let now = Date()
         return [
             DomainICloudReport(
+                date: now,
                 deviceName: "Test Device",
-                deviceIdentifier: "test-id",
-                reportContent: content,
-                reportType: .regular
+                deviceIdentifier: "test-id-1",
+                reportContent: "Report 1",
+                reportType: .regular,
+                timestamp: now
+            ),
+            DomainICloudReport(
+                date: now.addingTimeInterval(-60),
+                deviceName: "Test Device",
+                deviceIdentifier: "test-id-2",
+                reportContent: "Report 2",
+                reportType: .custom,
+                timestamp: now.addingTimeInterval(-60)
             )
         ]
     }
@@ -264,7 +279,7 @@ class MockReportFormatter: ReportFormatterProtocol {
     }
 }
 
-class MockPostDataSource: PostDataSourceProtocol {
+class ICloud_MockPostDataSource: PostDataSourceProtocol {
     private var posts: [Post] = []
     
     func save(_ posts: [Post]) async throws {
@@ -280,7 +295,7 @@ class MockPostDataSource: PostDataSourceProtocol {
     }
 }
 
-class MockPostRepository: PostRepositoryProtocol {
+fileprivate final class MockPostRepository: PostRepositoryProtocol {
     private let dataSource: PostDataSourceProtocol
     
     init(dataSource: PostDataSourceProtocol) {

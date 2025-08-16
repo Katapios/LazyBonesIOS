@@ -72,7 +72,11 @@ class ICloudServiceTests: XCTestCase {
             )
             XCTFail("Expected error to be thrown")
         } catch {
-            XCTAssertEqual(error as? ExportReportsError, .noReportsToExport)
+            if case .some(.noReportsToExport) = (error as? ExportReportsError) {
+                // ok
+            } else {
+                XCTFail("Expected ExportReportsError.noReportsToExport, got: \(error)")
+            }
         }
     }
     
@@ -123,7 +127,11 @@ class ICloudServiceTests: XCTestCase {
             )
             XCTFail("Expected error to be thrown")
         } catch {
-            XCTAssertEqual(error as? ImportICloudReportsError, .fileNotFound)
+            if case .some(.fileNotFound) = (error as? ImportICloudReportsError) {
+                // ok
+            } else {
+                XCTFail("Expected ImportICloudReportsError.fileNotFound, got: \(error)")
+            }
         }
     }
     
@@ -233,4 +241,10 @@ class MockICloudReportRepository: ICloudReportRepositoryProtocol {
     func getFileSize() async -> Int64? {
         return mockFileSize
     }
-} 
+    
+    // MARK: - Missing protocol requirements
+    func getFileLocationInfo() -> String { "Mock iCloud file location" }
+    func requestICloudAccess() async -> Bool { true }
+    func requestFileAccessPermissions() async -> Bool { true }
+    func createTestFileInAccessibleLocation() async -> Bool { true }
+}

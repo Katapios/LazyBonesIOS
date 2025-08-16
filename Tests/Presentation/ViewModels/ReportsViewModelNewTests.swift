@@ -4,34 +4,37 @@ import XCTest
 @MainActor
 final class ReportsViewModelNewTests: XCTestCase {
     
-    var viewModel: ReportsViewModelNew!
-    var mockGetReportsUseCase: MockGetReportsUseCase!
-    var mockDeleteReportUseCase: MockDeleteReportUseCase!
-    var mockUpdateReportUseCase: MockUpdateReportUseCase!
-    var mockTagRepository: MockTagRepository!
+    fileprivate var viewModel: ReportsViewModelNew!
+    fileprivate var repo: ReportsVMN_PostRepositoryMock!
+    fileprivate var getReportsUseCase: GetReportsUseCase!
+    fileprivate var deleteReportUseCase: DeleteReportUseCase!
+    fileprivate var updateReportUseCase: UpdateReportUseCase!
+    fileprivate var mockTagRepository: MockTagRepository!
     
     override func setUp() {
         super.setUp()
         
-        mockGetReportsUseCase = MockGetReportsUseCase()
-        mockDeleteReportUseCase = MockDeleteReportUseCase()
-        mockUpdateReportUseCase = MockUpdateReportUseCase()
+        repo = ReportsVMN_PostRepositoryMock()
+        getReportsUseCase = GetReportsUseCase(postRepository: repo)
+        deleteReportUseCase = DeleteReportUseCase(postRepository: repo)
+        updateReportUseCase = UpdateReportUseCase(postRepository: repo)
         mockTagRepository = MockTagRepository()
-        
+
         viewModel = ReportsViewModelNew(
-            getReportsUseCase: mockGetReportsUseCase,
-            deleteReportUseCase: mockDeleteReportUseCase,
-            updateReportUseCase: mockUpdateReportUseCase,
+            getReportsUseCase: getReportsUseCase,
+            deleteReportUseCase: deleteReportUseCase,
+            updateReportUseCase: updateReportUseCase,
             tagRepository: mockTagRepository
         )
     }
     
     override func tearDown() {
         viewModel = nil
-        mockGetReportsUseCase = nil
-        mockDeleteReportUseCase = nil
-        mockUpdateReportUseCase = nil
+        getReportsUseCase = nil
+        deleteReportUseCase = nil
+        updateReportUseCase = nil
         mockTagRepository = nil
+        repo = nil
         super.tearDown()
     }
     
@@ -39,13 +42,18 @@ final class ReportsViewModelNewTests: XCTestCase {
     
     func testLoadReports_Success() async {
         // Given
-        let regularReports = [DomainPost.mockRegular(), DomainPost.mockRegular()]
-        let customReports = [DomainPost.mockCustom()]
-        let externalReports = [DomainPost.mockExternal()]
-        
-        mockGetReportsUseCase.mockRegularReports = regularReports
-        mockGetReportsUseCase.mockCustomReports = customReports
-        mockGetReportsUseCase.mockExternalReports = externalReports
+        let regularReports = [
+            DomainPost(date: Date(), goodItems: ["A"], badItems: [], published: true, voiceNotes: [], type: .regular),
+            DomainPost(date: Date(), goodItems: ["B"], badItems: [], published: true, voiceNotes: [], type: .regular)
+        ]
+        let customReports = [
+            DomainPost(date: Date(), goodItems: ["C"], badItems: [], published: true, voiceNotes: [], type: .custom)
+        ]
+        let externalReports = [
+            DomainPost(date: Date(), goodItems: [], badItems: ["D"], published: true, voiceNotes: [], type: .external, isExternal: true)
+        ]
+        repo.shouldThrowError = false
+        repo.stubPosts = regularReports + customReports + externalReports
         
         // When
         await viewModel.handle(.loadReports)
@@ -61,8 +69,8 @@ final class ReportsViewModelNewTests: XCTestCase {
     func testLoadReports_Error() async {
         // Given
         let error = NSError(domain: "Test", code: 1, userInfo: nil)
-        mockGetReportsUseCase.shouldThrowError = true
-        mockGetReportsUseCase.mockError = error
+        repo.shouldThrowError = true
+        repo.mockError = error
         
         // When
         await viewModel.handle(.loadReports)
@@ -108,7 +116,10 @@ final class ReportsViewModelNewTests: XCTestCase {
     
     func testSelectAllRegularReports() async {
         // Given
-        let regularReports = [DomainPost.mockRegular(), DomainPost.mockRegular()]
+        let regularReports = [
+            DomainPost(date: Date(), goodItems: ["A"], badItems: [], published: true, voiceNotes: [], type: .regular),
+            DomainPost(date: Date(), goodItems: ["B"], badItems: [], published: true, voiceNotes: [], type: .regular)
+        ]
         viewModel.state.regularReports = regularReports
         viewModel.state.isSelectionMode = true
         
@@ -123,7 +134,10 @@ final class ReportsViewModelNewTests: XCTestCase {
     
     func testSelectAllCustomReports() async {
         // Given
-        let customReports = [DomainPost.mockCustom(), DomainPost.mockCustom()]
+        let customReports = [
+            DomainPost(date: Date(), goodItems: ["C1"], badItems: [], published: true, voiceNotes: [], type: .custom),
+            DomainPost(date: Date(), goodItems: ["C2"], badItems: [], published: true, voiceNotes: [], type: .custom)
+        ]
         viewModel.state.customReports = customReports
         viewModel.state.isSelectionMode = true
         
@@ -140,8 +154,8 @@ final class ReportsViewModelNewTests: XCTestCase {
     
     func testDeleteSelectedReports() async {
         // Given
-        let regularReport = DomainPost.mockRegular()
-        let customReport = DomainPost.mockCustom()
+        let regularReport = DomainPost(date: Date(), goodItems: ["A"], badItems: [], published: true, voiceNotes: [], type: .regular)
+        let customReport = DomainPost(date: Date(), goodItems: ["C"], badItems: [], published: true, voiceNotes: [], type: .custom)
         viewModel.state.regularReports = [regularReport]
         viewModel.state.customReports = [customReport]
         viewModel.state.selectedLocalReportIDs = [regularReport.id, customReport.id]
@@ -162,7 +176,7 @@ final class ReportsViewModelNewTests: XCTestCase {
     
     func testStartEvaluation() async {
         // Given
-        let report = DomainPost.mockRegular()
+        let report = DomainPost(date: Date(), goodItems: ["A"], badItems: [], published: true, voiceNotes: [], type: .regular)
         
         // When
         await viewModel.handle(.startEvaluation(report))
@@ -174,7 +188,7 @@ final class ReportsViewModelNewTests: XCTestCase {
     
     func testCompleteEvaluation() async {
         // Given
-        let report = DomainPost.mockRegular()
+        let report = DomainPost(date: Date(), goodItems: ["A"], badItems: [], published: true, voiceNotes: [], type: .regular)
         viewModel.state.evaluatingPost = report
         viewModel.state.regularReports = [report]
         let results = [true, false, true]
@@ -205,8 +219,8 @@ final class ReportsViewModelNewTests: XCTestCase {
     
     func testComputedProperties() {
         // Given
-        let regularReport = DomainPost.mockRegular()
-        let customReport = DomainPost.mockCustom()
+        let regularReport = DomainPost(date: Date(), goodItems: ["A"], badItems: [], published: true, voiceNotes: [], type: .regular)
+        let customReport = DomainPost(date: Date(), goodItems: ["C"], badItems: [], published: true, voiceNotes: [], type: .custom)
         viewModel.state.regularReports = [regularReport]
         viewModel.state.customReports = [customReport]
         viewModel.state.selectedLocalReportIDs = [regularReport.id]
@@ -222,7 +236,7 @@ final class ReportsViewModelNewTests: XCTestCase {
     
     func testCanDeleteReports() {
         // Given
-        let report = DomainPost.mockRegular()
+        let report = DomainPost(date: Date(), goodItems: ["A"], badItems: [], published: true, voiceNotes: [], type: .regular)
         viewModel.state.regularReports = [report]
         viewModel.state.selectedLocalReportIDs = [report.id]
         
@@ -243,9 +257,9 @@ final class ReportsViewModelNewTests: XCTestCase {
     
     func testCanEvaluateReport() {
         // Given
-        let todayReport = DomainPost.mockRegular()
-        let oldReport = DomainPost.mockRegular()
-        oldReport.date = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
+        let todayReport = DomainPost(date: Date(), goodItems: [], badItems: [], published: true, voiceNotes: [], type: .regular)
+        let oldDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
+        let oldReport = DomainPost(date: oldDate, goodItems: [], badItems: [], published: true, voiceNotes: [], type: .regular)
         
         // When & Then
         XCTAssertTrue(viewModel.canEvaluateReport(todayReport))
@@ -260,7 +274,7 @@ final class ReportsViewModelNewTests: XCTestCase {
     
     func testIsReportEvaluated() {
         // Given
-        let evaluatedReport = DomainPost.mockRegular()
+        var evaluatedReport = DomainPost(date: Date(), goodItems: [], badItems: [], published: true, voiceNotes: [], type: .regular)
         evaluatedReport.isEvaluated = true
         
         // When - reevaluation disabled
@@ -279,53 +293,50 @@ final class ReportsViewModelNewTests: XCTestCase {
 
 // MARK: - Mock Objects
 
-class MockGetReportsUseCase: GetReportsUseCase {
-    var mockRegularReports: [DomainPost] = []
-    var mockCustomReports: [DomainPost] = []
-    var mockExternalReports: [DomainPost] = []
+fileprivate final class ReportsVMN_PostRepositoryMock: PostRepositoryProtocol {
+    var stubPosts: [DomainPost] = []
     var shouldThrowError = false
-    var mockError: Error?
-    
-    override func execute(input: GetReportsInput) async throws -> [DomainPost] {
-        if shouldThrowError {
-            throw mockError ?? NSError(domain: "Test", code: 1, userInfo: nil)
+    var mockError: Error? = nil
+
+    func save(_ post: DomainPost) async throws {
+        if shouldThrowError { throw mockError ?? NSError(domain: "Test", code: 1) }
+        if let idx = stubPosts.firstIndex(where: { $0.id == post.id }) {
+            stubPosts[idx] = post
+        } else {
+            stubPosts.append(post)
         }
-        
-        switch input.type {
-        case .regular:
-            return mockRegularReports
-        case .custom:
-            return mockCustomReports
-        case nil:
-            return mockExternalReports
+    }
+
+    func fetch() async throws -> [DomainPost] {
+        if shouldThrowError { throw mockError ?? NSError(domain: "Test", code: 1) }
+        return stubPosts
+    }
+
+    func fetch(for date: Date) async throws -> [DomainPost] {
+        if shouldThrowError { throw mockError ?? NSError(domain: "Test", code: 1) }
+        let cal = Calendar.current
+        return stubPosts.filter { cal.isDate($0.date, inSameDayAs: date) }
+    }
+
+    func update(_ post: DomainPost) async throws {
+        if shouldThrowError { throw mockError ?? NSError(domain: "Test", code: 1) }
+        if let idx = stubPosts.firstIndex(where: { $0.id == post.id }) {
+            stubPosts[idx] = post
         }
+    }
+
+    func delete(_ post: DomainPost) async throws {
+        if shouldThrowError { throw mockError ?? NSError(domain: "Test", code: 1) }
+        stubPosts.removeAll { $0.id == post.id }
+    }
+
+    func clear() async throws {
+        if shouldThrowError { throw mockError ?? NSError(domain: "Test", code: 1) }
+        stubPosts.removeAll()
     }
 }
 
-class MockDeleteReportUseCase: DeleteReportUseCase {
-    var shouldThrowError = false
-    var mockError: Error?
-    
-    override func execute(input: DeleteReportInput) async throws {
-        if shouldThrowError {
-            throw mockError ?? NSError(domain: "Test", code: 1, userInfo: nil)
-        }
-    }
-}
-
-class MockUpdateReportUseCase: UpdateReportUseCase {
-    var shouldThrowError = false
-    var mockError: Error?
-    
-    override func execute(input: UpdateReportInput) async throws -> DomainPost {
-        if shouldThrowError {
-            throw mockError ?? NSError(domain: "Test", code: 1, userInfo: nil)
-        }
-        return input.report
-    }
-}
-
-class MockTagRepository: TagRepositoryProtocol {
+fileprivate final class MockTagRepository: TagRepositoryProtocol {
     var mockGoodTags: [String] = ["Good1", "Good2"]
     var mockBadTags: [String] = ["Bad1", "Bad2"]
     var shouldThrowError = false

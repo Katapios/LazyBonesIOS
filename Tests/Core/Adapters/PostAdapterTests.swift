@@ -13,10 +13,12 @@ final class PostAdapterTests: XCTestCase {
             badItems: ["Плохое дело 1"],
             published: true,
             voiceNotes: [
-                VoiceNote(id: UUID(), path: "/path/to/voice1.m4a", duration: 30.0),
-                VoiceNote(id: UUID(), path: "/path/to/voice2.m4a", duration: 45.0)
+                VoiceNote(id: UUID(), path: "/path/to/voice1.m4a"),
+                VoiceNote(id: UUID(), path: "/path/to/voice2.m4a")
             ],
             type: .regular,
+            isEvaluated: true,
+            evaluationResults: [true, false, true],
             authorUsername: "testuser",
             authorFirstName: "Test",
             authorLastName: "User",
@@ -24,9 +26,7 @@ final class PostAdapterTests: XCTestCase {
             externalVoiceNoteURLs: nil,
             externalText: nil,
             externalMessageId: nil,
-            authorId: 12345,
-            isEvaluated: true,
-            evaluationResults: [true, false, true]
+            authorId: 12345
         )
     }
     
@@ -51,6 +51,8 @@ final class PostAdapterTests: XCTestCase {
             published: true,
             voiceNotes: [domainVoiceNote1, domainVoiceNote2],
             type: .regular,
+            isEvaluated: true,
+            evaluationResults: [true, false, true],
             authorUsername: "testuser",
             authorFirstName: "Test",
             authorLastName: "User",
@@ -58,9 +60,7 @@ final class PostAdapterTests: XCTestCase {
             externalVoiceNoteURLs: nil,
             externalText: nil,
             externalMessageId: nil,
-            authorId: 12345,
-            isEvaluated: true,
-            evaluationResults: [true, false, true]
+            authorId: 12345
         )
     }
     
@@ -93,7 +93,6 @@ final class PostAdapterTests: XCTestCase {
         for (index, voiceNote) in domainPost.voiceNotes.enumerated() {
             XCTAssertEqual(voiceNote.id, post.voiceNotes[index].id)
             XCTAssertEqual(voiceNote.url.path, post.voiceNotes[index].path)
-            XCTAssertEqual(voiceNote.duration, post.voiceNotes[index].duration)
         }
     }
     
@@ -141,7 +140,6 @@ final class PostAdapterTests: XCTestCase {
         for (index, voiceNote) in post.voiceNotes.enumerated() {
             XCTAssertEqual(voiceNote.id, domainPost.voiceNotes[index].id)
             XCTAssertEqual(voiceNote.path, domainPost.voiceNotes[index].url.path)
-            XCTAssertEqual(voiceNote.duration, domainPost.voiceNotes[index].duration)
         }
     }
     

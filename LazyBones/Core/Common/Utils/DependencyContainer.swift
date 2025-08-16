@@ -267,6 +267,49 @@ extension DependencyContainer {
 
         Logger.info("Core services registered successfully", log: Logger.general)
     }
+
+    /// Регистрация вспомогательных адаптеров для Presentation слоя
+    func registerPresentationAdapters() {
+        // Разрешатель TelegramService без прямого доступа к DI из Presentation
+        register(TelegramServiceResolverProtocol.self, factory: {
+            TelegramServiceResolver()
+        })
+        // Адаптер синхронизации легаси UI (PostStore)
+        register(LegacyUISyncProtocol.self, factory: {
+            LegacyUISyncAdapter()
+        })
+        // SettingsViewModel фабрика (единая точка создания VM для Settings экранов)
+        register(SettingsViewModelNew.self, factory: {
+            let settingsRepository = self.resolve(SettingsRepositoryProtocol.self)!
+            let notificationManager = self.resolve(NotificationManagerServiceType.self)!
+            let postRepository = self.resolve(PostRepositoryProtocol.self)!
+            let timerService = self.resolve(PostTimerServiceProtocol.self)!
+            let statusManager: any ReportStatusManagerProtocol = ReportStatusManager(
+                localService: LocalReportService.shared,
+                timerService: timerService,
+                notificationService: self.resolve(PostNotificationServiceProtocol.self)!,
+                postsProvider: self.resolve(PostsProviderProtocol.self)!,
+                factory: ReportStatusFactory()
+            )
+            let iCloudService = self.resolve(ICloudServiceProtocol.self)!
+            let autoSendService = self.resolve(AutoSendServiceType.self)!
+            let telegramConfigUpdater = self.resolve(TelegramConfigUpdaterProtocol.self)!
+            let telegramResolver = self.resolve(TelegramServiceResolverProtocol.self)!
+            let legacyUISync = self.resolve(LegacyUISyncProtocol.self)!
+            return SettingsViewModelNew(
+                settingsRepository: settingsRepository,
+                notificationManager: notificationManager,
+                postRepository: postRepository,
+                timerService: timerService,
+                statusManager: statusManager,
+                iCloudService: iCloudService,
+                autoSendService: autoSendService,
+                telegramConfigUpdater: telegramConfigUpdater,
+                telegramResolver: telegramResolver,
+                legacyUISync: legacyUISync
+            )
+        })
+    }
     
     /// Зарегистрировать Telegram сервис
     func registerTelegramService(token: String) {

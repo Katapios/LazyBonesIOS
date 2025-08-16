@@ -9,17 +9,18 @@ class CustomReportsViewModelTests: XCTestCase {
     var mockGetUseCase: GetReportsUseCase!
     var mockDeleteUseCase: DeleteReportUseCase!
     var mockUpdateReportUseCase: UpdateReportUseCase!
+    fileprivate var mockRepository: MockPostRepository!
 
     override func setUp() {
         super.setUp()
         // Создаем реальные Use Cases с мок репозиториями
-        let mockPostRepository = MockPostRepository()
-        let mockSettingsRepository = MockSettingsRepository()
+        mockRepository = MockPostRepository()
+        _ = MockSettingsRepository()
 
-        mockCreateUseCase = CreateReportUseCase(postRepository: mockPostRepository)
-        mockGetUseCase = GetReportsUseCase(postRepository: mockPostRepository)
-        mockDeleteUseCase = DeleteReportUseCase(postRepository: mockPostRepository)
-        mockUpdateReportUseCase = UpdateReportUseCase(postRepository: mockPostRepository)
+        mockCreateUseCase = CreateReportUseCase(postRepository: mockRepository)
+        mockGetUseCase = GetReportsUseCase(postRepository: mockRepository)
+        mockDeleteUseCase = DeleteReportUseCase(postRepository: mockRepository)
+        mockUpdateReportUseCase = UpdateReportUseCase(postRepository: mockRepository)
 
         viewModel = CustomReportsViewModel(
             createReportUseCase: mockCreateUseCase,
@@ -42,10 +43,9 @@ class CustomReportsViewModelTests: XCTestCase {
 
     func testLoadReports_Success() async {
         // Given
-        let mockRepository = mockGetUseCase.postRepository as! MockPostRepository
         let expectedReports = [
-            DomainPost(type: .custom, goodItems: ["Пункт 1", "Пункт 2"], badItems: []),
-            DomainPost(type: .custom, goodItems: ["Пункт 3"], badItems: ["Пропустил"])
+            DomainPost(goodItems: ["Пункт 1", "Пункт 2"], badItems: [], type: .custom),
+            DomainPost(goodItems: ["Пункт 3"], badItems: ["Пропустил"], type: .custom)
         ]
         mockRepository.posts = expectedReports
 
@@ -61,7 +61,6 @@ class CustomReportsViewModelTests: XCTestCase {
 
     func testLoadReports_Error() async {
         // Given
-        let mockRepository = mockGetUseCase.postRepository as! MockPostRepository
         mockRepository.shouldThrowError = true
 
         // When
@@ -96,7 +95,7 @@ class CustomReportsViewModelTests: XCTestCase {
 
     func testEvaluateReport_Success() async {
         // Given
-        let report = DomainPost(type: .custom, goodItems: ["Пункт 1", "Пункт 2"], badItems: [])
+        let report = DomainPost(goodItems: ["Пункт 1", "Пункт 2"], badItems: [], type: .custom)
         let results = [true, false]
         
         // Добавляем отчет в состояние
@@ -116,9 +115,9 @@ class CustomReportsViewModelTests: XCTestCase {
     func testReEvaluateReport_Success() async {
         // Given
         let report = DomainPost(
-            type: .custom, 
-            goodItems: ["Пункт 1", "Пункт 2"], 
+            goodItems: ["Пункт 1", "Пункт 2"],
             badItems: [],
+            type: .custom,
             isEvaluated: true,
             evaluationResults: [true, true]
         )
@@ -142,7 +141,7 @@ class CustomReportsViewModelTests: XCTestCase {
 
     func testDeleteReport_Success() async {
         // Given
-        let report = DomainPost(type: .custom, goodItems: ["Пункт 1"], badItems: [])
+        let report = DomainPost(goodItems: ["Пункт 1"], badItems: [], type: .custom)
         viewModel.state.reports = [report]
 
         // When
@@ -195,8 +194,8 @@ class CustomReportsViewModelTests: XCTestCase {
     func testSelectAllReports() async {
         // Given
         let reports = [
-            DomainPost(type: .custom, goodItems: ["Пункт 1"], badItems: []),
-            DomainPost(type: .custom, goodItems: ["Пункт 2"], badItems: [])
+            DomainPost(goodItems: ["Пункт 1"], badItems: [], type: .custom),
+            DomainPost(goodItems: ["Пункт 2"], badItems: [], type: .custom)
         ]
         viewModel.state.reports = reports
         viewModel.state.isSelectionMode = true
@@ -212,8 +211,8 @@ class CustomReportsViewModelTests: XCTestCase {
     func testDeselectAllReports() async {
         // Given
         let reports = [
-            DomainPost(type: .custom, goodItems: ["Пункт 1"], badItems: []),
-            DomainPost(type: .custom, goodItems: ["Пункт 2"], badItems: [])
+            DomainPost(goodItems: ["Пункт 1"], badItems: [], type: .custom),
+            DomainPost(goodItems: ["Пункт 2"], badItems: [], type: .custom)
         ]
         viewModel.state.reports = reports
         viewModel.state.isSelectionMode = true
@@ -229,8 +228,8 @@ class CustomReportsViewModelTests: XCTestCase {
     func testDeleteSelectedReports() async {
         // Given
         let reports = [
-            DomainPost(type: .custom, goodItems: ["Пункт 1"], badItems: []),
-            DomainPost(type: .custom, goodItems: ["Пункт 2"], badItems: [])
+            DomainPost(goodItems: ["Пункт 1"], badItems: [], type: .custom),
+            DomainPost(goodItems: ["Пункт 2"], badItems: [], type: .custom)
         ]
         viewModel.state.reports = reports
         viewModel.state.isSelectionMode = true
@@ -252,9 +251,9 @@ class CustomReportsViewModelTests: XCTestCase {
         let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
         let oldReport = DomainPost(
             date: yesterday,
-            type: .custom,
             goodItems: ["Старый пункт"],
             badItems: [],
+            type: .custom,
             isEvaluated: true
         )
         viewModel.state.reports = [oldReport]
@@ -272,9 +271,9 @@ class CustomReportsViewModelTests: XCTestCase {
         let today = Calendar.current.startOfDay(for: Date())
         let activeReport = DomainPost(
             date: today,
-            type: .custom,
             goodItems: ["Активный пункт"],
             badItems: [],
+            type: .custom,
             isEvaluated: false
         )
         viewModel.state.reports = [activeReport]
@@ -292,9 +291,9 @@ class CustomReportsViewModelTests: XCTestCase {
         let today = Calendar.current.startOfDay(for: Date())
         let unevaluatedReport = DomainPost(
             date: today,
-            type: .custom,
             goodItems: ["Неоцененный пункт"],
             badItems: [],
+            type: .custom,
             isEvaluated: false
         )
         viewModel.state.reports = [unevaluatedReport]
@@ -312,9 +311,9 @@ class CustomReportsViewModelTests: XCTestCase {
         let today = Calendar.current.startOfDay(for: Date())
         let evaluatedReport = DomainPost(
             date: today,
-            type: .custom,
             goodItems: ["Оцененный пункт"],
             badItems: [],
+            type: .custom,
             isEvaluated: true,
             evaluationResults: [true]
         )
@@ -337,23 +336,23 @@ class CustomReportsViewModelTests: XCTestCase {
         
         let todayUnevaluated = DomainPost(
             date: today,
-            type: .custom,
             goodItems: ["Сегодня неоцененный"],
             badItems: [],
+            type: .custom,
             isEvaluated: false
         )
         let todayEvaluated = DomainPost(
             date: today,
-            type: .custom,
             goodItems: ["Сегодня оцененный"],
             badItems: [],
+            type: .custom,
             isEvaluated: true
         )
         let yesterdayUnevaluated = DomainPost(
             date: yesterday,
-            type: .custom,
             goodItems: ["Вчера неоцененный"],
             badItems: [],
+            type: .custom,
             isEvaluated: false
         )
         
@@ -370,16 +369,16 @@ class CustomReportsViewModelTests: XCTestCase {
     func testEvaluatedReports() {
         // Given
         let evaluatedReport = DomainPost(
-            type: .custom,
             goodItems: ["Оцененный"],
             badItems: [],
+            type: .custom,
             isEvaluated: true,
             evaluationResults: [true]
         )
         let unevaluatedReport = DomainPost(
-            type: .custom,
             goodItems: ["Неоцененный"],
             badItems: [],
+            type: .custom,
             isEvaluated: false
         )
         
@@ -407,7 +406,7 @@ class CustomReportsViewModelTests: XCTestCase {
 
 // MARK: - Mock Classes
 
-class MockPostRepository: PostRepositoryProtocol {
+fileprivate final class MockPostRepository: PostRepositoryProtocol {
     var posts: [DomainPost] = []
     var shouldThrowError = false
 
@@ -461,7 +460,7 @@ class MockPostRepository: PostRepositoryProtocol {
     }
 }
 
-class MockSettingsRepository: SettingsRepositoryProtocol {
+fileprivate final class MockSettingsRepository: SettingsRepositoryProtocol {
     var shouldThrowError = false
     private var settings: [String: Any] = [:]
 
@@ -476,7 +475,7 @@ class MockSettingsRepository: SettingsRepositoryProtocol {
         if shouldThrowError {
             throw NSError(domain: "test", code: 1)
         }
-        return settings["notification"] as? (Bool, NotificationMode, Int, Int, Int) ?? (false, .daily, 8, 8, 22)
+        return settings["notification"] as? (Bool, NotificationMode, Int, Int, Int) ?? (false, .hourly, 8, 8, 22)
     }
 
     func saveTelegramSettings(token: String?, chatId: String?, botId: String?) async throws {

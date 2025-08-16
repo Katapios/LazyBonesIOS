@@ -5,8 +5,8 @@ import XCTest
 class ReportListViewModelTests: XCTestCase {
     
     var viewModel: ReportListViewModel!
-    var mockGetReportsUseCase: MockGetReportsUseCase!
-    var mockDeleteReportUseCase: MockDeleteReportUseCase!
+    fileprivate var mockGetReportsUseCase: MockGetReportsUseCase!
+    fileprivate var mockDeleteReportUseCase: MockDeleteReportUseCase!
     
     override func setUp() {
         super.setUp()
@@ -41,7 +41,7 @@ class ReportListViewModelTests: XCTestCase {
             DomainPost(id: UUID(), date: Date(), goodItems: ["Кодил"], badItems: [], published: true, voiceNotes: [], type: .regular),
             DomainPost(id: UUID(), date: Date(), goodItems: [], badItems: ["Не спал"], published: true, voiceNotes: [], type: .custom)
         ]
-        mockGetReportsUseCase.mockResult = .success(mockReports)
+        mockGetReportsUseCase.mockResult = Result<[DomainPost], GetReportsError>.success(mockReports)
         
         // When
         await viewModel.load()
@@ -55,7 +55,7 @@ class ReportListViewModelTests: XCTestCase {
     func testLoadReports_Error() async {
         // Given
         let mockError = GetReportsError.repositoryError(NSError(domain: "test", code: 1))
-        mockGetReportsUseCase.mockResult = .failure(mockError)
+        mockGetReportsUseCase.mockResult = Result<[DomainPost], GetReportsError>.failure(mockError)
         
         // When
         await viewModel.load()
@@ -69,46 +69,46 @@ class ReportListViewModelTests: XCTestCase {
     func testHandleLoadReports() async {
         // Given
         let mockReports = [DomainPost(id: UUID(), date: Date(), goodItems: ["Кодил"], badItems: [], published: true, voiceNotes: [], type: .regular)]
-        mockGetReportsUseCase.mockResult = .success(mockReports)
+        mockGetReportsUseCase.mockResult = Result<[DomainPost], GetReportsError>.success(mockReports)
         
         // When
-        viewModel.handle(.loadReports)
+        await viewModel.handle(.loadReports)
         
         // Wait for async operation
-        await Task.sleep(100_000_000) // 0.1 seconds
+        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
         
         // Then
         XCTAssertEqual(viewModel.state.reports.count, 1)
     }
     
-    func testHandleSelectDate() {
+    func testHandleSelectDate() async {
         // Given
         let newDate = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
         
         // When
-        viewModel.handle(.selectDate(newDate))
+        await viewModel.handle(.selectDate(newDate))
         
         // Then
         XCTAssertEqual(viewModel.state.selectedDate, newDate)
     }
     
-    func testHandleFilterByType() {
+    func testHandleFilterByType() async {
         // Given
         let filterType = PostType.custom
         
         // When
-        viewModel.handle(.filterByType(filterType))
+        await viewModel.handle(.filterByType(filterType))
         
         // Then
         XCTAssertEqual(viewModel.state.filterType, filterType)
     }
     
-    func testHandleToggleExternalReports() {
+    func testHandleToggleExternalReports() async {
         // Given
         XCTAssertTrue(viewModel.state.showExternalReports)
         
         // When
-        viewModel.handle(.toggleExternalReports)
+        await viewModel.handle(.toggleExternalReports)
         
         // Then
         XCTAssertFalse(viewModel.state.showExternalReports)
@@ -117,7 +117,7 @@ class ReportListViewModelTests: XCTestCase {
 
 // MARK: - Mock Use Cases
 
-class MockGetReportsUseCase: GetReportsUseCaseProtocol {
+fileprivate final class MockGetReportsUseCase: GetReportsUseCaseProtocol {
     var mockResult: Result<[DomainPost], GetReportsError> = .success([])
     
     func execute(input: GetReportsInput) async throws -> [DomainPost] {
@@ -130,7 +130,7 @@ class MockGetReportsUseCase: GetReportsUseCaseProtocol {
     }
 }
 
-class MockDeleteReportUseCase: DeleteReportUseCaseProtocol {
+fileprivate final class MockDeleteReportUseCase: DeleteReportUseCaseProtocol {
     var mockResult: Result<Void, DeleteReportError> = .success(())
     
     func execute(input: DeleteReportInput) async throws -> Void {

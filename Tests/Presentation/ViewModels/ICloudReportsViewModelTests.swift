@@ -60,7 +60,11 @@ class ICloudReportsViewModelTests: XCTestCase {
         
         // Then
         XCTAssertFalse(viewModel.state.isLoading)
-        XCTAssertEqual(viewModel.state.error as? ImportICloudReportsError, .iCloudNotAvailable)
+        if case .some(.iCloudNotAvailable) = (viewModel.state.error as? ImportICloudReportsError) {
+            // ok
+        } else {
+            XCTFail("Expected ImportICloudReportsError.iCloudNotAvailable, got: \(String(describing: viewModel.state.error))")
+        }
         XCTAssertFalse(viewModel.state.isICloudAvailable)
     }
     
@@ -74,7 +78,11 @@ class ICloudReportsViewModelTests: XCTestCase {
         
         // Then
         XCTAssertFalse(viewModel.state.isLoading)
-        XCTAssertEqual(viewModel.state.error as? ImportICloudReportsError, .fileNotFound)
+        if case .some(.fileNotFound) = (viewModel.state.error as? ImportICloudReportsError) {
+            // ok
+        } else {
+            XCTFail("Expected ImportICloudReportsError.fileNotFound, got: \(String(describing: viewModel.state.error))")
+        }
     }
     
     // MARK: - Export Reports Tests
@@ -106,7 +114,11 @@ class ICloudReportsViewModelTests: XCTestCase {
         
         // Then
         XCTAssertFalse(viewModel.state.isLoading)
-        XCTAssertEqual(viewModel.state.error as? ExportReportsError, .noReportsToExport)
+        if case .some(.noReportsToExport) = (viewModel.state.error as? ExportReportsError) {
+            // ok
+        } else {
+            XCTFail("Expected ExportReportsError.noReportsToExport, got: \(String(describing: viewModel.state.error))")
+        }
     }
     
     // MARK: - Delete File Tests
@@ -145,7 +157,11 @@ class ICloudReportsViewModelTests: XCTestCase {
         
         // Then
         XCTAssertFalse(viewModel.state.isLoading)
-        XCTAssertEqual(viewModel.state.error as? ImportICloudReportsError, .fileNotFound)
+        if case .some(.fileNotFound) = (viewModel.state.error as? ImportICloudReportsError) {
+            // ok
+        } else {
+            XCTFail("Expected ImportICloudReportsError.fileNotFound, got: \(String(describing: viewModel.state.error))")
+        }
     }
     
     // MARK: - State Tests
@@ -227,4 +243,10 @@ class MockICloudService: ICloudServiceProtocol {
             throw error
         }
     }
-} 
+
+    // MARK: - Missing protocol methods for conformance
+    func getFileLocationInfo() -> String { "Documents/test.report" }
+    func requestICloudAccess() async -> Bool { true }
+    func requestFileAccessPermissions() async -> Bool { true }
+    func createTestFileInAccessibleLocation() async -> Bool { true }
+}

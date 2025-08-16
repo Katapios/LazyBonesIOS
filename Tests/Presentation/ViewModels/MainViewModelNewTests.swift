@@ -5,17 +5,17 @@ import XCTest
 final class MainViewModelNewTests: XCTestCase {
     
     var viewModel: MainViewModelNew!
-    var mockGetReportsUseCase: MockGetReportsUseCase!
-    var mockUpdateStatusUseCase: MockUpdateStatusUseCase!
-    var mockSettingsRepository: MockSettingsRepository!
-    var mockTimerService: MockPostTimerService!
+    fileprivate var mockGetReportsUseCase: MockGetReportsUseCase!
+    fileprivate var mockUpdateStatusUseCase: MockUpdateStatusUseCase!
+    fileprivate var mockSettingsRepository: MVN_MockSettingsRepository!
+    fileprivate var mockTimerService: MockPostTimerService!
     
     override func setUp() {
         super.setUp()
         
         mockGetReportsUseCase = MockGetReportsUseCase()
         mockUpdateStatusUseCase = MockUpdateStatusUseCase()
-        mockSettingsRepository = MockSettingsRepository()
+        mockSettingsRepository = MVN_MockSettingsRepository()
         mockTimerService = MockPostTimerService()
         
         viewModel = MainViewModelNew(
@@ -63,7 +63,7 @@ final class MainViewModelNewTests: XCTestCase {
         ]
         
         mockGetReportsUseCase.mockReports = mockReports
-        mockSettingsRepository.mockNotificationSettings = (true, .daily, 8, 8, 22)
+        mockSettingsRepository.mockNotificationSettings = (true, .hourly, 8, 8, 22)
         mockSettingsRepository.mockReportStatus = .sent
         
         // When
@@ -234,7 +234,24 @@ final class MainViewModelNewTests: XCTestCase {
 
 // MARK: - Mock Classes
 
-class MockGetReportsUseCase: GetReportsUseCaseProtocol {
+fileprivate final class MVN_MockSettingsRepository: SettingsRepositoryProtocol {
+    var mockNotificationSettings: (Bool, NotificationMode, Int, Int, Int)?
+    var mockReportStatus: ReportStatus = .notStarted
+
+    func saveNotificationSettings(enabled: Bool, mode: NotificationMode, intervalHours: Int, startHour: Int, endHour: Int) async throws {}
+    func loadNotificationSettings() async throws -> (enabled: Bool, mode: NotificationMode, intervalHours: Int, startHour: Int, endHour: Int) {
+        if let v = mockNotificationSettings { return (v.0, v.1, v.2, v.3, v.4) }
+        return (false, .hourly, 8, 8, 22)
+    }
+    func saveTelegramSettings(token: String?, chatId: String?, botId: String?) async throws {}
+    func loadTelegramSettings() async throws -> (token: String?, chatId: String?, botId: String?) { (nil, nil, nil) }
+    func saveReportStatus(_ status: ReportStatus) async throws { mockReportStatus = status }
+    func loadReportStatus() async throws -> ReportStatus { mockReportStatus }
+    func saveForceUnlock(_ forceUnlock: Bool) async throws {}
+    func loadForceUnlock() async throws -> Bool { false }
+}
+
+fileprivate final class MockGetReportsUseCase: GetReportsUseCaseProtocol {
     var mockReports: [DomainPost] = []
     var shouldThrowError = false
     
@@ -246,7 +263,7 @@ class MockGetReportsUseCase: GetReportsUseCaseProtocol {
     }
 }
 
-class MockUpdateStatusUseCase: UpdateStatusUseCaseProtocol {
+fileprivate final class MockUpdateStatusUseCase: UpdateStatusUseCaseProtocol {
     var mockReportStatus: ReportStatus = .notStarted
     var shouldThrowError = false
     
@@ -258,7 +275,7 @@ class MockUpdateStatusUseCase: UpdateStatusUseCaseProtocol {
     }
 }
 
-class MockPostTimerService: PostTimerServiceProtocol {
+fileprivate final class MockPostTimerService: PostTimerServiceProtocol {
     var mockTimeLeft: String = ""
     var mockTimeProgress: Double = 0.0
     

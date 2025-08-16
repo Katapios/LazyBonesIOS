@@ -4,23 +4,26 @@ import XCTest
 class ReportStatusManagerTests: XCTestCase {
     
     var statusManager: ReportStatusManager!
-    var mockLocalService: MockLocalReportService!
-    var mockTimerService: MockPostTimerService!
-    var mockNotificationService: MockPostNotificationService!
-    var mockPostsProvider: MockPostsProvider!
-    var mockFactory: MockReportStatusFactory!
+    var localService: LocalReportService!
+    fileprivate var mockTimerService: MockPostTimerService!
+    fileprivate var mockNotificationService: MockPostNotificationService!
+    fileprivate var mockPostsProvider: MockPostsProvider!
+    fileprivate var mockFactory: MockReportStatusFactory!
     
     override func setUp() {
         super.setUp()
         
-        mockLocalService = MockLocalReportService()
+        localService = LocalReportService.shared
+        // Сброс состояния, чтобы тесты были детерминированными
+        localService.saveForceUnlock(false)
+        localService.saveReportStatus(.notStarted)
         mockTimerService = MockPostTimerService()
         mockNotificationService = MockPostNotificationService()
         mockPostsProvider = MockPostsProvider()
         mockFactory = MockReportStatusFactory()
         
         statusManager = ReportStatusManager(
-            localService: mockLocalService,
+            localService: localService,
             timerService: mockTimerService,
             notificationService: mockNotificationService,
             postsProvider: mockPostsProvider,
@@ -29,8 +32,11 @@ class ReportStatusManagerTests: XCTestCase {
     }
     
     override func tearDown() {
+        // Возврат к базовому состоянию
+        LocalReportService.shared.saveForceUnlock(false)
+        LocalReportService.shared.saveReportStatus(.notStarted)
         statusManager = nil
-        mockLocalService = nil
+        localService = nil
         mockTimerService = nil
         mockNotificationService = nil
         mockPostsProvider = nil
@@ -115,30 +121,13 @@ class ReportStatusManagerTests: XCTestCase {
 
 // MARK: - Mock Classes
 
-class MockLocalReportService: LocalReportService {
-    var savedStatus: ReportStatus = .notStarted
-    var savedForceUnlock: Bool = false
-    
-    override func getReportStatus() -> ReportStatus {
-        return savedStatus
-    }
-    
-    override func saveReportStatus(_ status: ReportStatus) {
-        savedStatus = status
-    }
-    
-    override func getForceUnlock() -> Bool {
-        return savedForceUnlock
-    }
-    
-    override func saveForceUnlock(_ value: Bool) {
-        savedForceUnlock = value
-    }
-}
+// Удалён mock LocalReportService: базовый класс имеет private init, используем LocalReportService.shared
 
-class MockPostTimerService: PostTimerServiceProtocol {
+fileprivate final class MockPostTimerService: PostTimerServiceProtocol {
     var updateReportStatusCalled = false
     var lastStatus: ReportStatus?
+    var timeLeft: String { "" }
+    var timeProgress: Double { 0.0 }
     
     func updateReportStatus(_ status: ReportStatus) {
         updateReportStatusCalled = true
@@ -150,7 +139,7 @@ class MockPostTimerService: PostTimerServiceProtocol {
     func stopTimer() {}
 }
 
-class MockPostNotificationService: PostNotificationServiceProtocol {
+fileprivate final class MockPostNotificationService: PostNotificationServiceProtocol {
     var scheduleNotificationsCalled = false
     
     func scheduleNotifications() {
@@ -166,7 +155,7 @@ class MockPostNotificationService: PostNotificationServiceProtocol {
     }
 }
 
-class MockPostsProvider: PostsProviderProtocol {
+fileprivate final class MockPostsProvider: PostsProviderProtocol {
     var posts: [Post] = []
     
     func getPosts() -> [Post] {
@@ -178,7 +167,7 @@ class MockPostsProvider: PostsProviderProtocol {
     }
 }
 
-class MockReportStatusFactory: ReportStatusFactory {
+fileprivate final class MockReportStatusFactory: ReportStatusFactory {
     var isPeriodActive: Bool = true
     
     override func isReportPeriodActive() -> Bool {

@@ -57,16 +57,18 @@ class ExternalReportsViewTests: XCTestCase {
                 date: Date(),
                 goodItems: ["Выполнил задачу 1"],
                 badItems: ["Не выполнил задачу 2"],
-                voiceNote: nil,
-                tags: ["работа"]
+                published: false,
+                voiceNotes: [],
+                type: .external
             ),
             DomainPost(
                 id: UUID(),
                 date: Date().addingTimeInterval(-86400),
                 goodItems: ["Выполнил задачу 3"],
                 badItems: [],
-                voiceNote: nil,
-                tags: ["личное"]
+                published: false,
+                voiceNotes: [],
+                type: .external
             )
         ]
         
@@ -85,7 +87,7 @@ class ExternalReportsViewTests: XCTestCase {
     
     func testExternalReportsViewWithError() {
         // Given
-        mockGetReportsUseCase.mockResult = .failure(.repositoryError)
+        mockGetReportsUseCase.mockResult = .failure(.repositoryError(NSError(domain: "Test", code: 1)))
         mockTelegramIntegrationService.telegramToken = "test_token"
         
         let view = ExternalReportsView(

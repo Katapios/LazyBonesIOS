@@ -41,6 +41,22 @@ final class SettingsRepositoryTests: XCTestCase {
         func loadTelegramSettings() -> (token: String?, chatId: String?, botId: String?) {
             (storedStrings["telegramToken"], storedStrings["telegramChatId"], storedStrings["telegramBotId"])
         }
+        func saveNotificationSettings(enabled: Bool, intervalHours: Int, startHour: Int, endHour: Int, mode: String) {
+            storedBools["notificationsEnabled"] = enabled
+            storedInts["notificationIntervalHours"] = intervalHours
+            storedInts["notificationStartHour"] = startHour
+            storedInts["notificationEndHour"] = endHour
+            storedStrings["notificationMode"] = mode
+        }
+        func loadNotificationSettings() -> (enabled: Bool, intervalHours: Int, startHour: Int, endHour: Int, mode: String) {
+            (
+                storedBools["notificationsEnabled"] ?? false,
+                storedInts["notificationIntervalHours"] ?? 1,
+                storedInts["notificationStartHour"] ?? 8,
+                storedInts["notificationEndHour"] ?? 22,
+                storedStrings["notificationMode"] ?? "hourly"
+            )
+        }
     }
 
     func testSaveTelegramSettings_WithNilValues_DoesNotCrash_AndRemovesKeys() async throws {

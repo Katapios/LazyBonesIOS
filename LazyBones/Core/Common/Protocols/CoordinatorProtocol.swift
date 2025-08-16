@@ -2,6 +2,7 @@ import Foundation
 import UIKit
 
 /// Базовый протокол для всех координаторов
+@MainActor
 protocol Coordinator: AnyObject {
     var childCoordinators: [Coordinator] { get set }
     var navigationController: UINavigationController? { get }
@@ -11,6 +12,7 @@ protocol Coordinator: AnyObject {
 }
 
 /// Базовый класс для координаторов
+@MainActor
 class BaseCoordinator: Coordinator {
     var childCoordinators: [Coordinator] = []
     var navigationController: UINavigationController?
@@ -39,14 +41,16 @@ class BaseCoordinator: Coordinator {
 }
 
 /// Протокол для координаторов с поддержкой ошибок
+@MainActor
 protocol ErrorHandlingCoordinator: Coordinator {
     func handleError(_ error: Error)
     func clearError()
 }
 
 /// Протокол для координаторов с состоянием загрузки
+@MainActor
 protocol LoadingCoordinator: Coordinator {
     var isLoading: Bool { get set }
     func showLoading()
     func hideLoading()
-} 
+}

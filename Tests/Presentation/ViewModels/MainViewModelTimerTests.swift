@@ -1,6 +1,7 @@
 import XCTest
 @testable import LazyBones
 
+@MainActor
 final class MainViewModelTimerTests: XCTestCase {
     // MARK: - Local Mocks
     final class MVM_UserDefaultsMock: UserDefaultsManagerProtocol {
@@ -36,8 +37,11 @@ final class MainViewModelTimerTests: XCTestCase {
     }
     
     final class MVM_PostTelegramServiceMock: PostTelegramServiceProtocol {
-        func publishPostToTelegram(_ post: Post, deviceName: String, completion: @escaping (Bool) -> Void) { completion(true) }
-        func isTelegramConfigured() -> Bool { return false }
+        // Protocol methods stubs
+        func sendToTelegram(text: String, completion: @escaping (Bool) -> Void) { completion(true) }
+        func performAutoSendReport(completion: (() -> Void)?) { completion?() }
+        func autoSendAllReportsForToday() {}
+        func sendUnsentReportsFromPreviousDays() {}
     }
     
     final class MVM_PostNotificationServiceMock: PostNotificationServiceProtocol {
@@ -49,42 +53,85 @@ final class MainViewModelTimerTests: XCTestCase {
         func getDeliveredNotifications() async -> [UNNotification] { return [] }
     }
     
-    final class MVM_NotificationManagerServiceMock: NotificationManagerServiceType {
+    final class MVM_NotificationManagerServiceMock: NotificationManagerServiceProtocol {
+        // Published-like stored properties
+        var notificationsEnabled: Bool = false
+        var notificationIntervalHours: Int = 1
+        var notificationStartHour: Int = 8
+        var notificationEndHour: Int = 22
+        var notificationMode: NotificationMode = .hourly
+
+        // Required API
+        func saveNotificationSettings() {}
+        func loadNotificationSettings() {}
         func requestNotificationPermissionAndSchedule() {}
-        func refreshScheduledNotifications() {}
-        func updateIfSettingsChanged() {}
+        func scheduleNotifications() {}
+        func cancelAllNotifications() {}
+        func scheduleNotificationsIfNeeded() {}
+        func notificationScheduleForToday() -> String? { nil }
     }
     
-    final class MVM_TelegramIntegrationServiceMock: TelegramIntegrationServiceType {
+    final class MVM_TelegramIntegrationServiceMock: TelegramIntegrationServiceProtocol {
+        // Published-like stored properties
         var externalPosts: [Post] = []
-        func saveTelegramSettings(token: String?, chatId: String?, botId: String?) {}
-        func loadTelegramSettings() -> (token: String?, chatId: String?, botId: String?) { return (nil, nil, nil) }
-        func fetchExternalPosts(completion: @escaping (Bool) -> Void) { completion(true) }
-        func deleteAllBotMessages(completion: @escaping (Bool) -> Void) { completion(true) }
+        var telegramToken: String? = nil
+        var telegramChatId: String? = nil
+        var telegramBotId: String? = nil
+        var lastUpdateId: Int? = nil
+
+        // Settings Management
+        func saveTelegramSettings(token: String?, chatId: String?, botId: String?) {
+            telegramToken = token; telegramChatId = chatId; telegramBotId = botId
+        }
+        func loadTelegramSettings() -> (token: String?, chatId: String?, botId: String?) {
+            (telegramToken, telegramChatId, telegramBotId)
+        }
+        func saveLastUpdateId(_ updateId: Int) { lastUpdateId = updateId }
+        func resetLastUpdateId() { lastUpdateId = nil }
         func refreshTelegramService() {}
-        func resetLastUpdateId() {}
-        func getAllPosts() -> [Post] { return [] }
+
+        // External Posts Management
+        func fetchExternalPosts(completion: @escaping (Bool) -> Void) { completion(true) }
         func saveExternalPosts() {}
         func loadExternalPosts() {}
-        func convertTelegramMessageToPost(_ message: TelegramMessage) -> Post? { return nil }
-        func formatCustomReportForTelegram(_ report: Post, deviceName: String) -> String { return "" }
+        func deleteBotMessages(completion: @escaping (Bool) -> Void) { completion(true) }
+        func deleteAllBotMessages(completion: @escaping (Bool) -> Void) { completion(true) }
+
+        // Message Conversion
+        func convertTelegramMessageToPost(_ message: TelegramMessage) -> Post? { nil }
+
+        // Combined Posts
+        func getAllPosts() -> [Post] { [] }
+
+        // Report Formatting
+        func formatCustomReportForTelegram(_ report: Post, deviceName: String) -> String { "" }
     }
     
-    final class MVM_AutoSendServiceMock: AutoSendServiceType {
+    final class MVM_AutoSendServiceMock: AutoSendServiceProtocol {
+        // Published-like stored properties
+        var autoSendEnabled: Bool = false
+        var autoSendTime: Date = Date()
+        var lastAutoSendStatus: String? = nil
+
+        // Required API
         func loadAutoSendSettings() {}
+        func saveAutoSendSettings() {}
         func scheduleAutoSendIfNeeded() {}
+        func performAutoSendReport() {}
+        func performAutoSendReport(completion: (() -> Void)?) { completion?() }
+        func autoSendAllReportsForToday(completion: (() -> Void)?) { completion?() }
     }
 
     // MARK: - Helpers
     private func registerDependencies(udm: MVM_UserDefaultsMock) {
         let dc = DependencyContainer.shared
-        dc.register(UserDefaultsManager.self) { _ in UserDefaultsManager.shared } // not used directly
-        dc.register(UserDefaultsManagerProtocol.self) { _ in udm }
-        dc.register(PostTelegramServiceProtocol.self) { _ in MVM_PostTelegramServiceMock() }
-        dc.register(PostNotificationServiceProtocol.self) { _ in MVM_PostNotificationServiceMock() }
-        dc.register(NotificationManagerServiceType.self) { _ in MVM_NotificationManagerServiceMock() }
-        dc.register(TelegramIntegrationServiceType.self) { _ in MVM_TelegramIntegrationServiceMock() }
-        dc.register(AutoSendServiceType.self) { _ in MVM_AutoSendServiceMock() }
+        dc.register(UserDefaultsManager.self, instance: UserDefaultsManager.shared) // not used directly
+        dc.register(UserDefaultsManagerProtocol.self) { udm }
+        dc.register(PostTelegramServiceProtocol.self) { MVM_PostTelegramServiceMock() }
+        dc.register(PostNotificationServiceProtocol.self) { MVM_PostNotificationServiceMock() }
+        dc.register(NotificationManagerServiceType.self) { MVM_NotificationManagerServiceMock() }
+        dc.register(TelegramIntegrationServiceType.self) { MVM_TelegramIntegrationServiceMock() }
+        dc.register(AutoSendServiceType.self) { MVM_AutoSendServiceMock() }
     }
     
     // MARK: - Tests

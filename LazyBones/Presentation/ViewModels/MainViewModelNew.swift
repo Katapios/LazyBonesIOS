@@ -9,8 +9,8 @@ class MainViewModelNew: BaseViewModel<MainState, MainEvent>, LoadableViewModel {
     @Published var error: Error? = nil
     
     // MARK: - Dependencies
-    private let getReportsUseCase: GetReportsUseCase
-    private let updateStatusUseCase: UpdateStatusUseCase
+    private let getReportsUseCase: any GetReportsUseCaseProtocol
+    private let updateStatusUseCase: any UpdateStatusUseCaseProtocol
     private let settingsRepository: any SettingsRepositoryProtocol
     private let timerService: any PostTimerServiceProtocol
     
@@ -20,8 +20,8 @@ class MainViewModelNew: BaseViewModel<MainState, MainEvent>, LoadableViewModel {
     
     // MARK: - Initialization
     init(
-        getReportsUseCase: GetReportsUseCase,
-        updateStatusUseCase: UpdateStatusUseCase,
+        getReportsUseCase: any GetReportsUseCaseProtocol,
+        updateStatusUseCase: any UpdateStatusUseCaseProtocol,
         settingsRepository: any SettingsRepositoryProtocol,
         timerService: any PostTimerServiceProtocol
     ) {

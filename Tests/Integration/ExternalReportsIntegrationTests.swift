@@ -20,6 +20,29 @@ class ExternalReportsIntegrationTests: XCTestCase {
             telegramIntegrationService: mockTelegramIntegrationService
         )
     }
+
+// MARK: - Local Mocks
+
+final class MockGetReportsUseCase: GetReportsUseCaseProtocol {
+    var mockResult: Result<[DomainPost], GetReportsError> = .success([])
+    func execute(input: GetReportsInput) async throws -> [DomainPost] {
+        switch mockResult {
+        case .success(let posts): return posts
+        case .failure(let err): throw err
+        }
+    }
+}
+
+final class MockDeleteReportUseCase: DeleteReportUseCaseProtocol {
+    typealias ErrorType = DeleteReportError
+    var mockResult: Result<Void, DeleteReportError> = .success(())
+    func execute(input: DeleteReportInput) async throws -> Void {
+        switch mockResult {
+        case .success: return ()
+        case .failure(let err): throw err
+        }
+    }
+}
     
     override func tearDown() {
         mockGetReportsUseCase = nil
@@ -37,8 +60,9 @@ class ExternalReportsIntegrationTests: XCTestCase {
                 date: Date(),
                 goodItems: ["Тестовая задача 1"],
                 badItems: ["Невыполненная задача"],
-                voiceNote: nil,
-                tags: ["тест"]
+                published: false,
+                voiceNotes: [],
+                type: .external
             )
         ]
         mockGetReportsUseCase.mockResult = .success(testReports)
@@ -74,8 +98,9 @@ class ExternalReportsIntegrationTests: XCTestCase {
                 date: Date(),
                 goodItems: ["Задача для удаления"],
                 badItems: [],
-                voiceNote: nil,
-                tags: []
+                published: false,
+                voiceNotes: [],
+                type: .external
             )
         ]
         viewModel.state.reports = testReports
@@ -98,8 +123,9 @@ class ExternalReportsIntegrationTests: XCTestCase {
                 date: Date(),
                 goodItems: ["Задача для выбора"],
                 badItems: [],
-                voiceNote: nil,
-                tags: []
+                published: false,
+                voiceNotes: [],
+                type: .external
             )
         ]
         viewModel.state.reports = testReports
@@ -115,14 +141,14 @@ class ExternalReportsIntegrationTests: XCTestCase {
         
         // Then
         XCTAssertTrue(viewModel.state.selectedReportIDs.contains(testReportId))
-        XCTAssertEqual(viewModel.state.selectedReportsCount, 1)
+        XCTAssertEqual(viewModel.state.selectedCount, 1)
     }
     
     func testSelectAllReportsIntegration() async {
         // Given
         let testReports = [
-            DomainPost(id: UUID(), date: Date(), goodItems: ["Задача 1"], badItems: [], voiceNote: nil, tags: []),
-            DomainPost(id: UUID(), date: Date(), goodItems: ["Задача 2"], badItems: [], voiceNote: nil, tags: [])
+            DomainPost(id: UUID(), date: Date(), goodItems: ["Задача 1"], badItems: [], published: false, voiceNotes: [], type: .external),
+            DomainPost(id: UUID(), date: Date(), goodItems: ["Задача 2"], badItems: [], published: false, voiceNotes: [], type: .external)
         ]
         viewModel.state.reports = testReports
         viewModel.state.isSelectionMode = true
@@ -131,7 +157,7 @@ class ExternalReportsIntegrationTests: XCTestCase {
         await viewModel.handle(.selectAllReports)
         
         // Then
-        XCTAssertEqual(viewModel.state.selectedReportsCount, 2)
+        XCTAssertEqual(viewModel.state.selectedCount, 2)
         XCTAssertEqual(viewModel.state.selectedReportIDs.count, 2)
     }
     
@@ -144,8 +170,9 @@ class ExternalReportsIntegrationTests: XCTestCase {
                 date: Date(),
                 goodItems: ["Задача для удаления"],
                 badItems: [],
-                voiceNote: nil,
-                tags: []
+                published: false,
+                voiceNotes: [],
+                type: .external
             )
         ]
         viewModel.state.reports = testReports
@@ -163,7 +190,7 @@ class ExternalReportsIntegrationTests: XCTestCase {
     
     func testErrorHandlingIntegration() async {
         // Given
-        mockGetReportsUseCase.mockResult = .failure(.repositoryError)
+        mockGetReportsUseCase.mockResult = .failure(.repositoryError(NSError(domain: "test", code: 1)))
         
         // When
         await viewModel.handle(.loadReports)

@@ -3,14 +3,7 @@ import XCTest
 
 final class ReportStatusRulesTests: XCTestCase {
     // MARK: - Mocks
-    final class RS_LocalServiceMock: LocalReportService {
-        var savedStatus: ReportStatus = .notStarted
-        var savedForceUnlock: Bool = false
-        override func getReportStatus() -> ReportStatus { savedStatus }
-        override func saveReportStatus(_ status: ReportStatus) { savedStatus = status }
-        override func getForceUnlock() -> Bool { savedForceUnlock }
-        override func saveForceUnlock(_ value: Bool) { savedForceUnlock = value }
-    }
+    // Удалён RS_LocalServiceMock: базовый класс имеет private init, используем LocalReportService.shared
     
     final class RS_PostsProviderMock: PostsProviderProtocol {
         var posts: [Post] = []
@@ -19,6 +12,8 @@ final class ReportStatusRulesTests: XCTestCase {
     }
     
     final class RS_TimerServiceMock: PostTimerServiceProtocol {
+        var timeLeft: String { "" }
+        var timeProgress: Double { 0.0 }
         func updateReportStatus(_ status: ReportStatus) {}
         func updateTimeLeft() {}
         func startTimer() {}
@@ -40,9 +35,9 @@ final class ReportStatusRulesTests: XCTestCase {
     }
     
     // Helpers
-    private func makeManager(isActive: Bool, posts: [Post], forceUnlock: Bool = false) -> (ReportStatusManager, RS_LocalServiceMock, RS_StatusFactoryMock) {
-        let local = RS_LocalServiceMock()
-        local.savedForceUnlock = forceUnlock
+    private func makeManager(isActive: Bool, posts: [Post], forceUnlock: Bool = false) -> (ReportStatusManager, LocalReportService, RS_StatusFactoryMock) {
+        let local = LocalReportService.shared
+        local.saveForceUnlock(forceUnlock)
         let timer = RS_TimerServiceMock()
         let notif = RS_NotificationServiceMock()
         let provider = RS_PostsProviderMock()
@@ -117,14 +112,12 @@ final class ReportStatusRulesTests: XCTestCase {
         
         // Имитируем отправку: делаем пост опубликованным
         let sent = makePost(published: true)
-        let provider = MockPostsProvider()
-        provider.posts = [sent]
         // Переинициализируем менеджер с тем же local (чтобы проверить сброс forceUnlock)
-        (mgr, local, _) = makeManager(isActive: false, posts: [sent], forceUnlock: local.savedForceUnlock)
+        (mgr, local, _) = makeManager(isActive: false, posts: [sent], forceUnlock: local.getForceUnlock())
         mgr.updateStatus()
         
         XCTAssertEqual(mgr.reportStatus, .sent)
-        XCTAssertFalse(local.savedForceUnlock)
+        XCTAssertFalse(local.getForceUnlock())
         XCTAssertFalse(mgr.forceUnlock)
     }
 }

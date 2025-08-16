@@ -4,7 +4,7 @@ import WidgetKit
 
 /// Главный координатор приложения с поддержкой Clean Architecture
 @MainActor
-class AppCoordinator: BaseCoordinator, ObservableObject, ErrorHandlingCoordinator, @preconcurrency LoadingCoordinator {
+class AppCoordinator: BaseCoordinator, ObservableObject, ErrorHandlingCoordinator, LoadingCoordinator {
     
     // MARK: - Published Properties
     @Published var currentTab: Tab = .main
@@ -77,48 +77,34 @@ class AppCoordinator: BaseCoordinator, ObservableObject, ErrorHandlingCoordinato
     }
     
     // MARK: - Error Handling
-    nonisolated func handleError(_ error: Error) {
-        Task { @MainActor in
-            errorMessage = error.localizedDescription
-            Logger.error("Navigation error: \(error)", log: Logger.ui)
-        }
+    func handleError(_ error: Error) {
+        errorMessage = error.localizedDescription
+        Logger.error("Navigation error: \(error)", log: Logger.ui)
     }
     
-    nonisolated func clearError() {
-        Task { @MainActor in
-            errorMessage = nil
-        }
+    func clearError() {
+        errorMessage = nil
     }
     
     // MARK: - Loading State
-    nonisolated func showLoading() {
-        Task { @MainActor in
-            isLoading = true
-        }
+    func showLoading() {
+        isLoading = true
     }
     
-    nonisolated func hideLoading() {
-        Task { @MainActor in
-            isLoading = false
-        }
+    func hideLoading() {
+        isLoading = false
     }
     
     // MARK: - App Lifecycle with DI
     override func start() {
         Logger.info("AppCoordinator started", log: Logger.ui)
         
-        // Инициализируем сервисы через DI
-        Task {
-            await initializeServices()
-        }
-        
-        // Запускаем координатор для главной вкладки
-        Task { @MainActor in
-            switchToTab(.main)
-        }
+        // Инициализируем сервисы через DI и переключаем вкладку синхронно
+        initializeServices()
+        switchToTab(.main)
     }
     
-    private func initializeServices() async {
+    private func initializeServices() {
         showLoading()
         
         // Инициализируем необходимые сервисы
@@ -143,9 +129,7 @@ class AppCoordinator: BaseCoordinator, ObservableObject, ErrorHandlingCoordinato
         childCoordinators.removeAll()
         
         // Сохраняем данные
-        Task { @MainActor in
-            saveApplicationState()
-        }
+        saveApplicationState()
     }
     
     private func saveApplicationState() {

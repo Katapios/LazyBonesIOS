@@ -5,22 +5,7 @@ struct NotificationSettingsView: View {
 
     init() {
         let container = DependencyContainer.shared
-        self._viewModel = StateObject(wrappedValue: SettingsViewModelNew(
-            settingsRepository: container.resolve(SettingsRepositoryProtocol.self)!,
-            notificationManager: container.resolve(NotificationManagerServiceType.self)!,
-            postRepository: container.resolve(PostRepositoryProtocol.self)!,
-            timerService: container.resolve(PostTimerServiceProtocol.self)!,
-            statusManager: ReportStatusManager(
-                localService: LocalReportService.shared,
-                timerService: container.resolve(PostTimerServiceProtocol.self)!,
-                notificationService: container.resolve(PostNotificationServiceProtocol.self)!,
-                postsProvider: container.resolve(PostsProviderProtocol.self)!,
-                factory: ReportStatusFactory()
-            ),
-            iCloudService: container.resolve(ICloudServiceProtocol.self)!,
-            autoSendService: container.resolve(AutoSendServiceType.self)!,
-            telegramConfigUpdater: container.resolve(TelegramConfigUpdaterProtocol.self)!
-        ))
+        self._viewModel = StateObject(wrappedValue: container.resolve(SettingsViewModelNew.self)!)
     }
 
     var body: some View {

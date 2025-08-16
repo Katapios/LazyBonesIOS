@@ -33,21 +33,24 @@ class NotificationManagerService: NotificationManagerServiceProtocol {
     
     // MARK: - Published Properties
     @Published var notificationsEnabled: Bool = false {
-        didSet { 
+        didSet {
+            // Suppress side effects during bootstrap and ignore redundant sets
+            guard !isBootstrapping, oldValue != notificationsEnabled else { return }
             saveNotificationSettings()
-            if notificationsEnabled { 
-                requestNotificationPermissionAndSchedule() 
-            } else { 
-                cancelAllNotifications() 
+            if notificationsEnabled {
+                requestNotificationPermissionAndSchedule()
+            } else {
+                cancelAllNotifications()
             }
         }
     }
     
     @Published var notificationIntervalHours: Int = 1 { // 1-12
-        didSet { 
+        didSet {
+            guard !isBootstrapping, oldValue != notificationIntervalHours else { return }
             saveNotificationSettings()
-            if notificationsEnabled { 
-                scheduleNotifications() 
+            if notificationsEnabled {
+                scheduleNotifications()
             }
         }
     }
@@ -56,10 +59,11 @@ class NotificationManagerService: NotificationManagerServiceProtocol {
     @Published var notificationEndHour: Int = 22
     
     @Published var notificationMode: NotificationMode = .hourly {
-        didSet { 
+        didSet {
+            guard !isBootstrapping, oldValue != notificationMode else { return }
             saveNotificationSettings()
-            if notificationsEnabled { 
-                scheduleNotifications() 
+            if notificationsEnabled {
+                scheduleNotifications()
             }
         }
     }
@@ -70,6 +74,7 @@ class NotificationManagerService: NotificationManagerServiceProtocol {
     
     // MARK: - Private Properties
     private let appGroup = AppConfig.appGroup
+    private var isBootstrapping = false
     
     // MARK: - Initialization
     init(
@@ -78,8 +83,10 @@ class NotificationManagerService: NotificationManagerServiceProtocol {
     ) {
         self.userDefaultsManager = userDefaultsManager
         self.notificationService = notificationService
-        
+        // Suppress side effects while loading persisted settings
+        isBootstrapping = true
         loadNotificationSettings()
+        isBootstrapping = false
     }
     
     // MARK: - Settings Management
@@ -113,12 +120,12 @@ class NotificationManagerService: NotificationManagerServiceProtocol {
                     if granted { 
                         self.scheduleNotifications() 
                     } else { 
-                        self.notificationsEnabled = false 
+                        if self.notificationsEnabled { self.notificationsEnabled = false }
                     }
                 }
             } catch {
                 await MainActor.run {
-                    self.notificationsEnabled = false
+                    if self.notificationsEnabled { self.notificationsEnabled = false }
                 }
                 Logger.error("Failed to request notification permission: \(error)", log: Logger.notifications)
             }
@@ -143,7 +150,7 @@ class NotificationManagerService: NotificationManagerServiceProtocol {
                 guard hasPermission else {
                     Logger.warning("No notification permission, skipping scheduling", log: Logger.notifications)
                     await MainActor.run {
-                        self.notificationsEnabled = false
+                        if self.notificationsEnabled { self.notificationsEnabled = false }
                     }
                     return
                 }

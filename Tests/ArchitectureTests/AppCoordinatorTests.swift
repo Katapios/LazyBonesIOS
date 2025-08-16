@@ -1,21 +1,23 @@
 import XCTest
+import BackgroundTasks
 @testable import LazyBones
 
 @MainActor
 class AppCoordinatorTests: XCTestCase {
     
     var coordinator: AppCoordinator!
-    var mockDependencyContainer: MockDependencyContainer!
+    var dependencyContainer: DependencyContainer!
     
     override func setUp() {
         super.setUp()
-        mockDependencyContainer = MockDependencyContainer()
-        coordinator = AppCoordinator(dependencyContainer: mockDependencyContainer)
+        dependencyContainer = DependencyContainer.shared
+        dependencyContainer.clear()
+        coordinator = AppCoordinator(dependencyContainer: dependencyContainer)
     }
     
     override func tearDown() {
         coordinator = nil
-        mockDependencyContainer = nil
+        dependencyContainer = nil
         super.tearDown()
     }
     
@@ -49,8 +51,8 @@ class AppCoordinatorTests: XCTestCase {
         // Given
         let mockBackgroundService = MockBackgroundTaskService()
         let mockNotificationService = MockNotificationManagerService()
-        mockDependencyContainer.mockService(mockBackgroundService, for: BackgroundTaskServiceProtocol.self)
-        mockDependencyContainer.mockService(mockNotificationService, for: NotificationManagerServiceType.self)
+        dependencyContainer.register(BackgroundTaskServiceProtocol.self, instance: mockBackgroundService)
+        dependencyContainer.register(NotificationManagerServiceType.self, instance: mockNotificationService)
         
         // When
         await coordinator.start()
@@ -66,7 +68,7 @@ class AppCoordinatorTests: XCTestCase {
         // Given
         let mockBackgroundService = MockBackgroundTaskService()
         mockBackgroundService.shouldThrowError = true
-        mockDependencyContainer.mockService(mockBackgroundService, for: BackgroundTaskServiceProtocol.self)
+        dependencyContainer.register(BackgroundTaskServiceProtocol.self, instance: mockBackgroundService)
         
         // When
         await coordinator.start()
@@ -161,12 +163,16 @@ class MockBackgroundTaskService: BackgroundTaskServiceProtocol {
     func scheduleSendReportTask() throws {
         // Not implemented for this test
     }
+    
+    func handleSendReportTask(_ task: BGAppRefreshTask) async {
+        // No-op for tests
+    }
 }
 
-class MockNotificationManagerService: NotificationManagerServiceType {
+class MockNotificationManagerService: NotificationManagerServiceProtocol {
     var requestNotificationPermissionAndScheduleCalled = false
     
-    func requestNotificationPermissionAndSchedule() async {
+    func requestNotificationPermissionAndSchedule() {
         requestNotificationPermissionAndScheduleCalled = true
     }
     
@@ -189,7 +195,7 @@ class MockNotificationManagerService: NotificationManagerServiceType {
         // Not implemented for this test
     }
     
-    func cancelAllNotifications() {
-        // Not implemented for this test
-    }
-} 
+    func cancelAllNotifications() { }
+    func scheduleNotificationsIfNeeded() { }
+    func notificationScheduleForToday() -> String? { nil }
+}

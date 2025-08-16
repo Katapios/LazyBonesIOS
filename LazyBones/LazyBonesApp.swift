@@ -69,6 +69,8 @@ private func setupDependencyInjection() {
     
     // Регистрация основных сервисов
     container.registerCoreServices()
+    // Вспомогательные адаптеры для Presentation слоя
+    container.registerPresentationAdapters()
     
     // Регистрация ViewModels
     container.registerReportViewModels()

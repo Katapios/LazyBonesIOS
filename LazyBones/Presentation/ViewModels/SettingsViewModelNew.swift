@@ -16,6 +16,8 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
     private let iCloudService: ICloudServiceProtocol
     private let autoSendService: AutoSendServiceType
     private let telegramConfigUpdater: TelegramConfigUpdaterProtocol
+    private let telegramResolver: TelegramServiceResolverProtocol
+    private let legacyUISync: LegacyUISyncProtocol
 
     init(
         settingsRepository: any SettingsRepositoryProtocol,
@@ -25,7 +27,9 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
         statusManager: any ReportStatusManagerProtocol,
         iCloudService: ICloudServiceProtocol,
         autoSendService: AutoSendServiceType,
-        telegramConfigUpdater: TelegramConfigUpdaterProtocol
+        telegramConfigUpdater: TelegramConfigUpdaterProtocol,
+        telegramResolver: TelegramServiceResolverProtocol,
+        legacyUISync: LegacyUISyncProtocol
     ) {
         self.settingsRepository = settingsRepository
         self.notificationManager = notificationManager
@@ -35,6 +39,8 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
         self.iCloudService = iCloudService
         self.autoSendService = autoSendService
         self.telegramConfigUpdater = telegramConfigUpdater
+        self.telegramResolver = telegramResolver
+        self.legacyUISync = legacyUISync
         super.init(initialState: SettingsState())
     }
 
@@ -141,14 +147,12 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
             return
         }
         do {
-            // Разрешаем сервис через DI, чтобы соблюдать слои абстракции
-            let container = DependencyContainer.shared
-            var telegramService = container.resolve(TelegramServiceProtocol.self)
+            // Разрешаем сервис через тонкий адаптер, без прямого доступа к DI
+            var telegramService = telegramResolver.resolveTelegramService()
             // Если сервис не зарегистрирован, но токен введён — зарегистрируем на лету
             if telegramService == nil {
-                // Используем абстракцию обновления конфигурации, чтобы не дергать DI напрямую
                 telegramConfigUpdater.applyTelegramToken(state.telegramToken)
-                telegramService = container.resolve(TelegramServiceProtocol.self)
+                telegramService = telegramResolver.resolveTelegramService()
             }
             guard let telegramService else {
                 state.telegramStatus = "Сервис Telegram недоступен"
@@ -252,12 +256,8 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
     private func unlockReports() async {
         statusManager.unlockReportCreation()
         WidgetCenter.shared.reloadAllTimelines()
-        // Синхронизируем легаси PostStore, чтобы UI обновился мгновенно
-        PostStore.shared.updateReportStatus()
-        // Дополнительный триггер UI, чтобы не потерять обновление при активных View-апдейтах
-        DispatchQueue.main.async {
-            PostStore.shared.objectWillChange.send()
-        }
+        // Синхронизируем легаси UI через адаптер
+        legacyUISync.syncReportStatusToLegacyUI()
         // Обновим состояние настроек, чтобы диагностические лейблы отобразили актуальные значения
         await loadSettings()
     }
@@ -265,10 +265,10 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
     private func resetReportUnlock() async {
         // Сбрасываем принудительную разблокировку
         statusManager.forceUnlock = false
-        LocalReportService.shared.saveForceUnlock(false)
+        legacyUISync.saveForceUnlock(false)
         // Пересчитываем статус и обновляем UI
         statusManager.updateStatus()
-        PostStore.shared.updateReportStatus()
+        legacyUISync.syncReportStatusToLegacyUI()
         WidgetCenter.shared.reloadAllTimelines()
         await loadSettings()
     }

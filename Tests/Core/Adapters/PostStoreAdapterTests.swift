@@ -214,44 +214,47 @@ final class PostStoreAdapterTests: XCTestCase {
 
 // MARK: - Mock PostStore
 
-class MockPostStore: ObservableObject {
-    
-    @Published var posts: [Post] = []
-    @Published var reportStatus: ReportStatus = .notStarted
-    
+class MockPostStore: PostStore {
+    // Test flags/state
     var addedPosts: [Post] = []
     var updatedPosts: [Post] = []
     var saveCalled = false
     var loadCalled = false
     var clearCalled = false
     var updateReportStatusCalled = false
-    
-    func add(post: Post) {
+
+    override init() {
+        super.init()
+        // Ensure clean slate for tests
+        self.posts = []
+    }
+
+    override func add(post: Post) {
         addedPosts.append(post)
         posts.append(post)
     }
-    
-    func update(post: Post) {
+
+    override func update(post: Post) {
         updatedPosts.append(post)
         if let index = posts.firstIndex(where: { $0.id == post.id }) {
             posts[index] = post
         }
     }
-    
-    func save() {
+
+    override func save() {
         saveCalled = true
     }
-    
-    func load() {
+
+    override func load() {
         loadCalled = true
     }
-    
-    func clear() {
+
+    override func clear() {
         clearCalled = true
         posts.removeAll()
     }
-    
-    func updateReportStatus() {
+
+    override func updateReportStatus() {
         updateReportStatusCalled = true
     }
 }

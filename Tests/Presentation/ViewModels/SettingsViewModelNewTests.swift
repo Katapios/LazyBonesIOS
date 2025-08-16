@@ -4,7 +4,7 @@ import XCTest
 @MainActor
 final class SettingsViewModelNewTests: XCTestCase {
     // Mocks
-    final class MockSettingsRepository: SettingsRepositoryProtocol {
+    fileprivate final class MockSettingsRepository: SettingsRepositoryProtocol {
         var savedEnabled: Bool?
         var savedMode: NotificationMode?
         var savedIntervalHours: Int?
@@ -20,11 +20,6 @@ final class SettingsViewModelNewTests: XCTestCase {
             savedStartHour = startHour
             savedEndHour = endHour
         }
-
-    final class MockTelegramConfigUpdater: TelegramConfigUpdaterProtocol {
-        var appliedToken: String?
-        func applyTelegramToken(_ token: String?) { appliedToken = token }
-    }
 
         func loadNotificationSettings() async throws -> (enabled: Bool, mode: NotificationMode, intervalHours: Int, startHour: Int, endHour: Int) {
             return (true, .twice, 4, 9, 21)
@@ -46,7 +41,12 @@ final class SettingsViewModelNewTests: XCTestCase {
         func loadForceUnlock() async throws -> Bool { false }
     }
 
-    final class MockNotificationManager: NotificationManagerServiceProtocol {
+    fileprivate final class MockTelegramConfigUpdater: TelegramConfigUpdaterProtocol {
+        var appliedToken: String?
+        func applyTelegramToken(_ token: String?) { appliedToken = token }
+    }
+
+    fileprivate final class MockNotificationManager: NotificationManagerServiceProtocol {
         @Published var notificationsEnabled: Bool = false
         @Published var notificationIntervalHours: Int = 1
         @Published var notificationStartHour: Int = 8
@@ -66,31 +66,53 @@ final class SettingsViewModelNewTests: XCTestCase {
         func notificationScheduleForToday() -> String? { return nil }
     }
 
-    final class MockPostRepository: PostRepositoryProtocol {
-        func createOrUpdate(_ post: DomainPost) async throws -> DomainPost { post }
-        func getAll() async throws -> [DomainPost] { [] }
-        func getById(_ id: String) async throws -> DomainPost? { nil }
-        func delete(by id: String) async throws {}
-        func getTodayRegularReport() async throws -> DomainPost? { nil }
-        func getBy(date: Date, type: ReportType) async throws -> DomainPost? { nil }
+    fileprivate final class MockPostRepository: PostRepositoryProtocol {
+        var storage: [DomainPost] = []
+        func save(_ post: DomainPost) async throws {
+            if let idx = storage.firstIndex(where: { $0.id == post.id }) {
+                storage[idx] = post
+            } else {
+                storage.append(post)
+            }
+        }
+        func fetch() async throws -> [DomainPost] { storage }
+        func fetch(for date: Date) async throws -> [DomainPost] {
+            let cal = Calendar.current
+            return storage.filter { cal.isDate($0.date, inSameDayAs: date) }
+        }
+        func update(_ post: DomainPost) async throws {
+            if let idx = storage.firstIndex(where: { $0.id == post.id }) {
+                storage[idx] = post
+            }
+        }
+        func delete(_ post: DomainPost) async throws { storage.removeAll { $0.id == post.id } }
+        func clear() async throws { storage.removeAll() }
     }
 
-    final class MockTimerService: PostTimerServiceProtocol {
+    fileprivate final class MockTimerService: PostTimerServiceProtocol {
+        var timeLeft: String = ""
+        var timeProgress: Double = 0
         func startTimer() {}
         func stopTimer() {}
+        func updateTimeLeft() {}
+        func updateReportStatus(_ status: ReportStatus) {}
     }
 
-    final class MockStatusManager: ReportStatusManagerProtocol {
-        var currentStatus: ReportStatus = .notStarted
+    fileprivate class MockStatusManager: ReportStatusManagerProtocol {
+        @Published var reportStatus: ReportStatus = .notStarted
+        @Published var forceUnlock: Bool = false
+        @Published var currentDay: Date = Calendar.current.startOfDay(for: Date())
+
         var unlockCalled = 0
+
         func updateStatus() {}
-        func unlockReportCreation() {}
-        func loadStatus() -> (status: ReportStatus, forceUnlock: Bool) { (currentStatus, false) }
-        func saveStatus(_ status: ReportStatus, forceUnlock: Bool) {}
-        func updateDependencies(_ status: ReportStatus) {}
+        func checkForNewDay() {}
+        func unlockReportCreation() { unlockCalled += 1 }
+        func loadStatus() {}
+        func saveStatus() {}
     }
 
-    final class MockICloudService: ICloudServiceProtocol {
+    fileprivate final class MockICloudService: ICloudServiceProtocol {
         var available = true
         var isICloudAvailableCallCount = 0
         var exportCallCount = 0
@@ -126,22 +148,41 @@ final class SettingsViewModelNewTests: XCTestCase {
         func createTestFileInAccessibleLocation() async -> Bool { true }
     }
 
-    final class MockAutoSendService: AutoSendServiceType {
-        var autoSendEnabled: Bool = false
-        var autoSendTime: Date = Date()
-        var lastAutoSendStatus: String? = nil
+    fileprivate final class MockAutoSendService: AutoSendServiceProtocol {
+        @Published var autoSendEnabled: Bool = false
+        @Published var autoSendTime: Date = Date()
+        @Published var lastAutoSendStatus: String? = nil
+        func loadAutoSendSettings() {}
+        func saveAutoSendSettings() {}
         func scheduleAutoSendIfNeeded() {}
+        func performAutoSendReport() {}
+        func performAutoSendReport(completion: (() -> Void)?) { completion?() }
+        func autoSendAllReportsForToday(completion: (() -> Void)?) { completion?() }
     }
 
-    var vm: SettingsViewModelNew!
-    var repo: MockSettingsRepository!
-    var notif: MockNotificationManager!
-    var postRepo: MockPostRepository!
-    var timer: MockTimerService!
-    var status: MockStatusManager!
-    var icloud: MockICloudService!
-    var autosend: MockAutoSendService!
-    var tgUpdater: MockTelegramConfigUpdater!
+    fileprivate final class MockTelegramResolver: TelegramServiceResolverProtocol {
+        var service: TelegramServiceProtocol?
+        func resolveTelegramService() -> TelegramServiceProtocol? { service }
+    }
+
+    fileprivate final class MockLegacyUISync: LegacyUISyncProtocol {
+        var syncCalls = 0
+        var savedForceUnlock: Bool?
+        func syncReportStatusToLegacyUI() { syncCalls += 1 }
+        func saveForceUnlock(_ value: Bool) { savedForceUnlock = value }
+    }
+
+    fileprivate var vm: SettingsViewModelNew!
+    fileprivate var repo: MockSettingsRepository!
+    fileprivate var notif: MockNotificationManager!
+    fileprivate var postRepo: MockPostRepository!
+    fileprivate var timer: MockTimerService!
+    fileprivate var status: MockStatusManager!
+    fileprivate var icloud: MockICloudService!
+    fileprivate var autosend: MockAutoSendService!
+    fileprivate var tgUpdater: MockTelegramConfigUpdater!
+    fileprivate var tgResolver: MockTelegramResolver!
+    fileprivate var legacySync: MockLegacyUISync!
 
     override func setUp() {
         super.setUp()
@@ -153,6 +194,8 @@ final class SettingsViewModelNewTests: XCTestCase {
         icloud = MockICloudService()
         autosend = MockAutoSendService()
         tgUpdater = MockTelegramConfigUpdater()
+        tgResolver = MockTelegramResolver()
+        legacySync = MockLegacyUISync()
         vm = SettingsViewModelNew(
             settingsRepository: repo,
             notificationManager: notif,
@@ -161,7 +204,9 @@ final class SettingsViewModelNewTests: XCTestCase {
             statusManager: status,
             iCloudService: icloud,
             autoSendService: autosend,
-            telegramConfigUpdater: tgUpdater
+            telegramConfigUpdater: tgUpdater,
+            telegramResolver: tgResolver,
+            legacyUISync: legacySync
         )
     }
 
@@ -175,6 +220,8 @@ final class SettingsViewModelNewTests: XCTestCase {
         icloud = nil
         autosend = nil
         tgUpdater = nil
+        tgResolver = nil
+        legacySync = nil
         super.tearDown()
     }
 
@@ -207,6 +254,8 @@ final class SettingsViewModelNewTests: XCTestCase {
             override func unlockReportCreation() { unlockCalled += 1 }
         }
         let spy = StatusManagerSpy()
+        tgResolver = MockTelegramResolver()
+        legacySync = MockLegacyUISync()
         vm = SettingsViewModelNew(
             settingsRepository: repo,
             notificationManager: notif,
@@ -215,7 +264,9 @@ final class SettingsViewModelNewTests: XCTestCase {
             statusManager: spy,
             iCloudService: icloud,
             autoSendService: autosend,
-            telegramConfigUpdater: tgUpdater
+            telegramConfigUpdater: tgUpdater,
+            telegramResolver: tgResolver,
+            legacyUISync: legacySync
         )
         // When
         await vm.handle(.unlockReports)

@@ -1,10 +1,66 @@
 import XCTest
+import UserNotifications
 @testable import LazyBones
+
+// Local mock to avoid name clashes in other test files
+private final class MockUserDefaultsManager: UserDefaultsManagerProtocol {
+    private var bools: [String: Bool] = [:]
+    private var strings: [String: String] = [:]
+    private var ints: [String: Int] = [:]
+    private var datas: [String: Data] = [:]
+    private var anys: [String: Any] = [:]
+
+    // Helpers used by tests
+    func clear() {
+        bools.removeAll(); strings.removeAll(); ints.removeAll(); datas.removeAll(); anys.removeAll()
+    }
+
+    // Protocol methods
+    func set<T>(_ value: T, forKey key: String) {
+        if let v = value as? Bool { bools[key] = v }
+        else if let v = value as? String { strings[key] = v }
+        else if let v = value as? Int { ints[key] = v }
+        else if let v = value as? Data { datas[key] = v }
+        anys[key] = value
+    }
+    func get<T>(_ type: T.Type, forKey key: String) -> T? { anys[key] as? T }
+    func get<T>(_ type: T.Type, forKey key: String, defaultValue: T) -> T { (anys[key] as? T) ?? defaultValue }
+    func remove(forKey key: String) { bools.removeValue(forKey: key); strings.removeValue(forKey: key); ints.removeValue(forKey: key); datas.removeValue(forKey: key); anys.removeValue(forKey: key) }
+    func hasValue(forKey key: String) -> Bool { anys[key] != nil || strings[key] != nil || bools[key] != nil || ints[key] != nil || datas[key] != nil }
+    func bool(forKey key: String) -> Bool { bools[key] ?? false }
+    func string(forKey key: String) -> String? { strings[key] }
+    func integer(forKey key: String) -> Int { ints[key] ?? 0 }
+    func data(forKey key: String) -> Data? { datas[key] }
+    func loadPosts() -> [Post] { [] }
+    func savePosts(_ posts: [Post]) {}
+    func saveTelegramSettings(token: String?, chatId: String?, botId: String?) {
+        if let token = token { strings["telegramToken"] = token } else { remove(forKey: "telegramToken") }
+        if let chatId = chatId { strings["telegramChatId"] = chatId } else { remove(forKey: "telegramChatId") }
+        if let botId = botId { strings["telegramBotId"] = botId } else { remove(forKey: "telegramBotId") }
+    }
+    func loadTelegramSettings() -> (token: String?, chatId: String?, botId: String?) {
+        (strings["telegramToken"], strings["telegramChatId"], strings["telegramBotId"])
+    }
+    func saveNotificationSettings(enabled: Bool, intervalHours: Int, startHour: Int, endHour: Int, mode: String) {
+        bools["notificationsEnabled"] = enabled
+        ints["notificationIntervalHours"] = intervalHours
+        ints["notificationStartHour"] = startHour
+        ints["notificationEndHour"] = endHour
+        strings["notificationMode"] = mode
+    }
+    func loadNotificationSettings() -> (enabled: Bool, intervalHours: Int, startHour: Int, endHour: Int, mode: String) {
+        (bools["notificationsEnabled"] ?? false,
+         ints["notificationIntervalHours"] ?? 1,
+         ints["notificationStartHour"] ?? 8,
+         ints["notificationEndHour"] ?? 22,
+         strings["notificationMode"] ?? "hourly")
+    }
+}
 
 class NotificationManagerServiceTests: XCTestCase {
     
     var notificationManagerService: NotificationManagerService!
-    var mockUserDefaultsManager: MockUserDefaultsManager!
+    fileprivate var mockUserDefaultsManager: MockUserDefaultsManager!
     var mockNotificationService: MockNotificationService!
     
     override func setUp() {
@@ -214,7 +270,11 @@ class MockNotificationService: NotificationServiceProtocol {
     }
     
     func getNotificationSettings() async -> UNNotificationSettings {
-        return UNNotificationSettings()
+        return await withCheckedContinuation { continuation in
+            UNUserNotificationCenter.current().getNotificationSettings { settings in
+                continuation.resume(returning: settings)
+            }
+        }
     }
     
     func debugNotificationStatus() async {

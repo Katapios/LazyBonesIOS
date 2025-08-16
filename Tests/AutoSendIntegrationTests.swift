@@ -7,8 +7,8 @@ class AutoSendIntegrationTests: XCTestCase {
     var dependencyContainer: DependencyContainer!
     var autoSendService: AutoSendService!
     var postTelegramService: PostTelegramService!
-    var telegramService: MockTelegramService!
-    var userDefaultsManager: MockUserDefaultsManager!
+    fileprivate var telegramService: MockTelegramService!
+    fileprivate var userDefaultsManager: MockUserDefaultsManager!
     
     override func setUp() {
         super.setUp()
@@ -18,17 +18,14 @@ class AutoSendIntegrationTests: XCTestCase {
         userDefaultsManager = MockUserDefaultsManager()
         
         // Настраиваем DI контейнер
-        dependencyContainer = DependencyContainer()
+        dependencyContainer = DependencyContainer.shared
+        dependencyContainer.clear()
         dependencyContainer.registerCoreServices()
         
         // Регистрируем моки
-        dependencyContainer.register(TelegramServiceProtocol.self) { _ in
-            return self.telegramService
-        }
+        dependencyContainer.register(TelegramServiceProtocol.self, instance: self.telegramService)
         
-        dependencyContainer.register(UserDefaultsManagerProtocol.self) { _ in
-            return self.userDefaultsManager
-        }
+        dependencyContainer.register(UserDefaultsManagerProtocol.self, instance: self.userDefaultsManager)
         
         // Получаем сервисы
         postTelegramService = PostTelegramService(
@@ -320,7 +317,7 @@ class AutoSendIntegrationTests: XCTestCase {
 
 // MARK: - Enhanced Mock Classes
 
-class MockTelegramService: TelegramServiceProtocol {
+private final class MockTelegramService: TelegramServiceProtocol {
     var shouldSucceed = true
     var sendMessageCalled = false
     var lastSentText: String?
@@ -339,4 +336,68 @@ class MockTelegramService: TelegramServiceProtocol {
     func getUpdates(offset: Int?) async throws -> [TelegramUpdate] {
         return []
     }
-} 
+    
+    // Complete protocol methods
+    func sendDocument(_ fileURL: URL, caption: String?, to chatId: String) async throws {
+        if !shouldSucceed { throw NSError(domain: "TelegramError", code: 500) }
+    }
+    func sendVoice(_ fileURL: URL, caption: String?, to chatId: String) async throws {
+        if !shouldSucceed { throw NSError(domain: "TelegramError", code: 500) }
+    }
+    func getMe() async throws -> TelegramUser { TelegramUser(id: 0, isBot: true, firstName: "Bot", lastName: nil, username: "mockbot") }
+    func downloadFile(_ fileId: String) async throws -> Data { Data() }
+}
+
+// Local mock for UserDefaultsManagerProtocol
+private final class MockUserDefaultsManager: UserDefaultsManagerProtocol {
+    var stringValues: [String: String] = [:]
+    var boolValues: [String: Bool] = [:]
+    var intValues: [String: Int] = [:]
+    var dataValues: [String: Data] = [:]
+    var anyValues: [String: Any] = [:]
+
+    func set<T>(_ value: T, forKey key: String) {
+        if let v = value as? String { stringValues[key] = v }
+        else if let v = value as? Bool { boolValues[key] = v }
+        else if let v = value as? Int { intValues[key] = v }
+        else if let v = value as? Data { dataValues[key] = v }
+        anyValues[key] = value
+    }
+    func get<T>(_ type: T.Type, forKey key: String) -> T? { anyValues[key] as? T }
+    func get<T>(_ type: T.Type, forKey key: String, defaultValue: T) -> T { (anyValues[key] as? T) ?? defaultValue }
+    func remove(forKey key: String) { stringValues.removeValue(forKey: key); boolValues.removeValue(forKey: key); intValues.removeValue(forKey: key); dataValues.removeValue(forKey: key); anyValues.removeValue(forKey: key) }
+    func hasValue(forKey key: String) -> Bool { stringValues[key] != nil || boolValues[key] != nil || intValues[key] != nil || dataValues[key] != nil || anyValues[key] != nil }
+    func bool(forKey key: String) -> Bool { boolValues[key] ?? false }
+    func string(forKey key: String) -> String? { stringValues[key] }
+    func integer(forKey key: String) -> Int { intValues[key] ?? 0 }
+    func data(forKey key: String) -> Data? { dataValues[key] }
+    func loadPosts() -> [Post] {
+        if let data = dataValues["posts"], let arr = try? JSONDecoder().decode([Post].self, from: data) { return arr }
+        return []
+    }
+    func savePosts(_ posts: [Post]) {
+        if let data = try? JSONEncoder().encode(posts) { dataValues["posts"] = data }
+    }
+    func saveTelegramSettings(token: String?, chatId: String?, botId: String?) {
+        if let token = token { stringValues["telegramToken"] = token } else { remove(forKey: "telegramToken") }
+        if let chatId = chatId { stringValues["telegramChatId"] = chatId } else { remove(forKey: "telegramChatId") }
+        if let botId = botId { stringValues["telegramBotId"] = botId } else { remove(forKey: "telegramBotId") }
+    }
+    func loadTelegramSettings() -> (token: String?, chatId: String?, botId: String?) {
+        (stringValues["telegramToken"], stringValues["telegramChatId"], stringValues["telegramBotId"])
+    }
+    func saveNotificationSettings(enabled: Bool, intervalHours: Int, startHour: Int, endHour: Int, mode: String) {
+        boolValues["notificationsEnabled"] = enabled
+        intValues["notificationIntervalHours"] = intervalHours
+        intValues["notificationStartHour"] = startHour
+        intValues["notificationEndHour"] = endHour
+        stringValues["notificationMode"] = mode
+    }
+    func loadNotificationSettings() -> (enabled: Bool, intervalHours: Int, startHour: Int, endHour: Int, mode: String) {
+        (boolValues["notificationsEnabled"] ?? false,
+         intValues["notificationIntervalHours"] ?? 1,
+         intValues["notificationStartHour"] ?? 8,
+         intValues["notificationEndHour"] ?? 22,
+         stringValues["notificationMode"] ?? "hourly")
+    }
+}

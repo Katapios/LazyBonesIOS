@@ -54,7 +54,7 @@ class ExternalReportsViewModelTests: XCTestCase {
                 authorId: 456
             )
         ]
-        mockGetReportsUseCase.result = expectedReports
+        mockGetReportsUseCase.mockResult = .success(expectedReports)
         mockTelegramIntegrationService.telegramToken = "test_token"
         
         // When
@@ -72,7 +72,7 @@ class ExternalReportsViewModelTests: XCTestCase {
     func testLoadReports_Error() async {
         // Given
         let expectedError = NSError(domain: "Test", code: 1, userInfo: nil)
-        mockGetReportsUseCase.error = expectedError
+        mockGetReportsUseCase.mockResult = .failure(.repositoryError(expectedError))
         
         // When
         await viewModel.handle(.loadReports)
@@ -109,7 +109,7 @@ class ExternalReportsViewModelTests: XCTestCase {
                 authorId: 101
             )
         ]
-        mockGetReportsUseCase.result = expectedReports
+        mockGetReportsUseCase.mockResult = .success(expectedReports)
         
         // When
         await viewModel.handle(.refreshFromTelegram)
@@ -400,6 +400,8 @@ class MockTelegramIntegrationService: TelegramIntegrationServiceProtocol {
     
     var fetchExternalPostsResult: Bool = true
     var deleteAllBotMessagesResult: Bool = true
+    var fetchExternalPostsCalled: Bool = false
+    var deleteAllBotMessagesCalled: Bool = false
     
     func saveTelegramSettings(token: String?, chatId: String?, botId: String?) {
         self.telegramToken = token
@@ -415,7 +417,14 @@ class MockTelegramIntegrationService: TelegramIntegrationServiceProtocol {
         self.lastUpdateId = updateId
     }
     
+    func resetLastUpdateId() {
+        self.lastUpdateId = nil
+    }
+    
+    func refreshTelegramService() {}
+    
     func fetchExternalPosts(completion: @escaping (Bool) -> Void) {
+        fetchExternalPostsCalled = true
         completion(fetchExternalPostsResult)
     }
     
@@ -432,6 +441,7 @@ class MockTelegramIntegrationService: TelegramIntegrationServiceProtocol {
     }
     
     func deleteAllBotMessages(completion: @escaping (Bool) -> Void) {
+        deleteAllBotMessagesCalled = true
         completion(deleteAllBotMessagesResult)
     }
     

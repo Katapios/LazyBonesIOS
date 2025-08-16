@@ -98,7 +98,7 @@ class RegularReportsViewModelTests: XCTestCase {
         // Given - пустой список отчетов
         
         // When
-        await viewModel.handle(.deleteReport(DomainPost(type: .regular)))
+        await viewModel.handle(.deleteReport(DomainPost(goodItems: [], badItems: [], type: .regular)))
         
         // Then
         XCTAssertFalse(viewModel.state.isLoading)
@@ -109,7 +109,7 @@ class RegularReportsViewModelTests: XCTestCase {
         // Given - мок репозиторий может вернуть ошибку
         
         // When
-        await viewModel.handle(.deleteReport(DomainPost(type: .regular)))
+        await viewModel.handle(.deleteReport(DomainPost(goodItems: [], badItems: [], type: .regular)))
         
         // Then
         XCTAssertFalse(viewModel.state.isLoading)
@@ -138,7 +138,7 @@ class RegularReportsViewModelTests: XCTestCase {
     
     func testSelectReport() async {
         // Given
-        let report = DomainPost(type: .regular, goodItems: ["Кодил"], badItems: ["Не гулял"])
+        let report = DomainPost(goodItems: ["Кодил"], badItems: ["Не гулял"], type: .regular)
         viewModel.state.reports = [report]
         viewModel.state.isSelectionMode = true
         
@@ -160,8 +160,8 @@ class RegularReportsViewModelTests: XCTestCase {
     func testSelectAllReports() async {
         // Given
         let reports = [
-            DomainPost(type: .regular, goodItems: ["Кодил"], badItems: ["Не гулял"]),
-            DomainPost(type: .regular, goodItems: ["Читал"], badItems: [])
+            DomainPost(goodItems: ["Кодил"], badItems: ["Не гулял"], type: .regular),
+            DomainPost(goodItems: ["Читал"], badItems: [], type: .regular)
         ]
         viewModel.state.reports = reports
         viewModel.state.isSelectionMode = true
@@ -177,8 +177,8 @@ class RegularReportsViewModelTests: XCTestCase {
     func testDeselectAllReports() async {
         // Given
         let reports = [
-            DomainPost(type: .regular, goodItems: ["Кодил"], badItems: ["Не гулял"]),
-            DomainPost(type: .regular, goodItems: ["Читал"], badItems: [])
+            DomainPost(goodItems: ["Кодил"], badItems: ["Не гулял"], type: .regular),
+            DomainPost(goodItems: ["Читал"], badItems: [], type: .regular)
         ]
         viewModel.state.reports = reports
         viewModel.state.isSelectionMode = true
@@ -263,7 +263,7 @@ class RegularReportsViewModelTests: XCTestCase {
 
 // MARK: - Mock Classes
 
-class MockPostRepository: PostRepositoryProtocol {
+fileprivate final class MockPostRepository: PostRepositoryProtocol {
     var posts: [DomainPost] = []
     var shouldThrowError = false
     
@@ -312,7 +312,7 @@ class MockPostRepository: PostRepositoryProtocol {
     }
 }
 
-class MockSettingsRepository: SettingsRepositoryProtocol {
+fileprivate final class MockSettingsRepository: SettingsRepositoryProtocol {
     var shouldThrowError = false
     private var settings: [String: Any] = [:]
     
