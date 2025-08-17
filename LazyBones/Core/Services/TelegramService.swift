@@ -79,6 +79,17 @@ class TelegramService: TelegramServiceProtocol {
             Logger.error("Failed to send message: \(error)", log: Logger.networking)
             if let tgError = error as? TelegramServiceError {
                 throw tgError
+            } else if let apiErr = error as? APIClientError {
+                switch apiErr {
+                case .unauthorized:
+                    throw TelegramServiceError.invalidToken
+                case .forbidden, .notFound:
+                    throw TelegramServiceError.invalidChatId
+                case .serverError(let code) where code == 400:
+                    throw TelegramServiceError.invalidChatId
+                default:
+                    throw TelegramServiceError.networkError(apiErr)
+                }
             } else {
                 throw TelegramServiceError.networkError(error)
             }
@@ -111,6 +122,17 @@ class TelegramService: TelegramServiceProtocol {
             Logger.error("Failed to send document: \(error)", log: Logger.networking)
             if let tgError = error as? TelegramServiceError {
                 throw tgError
+            } else if let apiErr = error as? APIClientError {
+                switch apiErr {
+                case .unauthorized:
+                    throw TelegramServiceError.invalidToken
+                case .forbidden, .notFound:
+                    throw TelegramServiceError.invalidChatId
+                case .serverError(let code) where code == 400:
+                    throw TelegramServiceError.invalidChatId
+                default:
+                    throw TelegramServiceError.networkError(apiErr)
+                }
             } else {
                 throw TelegramServiceError.networkError(error)
             }
@@ -143,6 +165,17 @@ class TelegramService: TelegramServiceProtocol {
             Logger.error("Failed to send voice: \(error)", log: Logger.networking)
             if let tgError = error as? TelegramServiceError {
                 throw tgError
+            } else if let apiErr = error as? APIClientError {
+                switch apiErr {
+                case .unauthorized:
+                    throw TelegramServiceError.invalidToken
+                case .forbidden, .notFound:
+                    throw TelegramServiceError.invalidChatId
+                case .serverError(let code) where code == 400:
+                    throw TelegramServiceError.invalidChatId
+                default:
+                    throw TelegramServiceError.networkError(apiErr)
+                }
             } else {
                 throw TelegramServiceError.networkError(error)
             }
@@ -215,6 +248,13 @@ class TelegramService: TelegramServiceProtocol {
             Logger.error("Failed to get bot info: \(error)", log: Logger.networking)
             if let tgError = error as? TelegramServiceError {
                 throw tgError
+            } else if let apiErr = error as? APIClientError {
+                switch apiErr {
+                case .unauthorized:
+                    throw TelegramServiceError.invalidToken
+                default:
+                    throw TelegramServiceError.networkError(apiErr)
+                }
             } else {
                 throw TelegramServiceError.networkError(error)
             }

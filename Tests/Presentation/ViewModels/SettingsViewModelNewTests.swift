@@ -299,3 +299,110 @@ final class SettingsViewModelNewTests: XCTestCase {
         XCTAssertTrue(autosend.autoSendEnabled)
     }
 }
+
+// MARK: - Telegram connection tests
+
+extension SettingsViewModelNewTests {
+    // Local mock for TelegramService to control behaviors
+    private final class TGMockService: TelegramServiceProtocol {
+        enum Mode { case success, invalidToken, invalidChat }
+        var mode: Mode = .success
+        var sentMessages: [(text: String, chatId: String)] = []
+        func getMe() async throws -> TelegramUser {
+            switch mode {
+            case .success: return TelegramUser(id: 1, isBot: true, firstName: "bot", username: "lazybones_bot")
+            case .invalidToken: throw TelegramServiceError.invalidToken
+            case .invalidChat: return TelegramUser(id: 1, isBot: true, firstName: "bot", username: "lazybones_bot")
+            }
+        }
+        func sendMessage(_ text: String, to chatId: String) async throws {
+            switch mode {
+            case .success:
+                sentMessages.append((text, chatId))
+            case .invalidToken:
+                throw TelegramServiceError.invalidToken
+            case .invalidChat:
+                throw TelegramServiceError.invalidChatId
+            }
+        }
+        func sendDocument(_ fileURL: URL, caption: String?, to chatId: String) async throws { }
+        func sendVoice(_ fileURL: URL, caption: String?, to chatId: String) async throws { }
+        func getUpdates(offset: Int?) async throws -> [TelegramUpdate] { return [] }
+        func downloadFile(_ fileId: String) async throws -> Data { Data() }
+    }
+
+    func testCheckTelegramConnection_SuccessUpdatesStatus() async {
+        // Given
+        let tg = TGMockService()
+        tg.mode = .success
+        tgResolver.service = tg
+        vm.state.telegramToken = "tok"
+        vm.state.telegramChatId = "123"
+
+        // When
+        await vm.handle(.checkTelegramConnection)
+
+        // Then
+        XCTAssertEqual(vm.state.telegramStatus, "Успешно!")
+    }
+
+    func testCheckTelegramConnection_InvalidTokenSetsMessage() async {
+        // Given
+        let tg = TGMockService()
+        tg.mode = .invalidToken
+        tgResolver.service = tg
+        vm.state.telegramToken = "bad"
+        vm.state.telegramChatId = "123"
+
+        // When
+        await vm.handle(.checkTelegramConnection)
+
+        // Then
+        XCTAssertEqual(vm.state.telegramStatus, "Ошибка: неверный токен")
+    }
+
+    func testCheckTelegramConnection_RegistersServiceIfNil() async {
+        // Given resolver initially returns nil
+        tgResolver.service = nil
+        vm.state.telegramToken = "tok"
+        vm.state.telegramChatId = "123"
+
+        // Custom updater that registers service on apply
+        final class RegisteringUpdater: MockTelegramConfigUpdater {
+            weak var resolver: MockTelegramResolver?
+            override func applyTelegramToken(_ token: String?) {
+                super.applyTelegramToken(token)
+                if let r = resolver {
+                    let s = TGMockService()
+                    s.mode = .success
+                    r.service = s
+                }
+            }
+        }
+
+        let registeringUpdater = RegisteringUpdater()
+        registeringUpdater.resolver = tgResolver
+
+        // Recreate VM with registering updater
+        vm = SettingsViewModelNew(
+            settingsRepository: repo,
+            notificationManager: notif,
+            postRepository: postRepo,
+            timerService: timer,
+            statusManager: status,
+            iCloudService: icloud,
+            autoSendService: autosend,
+            telegramConfigUpdater: registeringUpdater,
+            telegramResolver: tgResolver,
+            legacyUISync: legacySync
+        )
+
+        // When
+        await vm.handle(.checkTelegramConnection)
+
+        // Then
+        XCTAssertEqual(vm.state.telegramStatus, "Успешно!")
+        XCTAssertEqual(registeringUpdater.appliedToken, "tok")
+    }
+}
+
