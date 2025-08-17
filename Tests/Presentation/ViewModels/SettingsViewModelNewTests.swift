@@ -310,9 +310,9 @@ extension SettingsViewModelNewTests {
         var sentMessages: [(text: String, chatId: String)] = []
         func getMe() async throws -> TelegramUser {
             switch mode {
-            case .success: return TelegramUser(id: 1, isBot: true, firstName: "bot", username: "lazybones_bot")
+            case .success: return TelegramUser(id: 1, isBot: true, firstName: "bot", lastName: nil, username: "lazybones_bot")
             case .invalidToken: throw TelegramServiceError.invalidToken
-            case .invalidChat: return TelegramUser(id: 1, isBot: true, firstName: "bot", username: "lazybones_bot")
+            case .invalidChat: return TelegramUser(id: 1, isBot: true, firstName: "bot", lastName: nil, username: "lazybones_bot")
             }
         }
         func sendMessage(_ text: String, to chatId: String) async throws {
@@ -361,17 +361,33 @@ extension SettingsViewModelNewTests {
         XCTAssertEqual(vm.state.telegramStatus, "Ошибка: неверный токен")
     }
 
+    func testCheckTelegramConnection_InvalidChatIdSetsMessage() async {
+        // Given
+        let tg = TGMockService()
+        tg.mode = .invalidChat
+        tgResolver.service = tg
+        vm.state.telegramToken = "tok"
+        vm.state.telegramChatId = "badChat"
+
+        // When
+        await vm.handle(.checkTelegramConnection)
+
+        // Then
+        XCTAssertEqual(vm.state.telegramStatus, "Ошибка: неверный chat_id")
+    }
+
     func testCheckTelegramConnection_RegistersServiceIfNil() async {
         // Given resolver initially returns nil
         tgResolver.service = nil
         vm.state.telegramToken = "tok"
         vm.state.telegramChatId = "123"
 
-        // Custom updater that registers service on apply
-        final class RegisteringUpdater: MockTelegramConfigUpdater {
+        // Custom updater that registers service on apply (no subclassing of finals)
+        final class RegisteringUpdater: TelegramConfigUpdaterProtocol {
             weak var resolver: MockTelegramResolver?
-            override func applyTelegramToken(_ token: String?) {
-                super.applyTelegramToken(token)
+            var appliedToken: String?
+            func applyTelegramToken(_ token: String?) {
+                appliedToken = token
                 if let r = resolver {
                     let s = TGMockService()
                     s.mode = .success
@@ -396,6 +412,10 @@ extension SettingsViewModelNewTests {
             telegramResolver: tgResolver,
             legacyUISync: legacySync
         )
+
+        // Important: after recreating VM, state was reset
+        vm.state.telegramToken = "tok"
+        vm.state.telegramChatId = "123"
 
         // When
         await vm.handle(.checkTelegramConnection)

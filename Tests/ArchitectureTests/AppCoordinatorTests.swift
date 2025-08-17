@@ -46,6 +46,22 @@ class AppCoordinatorTests: XCTestCase {
         XCTAssertEqual(coordinator.childCoordinators.count, 1)
         XCTAssertTrue(coordinator.childCoordinators.first is PlanningCoordinator)
     }
+
+    func testSwitchToTab_SettingsCreatesSettingsCoordinator() {
+        // When
+        coordinator.switchToTab(.settings)
+
+        // Then
+        XCTAssertEqual(coordinator.currentTab, .settings)
+        XCTAssertEqual(coordinator.childCoordinators.count, 1)
+        XCTAssertTrue(coordinator.childCoordinators.first is SettingsCoordinator)
+    }
+
+    func testDI_ResolvesSettingsViewModelNew() {
+        // Ensures Telegram/Settings views with force unwrap won't crash on init
+        let vm: SettingsViewModelNew? = dependencyContainer.resolve(SettingsViewModelNew.self)
+        XCTAssertNotNil(vm)
+    }
     
     func testStart_InitializesServices() async {
         // Given
