@@ -149,7 +149,8 @@ class PostFormViewModel: ObservableObject {
             type: post?.type ?? .regular
         )
         
-        if post != nil {
+        if let editingId = post?.id,
+           store.posts.firstIndex(where: { $0.id == editingId }) != nil {
             store.update(post: newPost)
         } else {
             store.add(post: newPost)
@@ -180,7 +181,8 @@ class PostFormViewModel: ObservableObject {
             type: post?.type ?? .regular
         )
         
-        if post != nil {
+        if let editingId = post?.id,
+           store.posts.firstIndex(where: { $0.id == editingId }) != nil {
             store.update(post: newPost)
         } else {
             store.add(post: newPost)

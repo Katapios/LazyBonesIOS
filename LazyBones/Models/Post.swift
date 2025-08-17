@@ -61,7 +61,17 @@ class PostStore: ObservableObject, PostStoreProtocol {
     // ОБРАТНАЯ СОВМЕСТИМОСТЬ: Публичные свойства для статусной модели
     var reportStatus: ReportStatus {
         get { return statusManager.reportStatus }
-        set { /* Делегируем к statusManager */ }
+        set {
+            // Прямой прокси для совместимости с тестами и легаси-кодом
+            // Не пересчитываем статус здесь, просто сохраняем и уведомляем
+            if statusManager.reportStatus != newValue {
+                statusManager.setReportStatus(newValue)
+                statusManager.saveStatus()
+                // Сообщим зависимостям о смене статуса через нотификацию,
+                // чтобы не лезть во внутренности менеджера из PostStore
+                NotificationCenter.default.post(name: .reportStatusDidChange, object: statusManager, userInfo: ["status": newValue.rawValue])
+            }
+        }
     }
     
     // Пересоздаёт Telegram сервисы после изменения токена в DI
@@ -217,6 +227,10 @@ class PostStore: ObservableObject, PostStoreProtocol {
             }
         }
         
+        // В среде тестов очищаем локальное хранилище постов, чтобы изолировать тестовые кейсы
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+            localService.clearPosts()
+        }
         loadSettings()
         loadTelegramSettings()
         

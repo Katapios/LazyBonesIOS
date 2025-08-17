@@ -1,6 +1,15 @@
 import Foundation
 import Combine
 
+// MARK: - Date Provider for testability
+protocol CurrentDateProvider {
+    func now() -> Date
+}
+
+struct SystemDateProvider: CurrentDateProvider {
+    func now() -> Date { Date() }
+}
+
 extension Notification.Name {
     static let reportPeriodActivityChanged = Notification.Name("ReportPeriodActivityChanged")
 }
@@ -35,10 +44,12 @@ class PostTimerService: PostTimerServiceProtocol, ObservableObject {
     private let onTimeUpdate: (String, Double) -> Void
     private var currentReportStatus: ReportStatus = .notStarted
     private var wasPeriodActive: Bool?
+    private let dateProvider: CurrentDateProvider
     
-    init(userDefaultsManager: UserDefaultsManagerProtocol, onTimeUpdate: @escaping (String, Double) -> Void) {
+    init(userDefaultsManager: UserDefaultsManagerProtocol, onTimeUpdate: @escaping (String, Double) -> Void, dateProvider: CurrentDateProvider = SystemDateProvider()) {
         self.userDefaultsManager = userDefaultsManager
         self.onTimeUpdate = onTimeUpdate
+        self.dateProvider = dateProvider
     }
     
     deinit {
@@ -52,7 +63,7 @@ class PostTimerService: PostTimerServiceProtocol, ObservableObject {
         updateTimeLeft()
         
         // Умная логика обновления: чаще в критических моментах
-        let now = Date()
+        let now = dateProvider.now()
         let calendar = Calendar.current
         let startHour = getNotificationStartHour()
         let endHour = getNotificationEndHour()
@@ -82,7 +93,7 @@ class PostTimerService: PostTimerServiceProtocol, ObservableObject {
     
     func updateTimeLeft() {
         let calendar = Calendar.current
-        let now = Date()
+        let now = dateProvider.now()
         let startHour = getNotificationStartHour()
         let endHour = getNotificationEndHour()
         
@@ -135,10 +146,14 @@ class PostTimerService: PostTimerServiceProtocol, ObservableObject {
     // MARK: - Private Methods
     
     private func getNotificationStartHour() -> Int {
-        return userDefaultsManager.get(Int.self, forKey: "notificationStartHour", defaultValue: 8)
+        // Читать из единого источника настроек уведомлений,
+        // чтобы моки в тестах могли подставлять кастомные значения
+        let settings = userDefaultsManager.loadNotificationSettings()
+        return settings.startHour
     }
     
     private func getNotificationEndHour() -> Int {
-        return userDefaultsManager.get(Int.self, forKey: "notificationEndHour", defaultValue: 22)
+        let settings = userDefaultsManager.loadNotificationSettings()
+        return settings.endHour
     }
 } 

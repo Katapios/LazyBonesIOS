@@ -2,6 +2,11 @@ import XCTest
 @testable import LazyBones
 
 final class PostTimerServiceTests: XCTestCase {
+    // Провайдер фиксированного времени для детерминированных тестов
+    struct FixedDateProvider: CurrentDateProvider {
+        var date: Date
+        func now() -> Date { date }
+    }
     // Локальный мок UserDefaultsManager с настраиваемыми часами
     final class PTST_UserDefaultsMock: UserDefaultsManagerProtocol {
         var startHour: Int = 8
@@ -36,6 +41,19 @@ final class PostTimerServiceTests: XCTestCase {
         }
         return (service, udm, { last })
     }
+
+    // Детерминированная фабрика с фиксированным now
+    func makeService(start: Int, end: Int, now: Date) -> (PostTimerService, PTST_UserDefaultsMock, () -> (String, Double)) {
+        let udm = PTST_UserDefaultsMock()
+        udm.startHour = ((start % 24) + 24) % 24
+        udm.endHour = ((end % 24) + 24) % 24
+        var last: (String, Double) = ("", 0)
+        let dp = FixedDateProvider(date: now)
+        let service = PostTimerService(userDefaultsManager: udm, onTimeUpdate: { tl, pr in
+            last = (tl, pr)
+        }, dateProvider: dp)
+        return (service, udm, { last })
+    }
     
     func test_beforeStart_showsCountdownToStart_andZeroProgress() {
         let nowHour = Calendar.current.component(.hour, from: Date())
@@ -62,6 +80,33 @@ final class PostTimerServiceTests: XCTestCase {
         let nowHour = Calendar.current.component(.hour, from: Date())
         // Старт за 2 часа, конец за 1 час => сейчас ПОСЛЕ конца
         let (service, _, last) = makeService(start: nowHour - 2, end: nowHour - 1)
+        service.updateTimeLeft()
+        let (label, progress) = last()
+        XCTAssertTrue(label.hasPrefix("До старта:"))
+        XCTAssertEqual(progress, 0.0, accuracy: 1e-6)
+    }
+    
+    // MARK: - Детерминированные кейсы с ровными границами
+
+    func test_exactlyAtStart_showsCountdownToEnd_progressNearZero() {
+        let cal = Calendar.current
+        var comps = cal.dateComponents([.year,.month,.day], from: Date())
+        comps.hour = 9; comps.minute = 0; comps.second = 0
+        let now = cal.date(from: comps)!
+        let (service, _, last) = makeService(start: 9, end: 12, now: now)
+        service.updateTimeLeft()
+        let (label, progress) = last()
+        XCTAssertTrue(label.hasPrefix("До конца:"))
+        XCTAssertGreaterThanOrEqual(progress, 0.0)
+        XCTAssertLessThanOrEqual(progress, 0.01) // у старта прогресс ~0
+    }
+
+    func test_exactlyAtEnd_showsCountdownToNextStart_zeroProgress() {
+        let cal = Calendar.current
+        var comps = cal.dateComponents([.year,.month,.day], from: Date())
+        comps.hour = 18; comps.minute = 0; comps.second = 0
+        let now = cal.date(from: comps)!
+        let (service, _, last) = makeService(start: 9, end: 18, now: now)
         service.updateTimeLeft()
         let (label, progress) = last()
         XCTAssertTrue(label.hasPrefix("До старта:"))

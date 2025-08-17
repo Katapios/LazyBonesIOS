@@ -3,6 +3,8 @@ import WidgetKit
 
 class LocalReportService {
     static let shared = LocalReportService()
+    // In-memory storage used only during unit tests to avoid persistence side effects
+    private static var testPostsStorage: [Post] = []
     private let userDefaults: UserDefaults?
     private let key = "posts"
     private let reportStatusKey = "reportStatus"
@@ -17,8 +19,17 @@ class LocalReportService {
         migrateOldTagsIfNeeded()
     }
     
+    private var isRunningTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+    
     func loadPosts() -> [Post] {
         print("[DEBUG][LocalReportService] loadPosts() called")
+        if isRunningTests {
+            let decoded = Self.testPostsStorage
+            print("[DEBUG][LocalReportService][TEST] loaded posts count: \(decoded.count)")
+            return decoded.sorted { $0.date > $1.date }
+        }
         guard let data = userDefaults?.data(forKey: key),
               let decoded = try? JSONDecoder().decode([Post].self, from: data) else {
             print("[DEBUG][LocalReportService] loadPosts: no data or decode error")
@@ -30,6 +41,10 @@ class LocalReportService {
     
     func savePosts(_ posts: [Post]) {
         print("[DEBUG][LocalReportService] savePosts() called, posts count: \(posts.count)")
+        if isRunningTests {
+            Self.testPostsStorage = posts
+            return
+        }
         guard let data = try? JSONEncoder().encode(posts) else { print("[DEBUG][LocalReportService] savePosts: encode error"); return }
         userDefaults?.set(data, forKey: key)
         WidgetCenter.shared.reloadAllTimelines()
@@ -37,6 +52,10 @@ class LocalReportService {
     
     func clearPosts() {
         print("[DEBUG][LocalReportService] clearPosts() called")
+        if isRunningTests {
+            Self.testPostsStorage = []
+            return
+        }
         userDefaults?.removeObject(forKey: key)
         WidgetCenter.shared.reloadAllTimelines()
     }

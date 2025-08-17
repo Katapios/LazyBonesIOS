@@ -120,3 +120,24 @@
   - Период не активен, есть записи (не успели отправить)
   - Главная: недоступно
   - Форма: заглушка (если нет `forceUnlock`)
+
+## API менеджера статусов
+
+- Класс: `ReportStatusManager` (`LazyBones/Core/Services/ReportStatusManager.swift`)
+- Протокол: `ReportStatusManagerProtocol`
+- Свойства:
+  - `reportStatus: ReportStatus { get }`
+  - `forceUnlock: Bool { get set }`
+  - `currentDay: Date { get }`
+- Методы:
+  - `updateStatus()` — пересчитать статус с учётом периода/постов/forceUnlock
+  - `checkForNewDay()` — обработка наступления нового дня и сбросов
+  - `unlockReportCreation()` — однократная разблокировка редактирования отчёта
+  - `loadStatus()` / `saveStatus()` — синхронизация с локальным хранилищем
+  - `setReportStatus(_:)` — утилита для тестов/моков
+
+### Нотификация об изменении статуса
+
+- Имя: `Notification.Name.reportStatusDidChange`
+- UserInfo: `["status": String]` — новое значение `reportStatus.rawValue`
+- Высылается из `updateDependencies(_:)` при любом значимом изменении или смене `forceUnlock`

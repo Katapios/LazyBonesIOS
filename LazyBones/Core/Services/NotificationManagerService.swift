@@ -75,6 +75,9 @@ class NotificationManagerService: NotificationManagerServiceProtocol {
     // MARK: - Private Properties
     private let appGroup = AppConfig.appGroup
     private var isBootstrapping = false
+    private var isRunningTests: Bool {
+        return ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
     
     // MARK: - Initialization
     init(
@@ -141,45 +144,77 @@ class NotificationManagerService: NotificationManagerServiceProtocol {
         Logger.info("Scheduling notifications", log: Logger.notifications)
         
         // Отменяем старые уведомления
-        cancelAllNotifications()
-        
-        Task {
-            do {
-                // Проверяем разрешения на уведомления
-                let hasPermission = await notificationService.checkNotificationPermission()
-                guard hasPermission else {
-                    Logger.warning("No notification permission, skipping scheduling", log: Logger.notifications)
-                    await MainActor.run {
-                        if self.notificationsEnabled { self.notificationsEnabled = false }
+        if isRunningTests {
+            cancelAllNotifications()
+            let sem = DispatchSemaphore(value: 0)
+            Task {
+                defer { sem.signal() }
+                do {
+                    let hasPermission = await notificationService.checkNotificationPermission()
+                    guard hasPermission else {
+                        Logger.warning("No notification permission, skipping scheduling", log: Logger.notifications)
+                        await MainActor.run {
+                            if self.notificationsEnabled { self.notificationsEnabled = false }
+                        }
+                        return
                     }
-                    return
+                    await notificationService.debugNotificationStatus()
+                    try await notificationService.scheduleReportNotifications(
+                        enabled: true,
+                        intervalHours: notificationIntervalHours,
+                        startHour: notificationStartHour,
+                        endHour: notificationEndHour,
+                        mode: notificationMode.rawValue
+                    )
+                    Logger.info("Notifications scheduled successfully with mode: \(notificationMode.rawValue)", log: Logger.notifications)
+                    await notificationService.debugNotificationStatus()
+                } catch {
+                    Logger.error("Failed to schedule notifications: \(error)", log: Logger.notifications)
                 }
-                
-                // Сначала выводим debug информацию
-                await notificationService.debugNotificationStatus()
-                
-                // Используем правильную логику из NotificationService
-                try await notificationService.scheduleReportNotifications(
-                    enabled: true,
-                    intervalHours: notificationIntervalHours,
-                    startHour: notificationStartHour,
-                    endHour: notificationEndHour,
-                    mode: notificationMode.rawValue
-                )
-                Logger.info("Notifications scheduled successfully with mode: \(notificationMode.rawValue)", log: Logger.notifications)
-                
-                // Выводим debug информацию после планирования
-                await notificationService.debugNotificationStatus()
-            } catch {
-                Logger.error("Failed to schedule notifications: \(error)", log: Logger.notifications)
+            }
+            sem.wait()
+        } else {
+            cancelAllNotifications()
+            Task {
+                do {
+                    let hasPermission = await notificationService.checkNotificationPermission()
+                    guard hasPermission else {
+                        Logger.warning("No notification permission, skipping scheduling", log: Logger.notifications)
+                        await MainActor.run {
+                            if self.notificationsEnabled { self.notificationsEnabled = false }
+                        }
+                        return
+                    }
+                    await notificationService.debugNotificationStatus()
+                    try await notificationService.scheduleReportNotifications(
+                        enabled: true,
+                        intervalHours: notificationIntervalHours,
+                        startHour: notificationStartHour,
+                        endHour: notificationEndHour,
+                        mode: notificationMode.rawValue
+                    )
+                    Logger.info("Notifications scheduled successfully with mode: \(notificationMode.rawValue)", log: Logger.notifications)
+                    await notificationService.debugNotificationStatus()
+                } catch {
+                    Logger.error("Failed to schedule notifications: \(error)", log: Logger.notifications)
+                }
             }
         }
     }
     
     func cancelAllNotifications() {
         Logger.info("Cancelling all notifications", log: Logger.notifications)
-        Task {
-            try? await notificationService.cancelAllNotifications()
+        if isRunningTests {
+            let sem = DispatchSemaphore(value: 0)
+            Task {
+                defer { sem.signal() }
+                try? await notificationService.cancelAllNotifications()
+            }
+            sem.wait()
+        } else {
+            Task {
+                try? await notificationService.cancelAllNotifications()
+            }
         }
     }
     

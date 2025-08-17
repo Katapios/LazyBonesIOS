@@ -23,6 +23,12 @@ protocol ReportStatusManagerProtocol: ObservableObject {
     func unlockReportCreation()
     func loadStatus()
     func saveStatus()
+    func setReportStatus(_ newStatus: ReportStatus)
+}
+
+// MARK: - Default Implementations
+extension ReportStatusManagerProtocol {
+    func setReportStatus(_ newStatus: ReportStatus) { /* default no-op for tests/mocks */ }
 }
 
 /// Менеджер статуса отчетов
@@ -214,6 +220,10 @@ class ReportStatusManager: ReportStatusManagerProtocol {
     func saveStatus() {
         localService.saveReportStatus(reportStatus)
         localService.saveForceUnlock(forceUnlock)
+    }
+    
+    func setReportStatus(_ newStatus: ReportStatus) {
+        reportStatus = newStatus
     }
     
     // MARK: - Private Methods

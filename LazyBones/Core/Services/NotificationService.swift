@@ -153,6 +153,21 @@ class NotificationService: NotificationServiceProtocol {
             Logger.info("Notifications disabled, skipping scheduling", log: Logger.ui)
             return
         }
+
+        // Валидация параметров (без изменения нормального поведения)
+        let validHourRange = 0...23
+        guard validHourRange.contains(startHour), validHourRange.contains(endHour) else {
+            Logger.warning("Invalid hours: start=\(startHour), end=\(endHour). Expected 0...23", log: Logger.ui)
+            return
+        }
+        guard startHour <= endHour else {
+            Logger.warning("Invalid hours range: startHour(\(startHour)) > endHour(\(endHour))", log: Logger.ui)
+            return
+        }
+        if mode == "hourly" && intervalHours < 1 {
+            Logger.warning("Invalid intervalHours=\(intervalHours) for hourly mode. Expected >= 1", log: Logger.ui)
+            return
+        }
         
         let title = "LazyBones"
         let body = "Время для отчета! Как прошел ваш день?"

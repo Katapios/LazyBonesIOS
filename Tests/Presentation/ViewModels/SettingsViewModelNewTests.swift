@@ -426,3 +426,76 @@ extension SettingsViewModelNewTests {
     }
 }
 
+
+// MARK: - Additional SettingsViewModelNew tests
+
+extension SettingsViewModelNewTests {
+    func testLoadSettings_LoadsTelegramFromRepository() async {
+        // Given
+        repo.telegram = ("tt", "cc", "bb")
+        // When
+        await vm.handle(.loadSettings)
+        // Then
+        XCTAssertEqual(vm.state.telegramToken, "tt")
+        XCTAssertEqual(vm.state.telegramChatId, "cc")
+        XCTAssertEqual(vm.state.telegramBotId, "bb")
+    }
+
+    func testSaveDeviceName_UpdatesUserDefaultsAndStateAndShowSavedFlag() async {
+        // When
+        await vm.handle(.saveDeviceName("My iPhone"))
+        // Then
+        XCTAssertEqual(AppConfig.sharedUserDefaults.string(forKey: "deviceName"), "My iPhone")
+        XCTAssertEqual(vm.state.deviceName, "My iPhone")
+        // showSaved включается сразу (выключение через 2 сек не проверяем, чтобы не замедлять тесты)
+        XCTAssertTrue(vm.state.showSaved)
+    }
+
+    func testSetBackgroundFetchTestEnabled_PersistsFlag() async {
+        // When
+        await vm.handle(.setBackgroundFetchTestEnabled(true))
+        // Then
+        XCTAssertTrue(AppConfig.sharedUserDefaults.bool(forKey: "backgroundFetchTestEnabled"))
+        XCTAssertTrue(vm.state.isBackgroundFetchTestEnabled)
+        // And toggle back
+        await vm.handle(.setBackgroundFetchTestEnabled(false))
+        XCTAssertFalse(AppConfig.sharedUserDefaults.bool(forKey: "backgroundFetchTestEnabled"))
+        XCTAssertFalse(vm.state.isBackgroundFetchTestEnabled)
+    }
+
+    func testExportToICloud_NoFilePermissionSetsErrorMessage() async {
+        // Given
+        icloud.fileAccessGranted = false
+        // When
+        await vm.handle(.exportToICloud)
+        // Then
+        XCTAssertEqual(vm.state.exportResult, "❌ Нет разрешения на доступ к файлам. Проверьте настройки приложения.")
+    }
+
+    func testExportToICloud_NoICloudAccessSetsErrorMessage() async {
+        // Given
+        icloud.fileAccessGranted = true
+        icloud.iCloudAccessGranted = false
+        // When
+        await vm.handle(.exportToICloud)
+        // Then
+        XCTAssertEqual(vm.state.exportResult, "❌ Нет доступа к iCloud Drive. Проверьте настройки iCloud.")
+    }
+
+    func testCreateTestFile_SetsSuccessMessage() async {
+        // When
+        await vm.handle(.createTestFile)
+        // Then
+        XCTAssertEqual(vm.state.exportResult, "✅ Тестовый файл создан! Проверьте Desktop или Downloads")
+    }
+
+    func testCheckICloudAvailability_UpdatesState() async {
+        // Given
+        icloud.available = false
+        // When
+        await vm.handle(.checkICloudAvailability)
+        // Then
+        XCTAssertEqual(vm.state.isICloudAvailable, false)
+    }
+}
+

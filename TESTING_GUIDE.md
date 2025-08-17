@@ -120,6 +120,32 @@ class MyServiceTests: XCTestCase {
 }
 ```
 
+## 🧱 Изоляция состояния в тестах
+
+- __LocalReportService__: при выполнении под XCTest используется in-memory хранилище постов вместо UserDefaults.
+  - Реализация: `LocalReportService.testPostsStorage` и проверка `XCTestConfigurationFilePath` в методах `loadPosts()/savePosts()/clearPosts()`.
+  - Цель: исключить влияние сохранённых данных между тестами и сделать поведение детерминированным.
+
+- __PostStore__: в `PostStore.init()` под XCTest выполняется очистка постов через `localService.clearPosts()` перед загрузкой настроек.
+  - Гарантирует чистое состояние для каждого запуска.
+
+## 🧯 Стабильность симулятора
+
+При ошибках вида `Mach error -308 (ipc/mig) server died)` или `Invalid device state` рекомендуется:
+
+```bash
+killall Simulator || true
+xcrun simctl shutdown all
+# при необходимости
+xcrun simctl erase all
+```
+
+После этого повторно запустить тесты с указанием девайса:
+
+```bash
+xcodebuild -project LazyBones.xcodeproj -scheme LazyBones -destination 'platform=iOS Simulator,name=iPhone 16' test
+```
+
 ### 2. Integration тест
 
 ```swift
