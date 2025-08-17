@@ -1,6 +1,7 @@
 import SwiftUI
 
 /// Вкладка 'Отчёты': список всех постов с датами и чеклистами
+@available(*, deprecated, message: "Legacy PostStore-based view. Not used in runtime; kept for reference/tests during migration.")
 struct ReportsView: View {
     @StateObject private var viewModel: ReportsViewModel
     

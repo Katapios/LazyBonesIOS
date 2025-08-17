@@ -3,6 +3,7 @@ import SwiftUI
 
 /// ViewModel-адаптер для ReportsView, который оборачивает PostStore
 /// Это безопасный переходный этап миграции
+@available(*, deprecated, message: "Legacy PostStore-based VM. Not used in runtime; kept for reference/tests during migration.")
 @MainActor
 class ReportsViewModel: ObservableObject {
     
