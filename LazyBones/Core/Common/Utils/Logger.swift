@@ -3,6 +3,12 @@ import os.log
 
 /// Утилита для логирования
 struct Logger {
+    // Управление консольным выводом (print). По умолчанию выключено для снижения лагов.
+    #if DEBUG
+    static var consoleEchoEnabled: Bool = false
+    static var infoEnabled: Bool = false
+    static var debugEnabled: Bool = false
+    #endif
     
     private static let subsystem = Bundle.main.bundleIdentifier ?? "com.lazybones"
     
@@ -33,19 +39,23 @@ struct Logger {
     /// Логгер для ошибок
     static let error = OSLog(subsystem: subsystem, category: "error")
     
-    /// Логировать информационное сообщение
+    /// Логировать информационное сообщение (отфильтровано флагом)
     static func info(_ message: String, log: OSLog = general) {
-        os_log(.info, log: log, "%{public}@", message)
+        if infoEnabled {
+            os_log(.info, log: log, "%{public}@", message)
+        }
         #if DEBUG
-        print("[INFO] \(message)")
+        if consoleEchoEnabled { print("[INFO] \(message)") }
         #endif
     }
     
-    /// Логировать отладочное сообщение
+    /// Логировать отладочное сообщение (отфильтровано флагом)
     static func debug(_ message: String, log: OSLog = general) {
+        if debugEnabled {
+            os_log(.debug, log: log, "%{public}@", message)
+        }
         #if DEBUG
-        os_log(.debug, log: log, "%{public}@", message)
-        print("[DEBUG] \(message)")
+        if consoleEchoEnabled { print("[DEBUG] \(message)") }
         #endif
     }
     
@@ -53,7 +63,7 @@ struct Logger {
     static func warning(_ message: String, log: OSLog = general) {
         os_log(.default, log: log, "%{public}@", message)
         #if DEBUG
-        print("[WARNING] \(message)")
+        if consoleEchoEnabled { print("[WARNING] \(message)") }
         #endif
     }
     
@@ -61,7 +71,7 @@ struct Logger {
     static func error(_ message: String, log: OSLog = error) {
         os_log(.error, log: log, "%{public}@", message)
         #if DEBUG
-        print("[ERROR] \(message)")
+        if consoleEchoEnabled { print("[ERROR] \(message)") }
         #endif
     }
     
@@ -69,7 +79,7 @@ struct Logger {
     static func critical(_ message: String, log: OSLog = error) {
         os_log(.fault, log: log, "%{public}@", message)
         #if DEBUG
-        print("[CRITICAL] \(message)")
+        if consoleEchoEnabled { print("[CRITICAL] \(message)") }
         #endif
     }
 } 

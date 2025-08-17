@@ -190,8 +190,18 @@ class PostTelegramService: PostTelegramServiceProtocol {
         if let telegramService = telegramService as? TelegramService {
             return telegramService.formatRegularReportForTelegram(post, deviceName: deviceName)
         } else {
-            Logger.error("telegramService is not TelegramService", log: Logger.telegram)
-            return "[Ошибка форматирования отчёта]"
+            Logger.warning("telegramService is not TelegramService, using fallback formatter", log: Logger.telegram)
+            let dateStr = DateUtils.formatDate(post.date)
+            var text = "📄 Обычный отчет (\(dateStr)) — \(deviceName)\n"
+            if !post.goodItems.isEmpty {
+                text += "\n👍 Хорошее:\n"
+                post.goodItems.forEach { item in text += "• \(item)\n" }
+            }
+            if !post.badItems.isEmpty {
+                text += "\n👎 Плохое:\n"
+                post.badItems.forEach { item in text += "• \(item)\n" }
+            }
+            return text
         }
     }
     
@@ -200,8 +210,23 @@ class PostTelegramService: PostTelegramServiceProtocol {
         if let telegramService = telegramService as? TelegramService {
             return telegramService.formatCustomReportForTelegram(post, deviceName: deviceName)
         } else {
-            Logger.error("telegramService is not TelegramService", log: Logger.telegram)
-            return "[Ошибка форматирования отчёта]"
+            Logger.warning("telegramService is not TelegramService, using fallback formatter for custom report", log: Logger.telegram)
+            let dateStr = DateUtils.formatDate(post.date)
+            var text = "📝 Кастомный отчет (\(dateStr)) — \(deviceName)\n\n"
+            for (idx, item) in post.goodItems.enumerated() {
+                let mark: String
+                if let results = post.evaluationResults, idx < results.count {
+                    mark = results[idx] ? "✅" : "❌"
+                } else {
+                    mark = "•"
+                }
+                text += "\(mark) \(item)\n"
+            }
+            if !post.badItems.isEmpty {
+                text += "\n👎 Плохое:\n"
+                post.badItems.forEach { item in text += "• \(item)\n" }
+            }
+            return text
         }
     }
     

@@ -244,6 +244,10 @@ extension DependencyContainer {
             return self.resolve(SettingsRepository.self)!
         })
         
+        register(TagRepositoryProtocol.self, factory: {
+            return self.resolve(TagRepository.self)!
+        })
+        
         // Регистрируем конкретные типы вместо протоколов для избежания предупреждений Swift 6
         register(GetReportsUseCase.self, factory: {
             let postRepository = self.resolve(PostRepository.self)!
@@ -269,6 +273,7 @@ extension DependencyContainer {
     }
 
     /// Регистрация вспомогательных адаптеров для Presentation слоя
+    @MainActor
     func registerPresentationAdapters() {
         // Разрешатель TelegramService без прямого доступа к DI из Presentation
         register(TelegramServiceResolverProtocol.self, factory: {
@@ -307,6 +312,20 @@ extension DependencyContainer {
                 telegramConfigUpdater: telegramConfigUpdater,
                 telegramResolver: telegramResolver,
                 legacyUISync: legacyUISync
+            )
+        })
+
+        // ReportsViewModelNew фабрика (единая точка создания VM для Reports экрана)
+        register(ReportsViewModelNew.self, factory: {
+            let getReportsUseCase = self.resolve(GetReportsUseCase.self)!
+            let deleteReportUseCase = self.resolve(DeleteReportUseCase.self)!
+            let updateReportUseCase = self.resolve(UpdateReportUseCase.self)!
+            let tagRepository = self.resolve(TagRepositoryProtocol.self)!
+            return ReportsViewModelNew(
+                getReportsUseCase: getReportsUseCase,
+                deleteReportUseCase: deleteReportUseCase,
+                updateReportUseCase: updateReportUseCase,
+                tagRepository: tagRepository
             )
         })
     }

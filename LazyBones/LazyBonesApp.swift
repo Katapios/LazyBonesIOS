@@ -38,6 +38,7 @@ struct LazyBonesApp: App {
         }
     }
 
+    @MainActor
     init() {
         Logger.info("App initializing", log: Logger.general)
         
@@ -62,6 +63,7 @@ struct LazyBonesApp: App {
 
 // MARK: - Setup Methods
 
+@MainActor
 private func setupDependencyInjection() {
     Logger.info("Setting up dependency injection", log: Logger.general)
     

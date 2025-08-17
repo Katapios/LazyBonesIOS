@@ -341,6 +341,9 @@ struct PlanningContentView: View {
     }
     
     func publishCustomReportToTelegram() {
+        // Обновляем локальное состояние постов перед проверкой оценки,
+        // чтобы избежать рассинхрона между слоями (Clean Architecture vs PostStore)
+        store.load()
         let today = Calendar.current.startOfDay(for: Date())
         guard let customIndex = store.posts.firstIndex(where: { $0.type == .custom && Calendar.current.isDate($0.date, inSameDayAs: today) }) else {
             publishStatus = "Сначала сохраните план как отчет!"

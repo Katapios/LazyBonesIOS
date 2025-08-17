@@ -7,19 +7,7 @@ struct ReportsViewClean: View {
     
     init() {
         let container = DependencyContainer.shared
-        
-        // Получаем зависимости из DI контейнера
-        let getReportsUseCase = container.resolve(GetReportsUseCase.self)!
-        let deleteReportUseCase = container.resolve(DeleteReportUseCase.self)!
-        let updateReportUseCase = container.resolve(UpdateReportUseCase.self)!
-        let tagRepository = container.resolve(TagRepositoryProtocol.self)!
-        
-        self._viewModel = StateObject(wrappedValue: ReportsViewModelNew(
-            getReportsUseCase: getReportsUseCase,
-            deleteReportUseCase: deleteReportUseCase,
-            updateReportUseCase: updateReportUseCase,
-            tagRepository: tagRepository
-        ))
+        self._viewModel = StateObject(wrappedValue: container.resolve(ReportsViewModelNew.self)!)
     }
 
     // ВАЖНО: Оборачивайте ReportsViewClean в NavigationStack на уровне ContentView или App!

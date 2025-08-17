@@ -15,6 +15,9 @@ struct TagPickerUIKitWheel: UIViewRepresentable {
         picker.delegate = context.coordinator
         picker.selectRow(selectedIndex, inComponent: 0, animated: false)
         context.coordinator.pickerView = picker
+        // Инициализируем кэшированные значения
+        context.coordinator.lastRowsCount = tags.count
+        context.coordinator.lastSelectedRow = selectedIndex
         // Добавим tap gesture только если тег один
         if tags.count == 1 {
             let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTapOnPicker))
@@ -25,35 +28,45 @@ struct TagPickerUIKitWheel: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UIPickerView, context: Context) {
-        // Сначала обновляем данные
-        uiView.reloadAllComponents()
-        
+        // Обновляем данные только при необходимости (используем кэш counts)
+        let rowsChanged = context.coordinator.lastRowsCount != tags.count
+        if rowsChanged {
+            uiView.reloadAllComponents()
+            context.coordinator.lastRowsCount = tags.count
+        }
+
         // Безопасно обрабатываем selectedIndex
         var safeIndex = selectedIndex
-        
-        // Проверяем границы массива тегов
-        if tags.isEmpty {
-            safeIndex = 0
-        } else if selectedIndex >= tags.count {
-            safeIndex = 0
-        } else if selectedIndex < 0 {
+        let needsCorrection = tags.isEmpty || selectedIndex < 0 || selectedIndex >= tags.count
+        if needsCorrection {
             safeIndex = 0
         }
-        
-        // Устанавливаем безопасный индекс только если он в пределах массива
-        if tags.indices.contains(safeIndex) {
-            uiView.selectRow(safeIndex, inComponent: 0, animated: true)
-        }
-        
-        // Обновляем binding только если индекс изменился
-        if selectedIndex != safeIndex {
+
+        // Устанавливаем выбранную строку только если реально отличается
+        let currentlySelected = uiView.selectedRow(inComponent: 0)
+        if (rowsChanged || needsCorrection), tags.indices.contains(safeIndex), currentlySelected != safeIndex {
+            // Подавляем обратный вызов didSelectRow на время программного выбора
+            context.coordinator.isProgrammaticSelection = true
+            uiView.selectRow(safeIndex, inComponent: 0, animated: false)
             DispatchQueue.main.async {
+                context.coordinator.isProgrammaticSelection = false
+            }
+            context.coordinator.lastSelectedRow = safeIndex
+        }
+
+        // Не трогаем binding без необходимости. Корректируем только в случае выхода за границы/пустых тегов.
+        if needsCorrection, selectedIndex != safeIndex {
+            if Thread.isMainThread {
                 self.selectedIndex = safeIndex
+            } else {
+                DispatchQueue.main.async { self.selectedIndex = safeIndex }
             }
         }
-        
-        // Обновляем жесты для одиночного тега
-        updateGestureRecognizers(for: uiView, context: context)
+
+        // Обновляем жесты для одиночного тега только если изменилось количество строк
+        if rowsChanged {
+            updateGestureRecognizers(for: uiView, context: context)
+        }
     }
     
     private func updateGestureRecognizers(for uiView: UIPickerView, context: Context) {
@@ -76,7 +89,9 @@ struct TagPickerUIKitWheel: UIViewRepresentable {
 
     class Coordinator: NSObject, UIPickerViewDataSource, UIPickerViewDelegate {
         var parent: TagPickerUIKitWheel
-        private var lastSelectedRow: Int?
+        var lastSelectedRow: Int?
+        var isProgrammaticSelection: Bool = false
+        var lastRowsCount: Int = 0
         weak var pickerView: UIPickerView?
         init(_ parent: TagPickerUIKitWheel) {
             self.parent = parent
@@ -105,15 +120,25 @@ struct TagPickerUIKitWheel: UIViewRepresentable {
             return label
         }
         func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
+            // Игнорируем колбэк, если выбор инициирован программно
+            if isProgrammaticSelection { return }
             // Проверяем, что индекс в пределах массива тегов
             guard parent.tags.indices.contains(row) else {
-                Logger.warning("Selected row \(row) is out of bounds for tags array with \(parent.tags.count) items", log: Logger.general)
+                Logger.debug("Selected row \(row) is out of bounds for tags array with \(parent.tags.count) items", log: Logger.general)
                 return
             }
             
-            parent.selectedIndex = row
-            parent.onSelect(parent.tags[row])
-            pickerView.selectRow(row, inComponent: 0, animated: true)
+            // Избегаем лишних обновлений, если индекс не меняется
+            guard lastSelectedRow != row else { return }
+            lastSelectedRow = row
+            if parent.selectedIndex != row {
+                parent.selectedIndex = row
+            }
+            // Небольшой дебаунс, чтобы избежать "скачков" при частых обновлениях данных
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) { [parent] in
+                parent.onSelect(parent.tags[row])
+            }
+            // Не переустанавливаем selectRow здесь, чтобы не запускать лишнюю анимацию/обновления
         }
         func pickerView(_ pickerView: UIPickerView, rowHeightForComponent component: Int) -> CGFloat {
             44

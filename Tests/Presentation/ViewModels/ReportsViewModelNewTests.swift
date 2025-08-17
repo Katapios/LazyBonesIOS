@@ -257,9 +257,9 @@ final class ReportsViewModelNewTests: XCTestCase {
     
     func testCanEvaluateReport() {
         // Given
-        let todayReport = DomainPost(date: Date(), goodItems: [], badItems: [], published: true, voiceNotes: [], type: .regular)
+        let todayReport = DomainPost(date: Date(), goodItems: ["Task"], badItems: [], published: true, voiceNotes: [], type: .regular)
         let oldDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
-        let oldReport = DomainPost(date: oldDate, goodItems: [], badItems: [], published: true, voiceNotes: [], type: .regular)
+        let oldReport = DomainPost(date: oldDate, goodItems: ["Task"], badItems: [], published: true, voiceNotes: [], type: .regular)
         
         // When & Then
         XCTAssertTrue(viewModel.canEvaluateReport(todayReport))
