@@ -149,11 +149,13 @@ class PostTimerService: PostTimerServiceProtocol, ObservableObject {
         // Читать из единого источника настроек уведомлений,
         // чтобы моки в тестах могли подставлять кастомные значения
         let settings = userDefaultsManager.loadNotificationSettings()
-        return settings.startHour
+        let start = settings.startHour
+        return start == 0 ? 8 : start
     }
     
     private func getNotificationEndHour() -> Int {
         let settings = userDefaultsManager.loadNotificationSettings()
-        return settings.endHour
+        let end = settings.endHour
+        return end == 0 ? 22 : end
     }
 } 

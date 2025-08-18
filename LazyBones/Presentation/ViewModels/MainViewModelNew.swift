@@ -104,6 +104,8 @@ class MainViewModelNew: BaseViewModel<MainState, MainEvent>, LoadableViewModel {
             
             // Обновляем таймер
             timerService.updateReportStatus(reportStatus)
+            // Запускаем сервис таймера, чтобы значения timeLeft/timeProgress начинали обновляться
+            timerService.startTimer()
             
         } catch {
             state.error = error
@@ -192,6 +194,9 @@ class MainViewModelNew: BaseViewModel<MainState, MainEvent>, LoadableViewModel {
         // Обновляем текущее время
         state.currentTime = Date()
         
+        // Форсируем пересчет времени сервисом раз в секунду, чтобы секунды были «живыми» на главном экране
+        timerService.updateTimeLeft()
+
         // Получаем время от таймер-сервиса
         state.timeLeft = timerService.timeLeft
         state.timeProgress = timerService.timeProgress
@@ -206,35 +211,15 @@ class MainViewModelNew: BaseViewModel<MainState, MainEvent>, LoadableViewModel {
     }
     
     private func calculateTimerLabel() -> String {
-        let calendar = Calendar.current
-        let now = state.currentTime
-        let start = calendar.date(
-            bySettingHour: state.notificationStartHour,
-            minute: 0,
-            second: 0,
-            of: now
-        )!
-        let end = calendar.date(
-            bySettingHour: state.notificationEndHour,
-            minute: 0,
-            second: 0,
-            of: now
-        )!
-        
-        // Проверяем, не наступил ли новый день
-        let today = calendar.startOfDay(for: now)
-        if !calendar.isDate(state.currentDay, inSameDayAs: today) {
-            return "Новый день"
-        }
-        
-        if state.reportStatus == .sent || state.reportStatus == .notCreated || state.reportStatus == .notSent {
-            return "До старта"
-        } else if now < start {
-            return "До старта"
-        } else if now >= start && now < end {
+        // Специальный случай: после отправки всегда "До старта"
+        if state.reportStatus == .sent { return "До старта" }
+
+        // Синхронизация с PostTimerService: используем префикс строки времени
+        let timeLeft = timerService.timeLeft
+        if timeLeft.hasPrefix("До конца") {
             return "До конца"
         } else {
-            return "Время истекло"
+            return "До старта"
         }
     }
     
@@ -251,5 +236,14 @@ class MainViewModelNew: BaseViewModel<MainState, MainEvent>, LoadableViewModel {
                 await self?.handle(.updateTime)
             }
         }
+    }
+
+    // MARK: - Timer Service Control
+    func startTimerService() {
+        timerService.startTimer()
+    }
+
+    func stopTimerService() {
+        timerService.stopTimer()
     }
 } 

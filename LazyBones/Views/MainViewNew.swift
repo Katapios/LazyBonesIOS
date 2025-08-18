@@ -25,19 +25,19 @@ struct MainViewNew: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            MainStatusBarViewNew(viewModel: viewModel)
-            MercuryThermometerView(goodCount: viewModel.state.goodCountToday, badCount: viewModel.state.badCountToday)
-            LargeButtonView(
+            GreetingHeaderView()
+            StatusTimerSection(viewModel: viewModel)
+            MoodProgressSection(
+                goodCount: viewModel.state.goodCountToday,
+                badCount: viewModel.state.badCountToday
+            )
+            PrimaryActionButtonSection(
                 title: viewModel.state.buttonTitle,
                 icon: viewModel.state.buttonIcon,
                 color: viewModel.state.buttonColor,
-                action: { 
-                    appCoordinator.switchToTab(.planning)
-                },
-                isEnabled: viewModel.state.canEditReport
+                isEnabled: viewModel.state.canEditReport,
+                action: { appCoordinator.switchToTab(.planning) }
             )
-            .padding(.horizontal)
-            .padding(.vertical, 40)
         }
         .padding(.vertical, 16)
         .frame(maxHeight: .infinity, alignment: .center)
@@ -47,6 +47,12 @@ struct MainViewNew: View {
             Task {
                 await viewModel.handle(.loadData)
             }
+            // Запускаем таймер-сервис при появлении экрана
+            viewModel.startTimerService()
+        }
+        .onDisappear {
+            // Останавливаем таймер-сервис при уходе с экрана
+            viewModel.stopTimerService()
         }
         .onChange(of: Calendar.current.startOfDay(for: Date())) { oldDay, newDay in
             // Проверяем новый день при смене дня

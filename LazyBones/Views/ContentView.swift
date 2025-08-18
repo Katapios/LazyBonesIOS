@@ -24,7 +24,7 @@ struct ContentView: View {
     var body: some View {
         TabView(selection: $appCoordinator.currentTab) {
             NavigationStack(path: $appCoordinator.navigationPath) {
-                MainView(store: store)
+                MainViewNew()
             }
             .tabItem {
                 Label(AppCoordinator.Tab.main.title, systemImage: AppCoordinator.Tab.main.icon)
