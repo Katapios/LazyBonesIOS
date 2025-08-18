@@ -17,21 +17,9 @@ class SettingsCoordinator: BaseCoordinator {
         // Инициализация вкладки настроек
     }
     
-    func showTelegramSettings() {
-        Logger.debug("Showing Telegram settings", log: Logger.ui)
-        let view = TelegramSettingsView()
-        let hosting = UIHostingController(rootView: view)
-        hosting.title = "Telegram"
-        navigationController?.pushViewController(hosting, animated: true)
-    }
-    
-    func showNotificationSettings() {
-        Logger.debug("Showing notification settings", log: Logger.ui)
-        let view = NotificationSettingsView()
-        let hosting = UIHostingController(rootView: view)
-        hosting.title = "Уведомления"
-        navigationController?.pushViewController(hosting, animated: true)
-    }
+    // Навигация к подэкранu Telegram/Уведомлений временно не используется,
+    // т.к. `SettingsView` инлайнит соответствующие секции в одну форму.
+    // Если будет принято решение разнести настройки по экранам — добавить методы навигации обратно.
     
     func showTagManager() {
         // TagManagerView уже существует, но не принимает viewModel

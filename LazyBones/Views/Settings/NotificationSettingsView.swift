@@ -1,5 +1,7 @@
 import SwiftUI
 
+// Deprecated: настройки уведомлений теперь инлайн в `SettingsView`.
+@available(*, deprecated, message: "Not used; SettingsView inlines Notifications section")
 struct NotificationSettingsView: View {
     @StateObject private var viewModel: SettingsViewModelNew
 

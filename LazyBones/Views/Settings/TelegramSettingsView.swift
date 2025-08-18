@@ -1,5 +1,7 @@
 import SwiftUI
 
+// Deprecated: настройки Telegram теперь инлайн в `SettingsView`.
+@available(*, deprecated, message: "Not used; SettingsView inlines Telegram section")
 struct TelegramSettingsView: View {
     @StateObject private var viewModel: SettingsViewModelNew
 
