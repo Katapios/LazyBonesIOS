@@ -224,6 +224,16 @@ extension DependencyContainer {
             return TagRepository(userDefaults: .standard)
         })
         
+        // Planning Repository & DataSource
+        register(PlanningLocalDataSource.self, factory: {
+            return PlanningLocalDataSource()
+        })
+        
+        register(PlanningRepository.self, factory: {
+            let dataSource = self.resolve(PlanningLocalDataSource.self)!
+            return PlanningRepository(dataSource: dataSource)
+        })
+        
         // Timer Service
         register(PostTimerServiceProtocol.self, factory: {
             let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
@@ -246,6 +256,10 @@ extension DependencyContainer {
         
         register(TagRepositoryProtocol.self, factory: {
             return self.resolve(TagRepository.self)!
+        })
+        
+        register(PlanningRepositoryProtocol.self, factory: {
+            return self.resolve(PlanningRepository.self)!
         })
         
         // Регистрируем конкретные типы вместо протоколов для избежания предупреждений Swift 6

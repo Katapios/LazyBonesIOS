@@ -5,6 +5,7 @@ import SwiftUI
 class PlanningViewModel: ObservableObject {
     // Dependencies
     @Published var store: PostStore
+    private let planningRepository: PlanningRepositoryProtocol
     
     // UI State
     @Published var planItems: [String] = []
@@ -19,8 +20,9 @@ class PlanningViewModel: ObservableObject {
     @Published var pickerIndex: Int = 0
     @Published var showTagPicker: Bool = false
     
-    init(store: PostStore) {
+    init(store: PostStore, planningRepository: PlanningRepositoryProtocol = DependencyContainer.shared.resolve(PlanningRepositoryProtocol.self)!) {
         self.store = store
+        self.planningRepository = planningRepository
     }
     
     // Computed
@@ -77,20 +79,12 @@ class PlanningViewModel: ObservableObject {
     }
     
     func savePlan() {
-        let key = "plan_" + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
-        if let data = try? JSONEncoder().encode(planItems) {
-            UserDefaults.standard.set(data, forKey: key)
-        }
+        planningRepository.savePlan(planItems, for: Date())
     }
     
     func loadPlan() {
-        let key = "plan_" + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
-        if let data = UserDefaults.standard.data(forKey: key),
-           let decoded = try? JSONDecoder().decode([String].self, from: data) {
-            planItems = decoded
-        } else {
-            planItems = []
-        }
+        let items = planningRepository.loadPlan(for: Date())
+        planItems = items
     }
     
     func savePlanAsReport() {
