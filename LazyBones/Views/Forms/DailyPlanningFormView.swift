@@ -61,21 +61,12 @@ struct DailyPlanningFormView: View {
 // Весь старый функционал вынесен во вложенную вью
 struct PlanningContentView: View {
     @EnvironmentObject var store: PostStore
-    @State private var planItems: [String] = []
-    @State private var newPlanItem: String = ""
-    @State private var editingPlanIndex: Int? = nil
-    @State private var editingPlanText: String = ""
-    @State private var showSaveAlert = false
-    @State private var showDeletePlanAlert = false
-    @State private var planToDeleteIndex: Int? = nil
-    @State private var lastPlanDate: Date = Calendar.current.startOfDay(for: Date())
-    @State private var publishStatus: String? = nil
-    @State private var pickerIndex: Int = 0
-    @State private var showTagPicker: Bool = false
-    @State private var tagPickerOffset: CGFloat = 0
-    
-    var planTags: [TagItem] {
-        store.goodTags.map { TagItem(text: $0, icon: "tag", color: .green) }
+    @StateObject private var viewModel: PlanningViewModel
+
+    init() {
+        // PostStore берется из Environment в onAppear, поэтому инициализируем временно
+        // и переинициализируем в onAppear, когда store доступен
+        _viewModel = StateObject(wrappedValue: PlanningViewModel(store: PostStore.shared))
     }
     
     var body: some View {
@@ -84,18 +75,12 @@ struct PlanningContentView: View {
         }
         .hideKeyboardOnTap()
         .onAppear {
-            // Подстраховочно загружаем теги и Telegram-настройки
-            store.loadTags()
-            store.loadTelegramSettings()
-            loadPlan()
-            lastPlanDate = Calendar.current.startOfDay(for: Date())
+            // Синхронизируем VM со store из окружения и запускаем lifecycle
+            if viewModel.store !== store { viewModel.store = store }
+            viewModel.onAppear()
         }
-        .onChange(of: Calendar.current.startOfDay(for: Date()), initial: false) { oldDay, newDay in
-            if newDay != lastPlanDate {
-                planItems = []
-                savePlan()
-                lastPlanDate = newDay
-            }
+        .onChange(of: Calendar.current.startOfDay(for: Date()), initial: false) { _, _ in
+            viewModel.handleDayChangeIfNeeded()
         }
     }
     
@@ -104,22 +89,22 @@ struct PlanningContentView: View {
         VStack(spacing: 16) {
             // --- Список пунктов плана ---
             List {
-                ForEach(planItems.indices, id: \.self) { idx in
+                ForEach(viewModel.planItems.indices, id: \.self) { idx in
                     HStack {
-                        if editingPlanIndex == idx {
-                            TextField("Пункт", text: $editingPlanText)
+                        if viewModel.editingPlanIndex == idx {
+                            TextField("Пункт", text: $viewModel.editingPlanText)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
-                            Button("OK") { finishEditPlanItem() }
+                            Button("OK") { viewModel.finishEditPlanItem() }
                             .buttonStyle(PlainButtonStyle())
                         } else {
-                            Text(planItems[idx])
+                            Text(viewModel.planItems[idx])
                             Spacer()
-                            Button(action: { startEditPlanItem(idx) }) {
+                            Button(action: { viewModel.startEditPlanItem(idx) }) {
                                 Image(systemName: "pencil")
                             }
                             .buttonStyle(PlainButtonStyle())
                         }
-                        Button(action: { planToDeleteIndex = idx; showDeletePlanAlert = true }) {
+                        Button(action: { viewModel.planToDeleteIndex = idx; viewModel.showDeletePlanAlert = true }) {
                             Image(systemName: "trash")
                                 .foregroundColor(.red)
                         }
@@ -131,25 +116,25 @@ struct PlanningContentView: View {
             // Поле ввода с TagPicker
             VStack(spacing: 8) {
                 HStack {
-                    TextField("Добавить пункт плана", text: $newPlanItem)
+                    TextField("Добавить пункт плана", text: $viewModel.newPlanItem)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
-                    Button(action: { withAnimation(.easeInOut(duration: 0.3)) { showTagPicker.toggle() } }) {
+                    Button(action: { withAnimation(.easeInOut(duration: 0.3)) { viewModel.showTagPicker.toggle() } }) {
                         Image(systemName: "tag")
                             .font(.title2)
                             .foregroundColor(.accentColor)
                     }
-                    Button(action: addPlanItem) {
+                    Button(action: viewModel.addPlanItem) {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
-                    }.disabled(newPlanItem.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }.disabled(viewModel.newPlanItem.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
                 
                 // TagPicker выезжает справа
-                if showTagPicker, !planTags.isEmpty {
+                if viewModel.showTagPicker, !viewModel.planTags.isEmpty {
                     HStack(alignment: .center, spacing: 6) {
                         TagPickerUIKitWheel(
-                            tags: planTags,
-                            selectedIndex: $pickerIndex
+                            tags: viewModel.planTags,
+                            selectedIndex: $viewModel.pickerIndex
                         ) { _ in }
                         .frame(
                             maxWidth: .infinity,
@@ -159,13 +144,13 @@ struct PlanningContentView: View {
                         .clipped()
                         
                         // Безопасная коррекция индекса, чтобы избежать падения при изменении списка тегов
-                        let safeIndex = min(max(0, pickerIndex), max(planTags.count - 1, 0))
-                        let selectedTag = planTags[safeIndex]
-                        let isTagAdded = planItems.contains(where: { $0 == selectedTag.text })
+                        let safeIndex = min(max(0, viewModel.pickerIndex), max(viewModel.planTags.count - 1, 0))
+                        let selectedTag = viewModel.planTags[safeIndex]
+                        let isTagAdded = viewModel.planItems.contains(where: { $0 == selectedTag.text })
                         Button(action: {
                             if (!isTagAdded) {
-                                planItems.append(selectedTag.text)
-                                savePlan()
+                                viewModel.planItems.append(selectedTag.text)
+                                viewModel.savePlan()
                             }
                         }) {
                             Image(systemName: isTagAdded ? "checkmark.circle.fill" : "plus.circle.fill")
@@ -185,14 +170,14 @@ struct PlanningContentView: View {
                 }
                 
                 // Показываем prompt для сохранения тега
-                if !newPlanItem.isEmpty && !store.goodTags.contains(newPlanItem) {
+                if !viewModel.newPlanItem.isEmpty && !store.goodTags.contains(viewModel.newPlanItem) {
                     HStack {
                         Text("Сохранить тег?")
                             .font(.caption)
                             .foregroundColor(.secondary)
                         Spacer()
                         Button("Сохранить") {
-                            store.goodTags.append(newPlanItem)
+                            store.goodTags.append(viewModel.newPlanItem)
                             store.saveGoodTags(store.goodTags)
                         }
                         .font(.caption)
@@ -208,13 +193,13 @@ struct PlanningContentView: View {
             }
             
             // Кнопки действий
-            if !planItems.isEmpty {
+            if !viewModel.planItems.isEmpty {
                 HStack(spacing: 12) {
                     LargeButtonView(
                         title: "Сохранить",
                         icon: "tray.and.arrow.down.fill",
                         color: .blue,
-                        action: { showSaveAlert = true },
+                        action: { viewModel.showSaveAlert = true },
                         isEnabled: true,
                         compact: true
                     )
@@ -222,14 +207,14 @@ struct PlanningContentView: View {
                         title: "Отправить",
                         icon: "paperplane.fill",
                         color: .green,
-                        action: { publishCustomReportToTelegram() },
+                        action: { viewModel.publishCustomReportToTelegram() },
                         isEnabled: true,
                         compact: true
                     )
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.vertical, 4)
-                if let status = publishStatus {
+                if let status = viewModel.publishStatus {
                     Text(status)
                         .font(.caption)
                         .foregroundColor(status.contains("успешно") ? .green : .red)
@@ -237,135 +222,13 @@ struct PlanningContentView: View {
             }
         }
         .padding()
-        .alert("Сохранить план как отчет?", isPresented: $showSaveAlert) {
-            Button("Сохранить", role: .none) { savePlanAsReport() }
+        .alert("Сохранить план как отчет?", isPresented: $viewModel.showSaveAlert) {
+            Button("Сохранить", role: .none) { viewModel.savePlanAsReport() }
             Button("Отмена", role: .cancel) { }
         }
-        .alert("Удалить пункт плана?", isPresented: $showDeletePlanAlert) {
-            Button("Удалить", role: .destructive) { deletePlanItem() }
-            Button("Отмена", role: .cancel) { planToDeleteIndex = nil }
-        }
-    }
-    
-    // MARK: - Functions
-    func addPlanItem() {
-        let trimmed = newPlanItem.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
-        planItems.append(trimmed)
-        newPlanItem = ""
-        savePlan()
-    }
-    
-    func startEditPlanItem(_ idx: Int) {
-        editingPlanIndex = idx
-        editingPlanText = planItems[idx]
-    }
-    
-    func finishEditPlanItem() {
-        guard let idx = editingPlanIndex else { return }
-        let trimmed = editingPlanText.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
-        planItems[idx] = trimmed
-        editingPlanIndex = nil
-        editingPlanText = ""
-        savePlan()
-    }
-    
-    func deletePlanItem() {
-        guard let idx = planToDeleteIndex else { return }
-        planItems.remove(at: idx)
-        planToDeleteIndex = nil
-        savePlan()
-    }
-    
-    func savePlan() {
-        let key = "plan_" + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
-        if let data = try? JSONEncoder().encode(planItems) {
-            UserDefaults.standard.set(data, forKey: key)
-        }
-    }
-    
-    func loadPlan() {
-        let key = "plan_" + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
-        if let data = UserDefaults.standard.data(forKey: key),
-           let decoded = try? JSONDecoder().decode([String].self, from: data) {
-            planItems = decoded
-        } else {
-            planItems = []
-        }
-    }
-    
-    func savePlanAsReport() {
-        let today = Calendar.current.startOfDay(for: Date())
-        if let idx = store.posts.firstIndex(where: { $0.type == .custom && Calendar.current.isDate($0.date, inSameDayAs: today) }) {
-            let updated = Post(
-                id: store.posts[idx].id,
-                date: Date(),
-                goodItems: planItems,
-                badItems: [],
-                published: true,
-                voiceNotes: [],
-                type: .custom,
-                authorUsername: nil,
-                authorFirstName: nil,
-                authorLastName: nil,
-                isExternal: false,
-                externalVoiceNoteURLs: nil,
-                externalText: nil,
-                externalMessageId: nil,
-                authorId: nil
-            )
-            store.posts[idx] = updated
-            store.save()
-        } else {
-            let post = Post(
-                id: UUID(),
-                date: Date(),
-                goodItems: planItems,
-                badItems: [],
-                published: true,
-                voiceNotes: [],
-                type: .custom,
-                authorUsername: nil,
-                authorFirstName: nil,
-                authorLastName: nil,
-                isExternal: false,
-                externalVoiceNoteURLs: nil,
-                externalText: nil,
-                externalMessageId: nil,
-                authorId: nil
-            )
-            store.add(post: post)
-        }
-        savePlan()
-    }
-    
-    func publishCustomReportToTelegram() {
-        // Обновляем локальное состояние постов перед проверкой оценки,
-        // чтобы избежать рассинхрона между слоями (Clean Architecture vs PostStore)
-        store.load()
-        let today = Calendar.current.startOfDay(for: Date())
-        guard let customIndex = store.posts.firstIndex(where: { $0.type == .custom && Calendar.current.isDate($0.date, inSameDayAs: today) }) else {
-            publishStatus = "Сначала сохраните план как отчет!"
-            return
-        }
-        let custom = store.posts[customIndex] // Получаем актуальную версию поста
-        if custom.isEvaluated != true {
-            publishStatus = "Сначала оцените план!"
-            return
-        }
-        // Перезагружаем актуальные настройки Telegram и отправляем через сервис PostStore
-        store.loadTelegramSettings()
-        let deviceName = store.getDeviceName()
-        let message = store.telegramIntegrationService.formatCustomReportForTelegram(custom, deviceName: deviceName)
-        store.sendToTelegram(text: message) { success in
-            DispatchQueue.main.async {
-                if success {
-                    publishStatus = "План успешно опубликован!"
-                } else {
-                    publishStatus = "Ошибка отправки: неверный токен или chat_id"
-                }
-            }
+        .alert("Удалить пункт плана?", isPresented: $viewModel.showDeletePlanAlert) {
+            Button("Удалить", role: .destructive) { viewModel.deletePlanItem() }
+            Button("Отмена", role: .cancel) { viewModel.planToDeleteIndex = nil }
         }
     }
 }

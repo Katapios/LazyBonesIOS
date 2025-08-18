@@ -115,6 +115,84 @@ final class MainViewModelNewTests: XCTestCase {
         XCTAssertEqual(viewModel.state.timeProgress, 0.75)
         XCTAssertEqual(viewModel.state.timerTimeTextOnly, "02:30:15")
     }
+
+    // MARK: - Timer label logic
+    func testTimerLabel_DuringPeriod_UsesDoKoncza() async {
+        // Given
+        mockTimerService.mockTimeLeft = "До конца: 00:10:00"
+        mockTimerService.mockTimeProgress = 0.2
+        mockSettingsRepository.mockReportStatus = .inProgress
+        await viewModel.handle(.loadData)
+
+        // When
+        await viewModel.handle(.updateTime)
+
+        // Then
+        XCTAssertEqual(viewModel.state.timerLabel, "До конца")
+        XCTAssertEqual(viewModel.state.timeLeft, "До конца: 00:10:00")
+        XCTAssertEqual(viewModel.state.timeProgress, 0.2, accuracy: 1e-6)
+    }
+
+    func testTimerLabel_BeforeStart_UsesDoStarta() async {
+        // Given
+        mockTimerService.mockTimeLeft = "До старта: 01:00:00"
+        mockTimerService.mockTimeProgress = 0.0
+        mockSettingsRepository.mockReportStatus = .notStarted
+        await viewModel.handle(.loadData)
+
+        // When
+        await viewModel.handle(.updateTime)
+
+        // Then
+        XCTAssertEqual(viewModel.state.timerLabel, "До старта")
+        XCTAssertEqual(viewModel.state.timeLeft, "До старта: 01:00:00")
+        XCTAssertEqual(viewModel.state.timeProgress, 0.0, accuracy: 1e-6)
+    }
+
+    func testTimerLabel_SentStatus_ForcesDoStartaAndZeroProgress() async {
+        // Given
+        mockTimerService.mockTimeLeft = "До конца: 00:05:00"
+        mockTimerService.mockTimeProgress = 0.9
+        mockSettingsRepository.mockReportStatus = .sent
+
+        // When: загрузим статус + обновим время
+        await viewModel.handle(.loadData)
+        await viewModel.handle(.updateTime)
+
+        // Then: даже если сервис говорит "До конца", VM должна показать "До старта" и прогресс 0
+        XCTAssertEqual(viewModel.state.reportStatus, .sent)
+        XCTAssertEqual(viewModel.state.timerLabel, "До старта")
+        XCTAssertEqual(viewModel.state.timeProgress, 0.0, accuracy: 1e-6)
+    }
+
+    func testDayChange_FromSent_ResetsToBeforeStart() async {
+        // Given: изначально день завершен (sent)
+        mockSettingsRepository.mockReportStatus = .sent
+        mockTimerService.mockTimeLeft = "До конца: 00:05:00"
+        mockTimerService.mockTimeProgress = 0.9
+        await viewModel.handle(.loadData)
+        await viewModel.handle(.updateTime)
+        XCTAssertEqual(viewModel.state.reportStatus, .sent)
+        XCTAssertEqual(viewModel.state.timerLabel, "До старта")
+        XCTAssertEqual(viewModel.state.timeProgress, 0.0, accuracy: 1e-6)
+
+        // Когда наступил новый день — use case возвращает notStarted
+        mockUpdateStatusUseCase.mockReportStatus = .notStarted
+        // И сервис таймера теперь в состоянии "до старта"
+        mockTimerService.mockTimeLeft = "До старта: 10:00:00"
+        mockTimerService.mockTimeProgress = 0.0
+
+        // When: обрабатываем смену дня и обновление времени
+        await viewModel.handle(.checkForNewDay)
+        await viewModel.handle(.updateTime)
+
+        // Then: статус сброшен, метка до старта, прогресс 0
+        XCTAssertEqual(viewModel.state.reportStatus, .notStarted)
+        XCTAssertEqual(viewModel.state.timerLabel, "До старта")
+        XCTAssertEqual(viewModel.state.timeLeft, "До старта: 10:00:00")
+        XCTAssertEqual(viewModel.state.timeProgress, 0.0, accuracy: 1e-6)
+        XCTAssertEqual(viewModel.state.timerTimeTextOnly, "10:00:00")
+    }
     
     func testClearError() async {
         // Given

@@ -104,8 +104,6 @@ class MainViewModelNew: BaseViewModel<MainState, MainEvent>, LoadableViewModel {
             
             // Обновляем таймер
             timerService.updateReportStatus(reportStatus)
-            // Запускаем сервис таймера, чтобы значения timeLeft/timeProgress начинали обновляться
-            timerService.startTimer()
             
         } catch {
             state.error = error

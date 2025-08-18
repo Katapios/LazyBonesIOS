@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7C0EDE232E5304E9003BCC9F /* TELEGRAM_SETUP.md in Resources */ = {isa = PBXBuildFile; fileRef = 7C0EDE222E5304E9003BCC9F /* TELEGRAM_SETUP.md */; };
+		7C0EDE242E5304E9003BCC9F /* CLEAN_ARCHITECTURE_MIGRATION.md in Resources */ = {isa = PBXBuildFile; fileRef = 7C0EDE212E5304E9003BCC9F /* CLEAN_ARCHITECTURE_MIGRATION.md */; };
 		7C10ECCB2E4E488800D1C36B /* PostStorePublishTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91D52E4E2AEE004162B5 /* PostStorePublishTests.swift */; };
 		7C6137852E4B1C2E0069F15B /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 7C61377E2E4B1C2E0069F15B /* README.md */; };
 		7C6137882E4B1C2E0069F15B /* SERVICE_GUIDE.md in Resources */ = {isa = PBXBuildFile; fileRef = 7C6137802E4B1C2E0069F15B /* SERVICE_GUIDE.md */; };
@@ -97,6 +99,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		7C0EDE212E5304E9003BCC9F /* CLEAN_ARCHITECTURE_MIGRATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CLEAN_ARCHITECTURE_MIGRATION.md; sourceTree = "<group>"; };
+		7C0EDE222E5304E9003BCC9F /* TELEGRAM_SETUP.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TELEGRAM_SETUP.md; sourceTree = "<group>"; };
 		7C10ECC22E4E488000D1C36B /* LazyBonesPublishTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LazyBonesPublishTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7C4B25752E20F66900602163 /* LazyBonesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LazyBonesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7C61376D2E4B1C2E0069F15B /* CONFIGURATION_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CONFIGURATION_GUIDE.md; sourceTree = "<group>"; };
@@ -242,6 +246,8 @@
 				7C6137802E4B1C2E0069F15B /* SERVICE_GUIDE.md */,
 				7C6137822E4B1C2E0069F15B /* STATUS_MODEL_README.md */,
 				7C6137832E4B1C2E0069F15B /* TESTING_GUIDE.md */,
+				7C0EDE212E5304E9003BCC9F /* CLEAN_ARCHITECTURE_MIGRATION.md */,
+				7C0EDE222E5304E9003BCC9F /* TELEGRAM_SETUP.md */,
 			);
 			sourceTree = "<group>";
 		};
@@ -587,6 +593,8 @@
 				7C6137852E4B1C2E0069F15B /* README.md in Resources */,
 				7C6137882E4B1C2E0069F15B /* SERVICE_GUIDE.md in Resources */,
 				7C6137892E4B1C2E0069F15B /* STATUS_MODEL_README.md in Resources */,
+				7C0EDE232E5304E9003BCC9F /* TELEGRAM_SETUP.md in Resources */,
+				7C0EDE242E5304E9003BCC9F /* CLEAN_ARCHITECTURE_MIGRATION.md in Resources */,
 				7C6137902E4B1C2E0069F15B /* TESTING_GUIDE.md in Resources */,
 				7C6137932E4B1C2E0069F15B /* CONFIGURATION_GUIDE.md in Resources */,
 			);

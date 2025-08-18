@@ -51,7 +51,34 @@ xcodebuild -project LazyBones.xcodeproj -scheme LazyBones -destination 'platform
 xcodebuild -project LazyBones.xcodeproj -scheme LazyBones -destination 'platform=iOS Simulator,name=iPhone 16 Pro' test -only-testing:LazyBonesTests/AutoSendServiceTests/testLoadAutoSendSettings
 ```
 
-## 📁 Структура тестов
+### ⏱️ Таймер и MainViewModelNew — целевые тесты
+
+- __Пути__: 
+  - `Tests/Presentation/ViewModels/MainViewModelNewTests.swift`
+  - `Tests/Core/Services/PostTimerServiceTests.swift`
+
+- __Кейсы MainViewModelNew__:
+  - `testTimerLabel_BeforeStart_UsesDoStarta`
+  - `testTimerLabel_DuringPeriod_UsesDoKoncza`
+  - `testTimerLabel_SentStatus_ForcesDoStartaAndZeroProgress`
+  - `testDayChange_FromSent_ResetsToBeforeStart`
+
+- __Кейсы PostTimerService__:
+  - До старта, в периоде, после конца
+  - Ровно в начале/конце периода
+  - Нотификация активности периода: `.reportPeriodActivityChanged`
+
+- __Точечный прогон без пересборки__ (после `build-for-testing`):
+  ```bash
+  xcodebuild -project LazyBones.xcodeproj -scheme LazyBones \
+    -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+    -derivedDataPath Build/DerivedData \
+    test-without-building \
+    -only-testing:LazyBonesTests/MainViewModelNewTests \
+    -only-testing:LazyBonesTests/PostTimerServiceTests
+  ```
+
+## Структура тестов
 
 ```
 Tests/

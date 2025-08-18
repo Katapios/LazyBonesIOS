@@ -23,7 +23,7 @@ struct TagManagerView: View {
                 }.disabled(viewModel.isNewTagEmpty)
             }
             List {
-                ForEach(viewModel.currentTags.indices, id: \ .self) { idx in
+                ForEach(viewModel.currentTags.indices, id: \.self) { idx in
                     HStack {
                         if viewModel.editingTagIndex == idx {
                             TextField("Тег", text: $viewModel.editingTagText)
