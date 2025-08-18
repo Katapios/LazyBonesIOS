@@ -49,6 +49,7 @@
 - Изоляция тестовых данных (in-memory в `LocalReportService`, очистка в `PostStore` при XCTest)
 - Актуализация статусов и взаимодействия с таймером/уведомлениями в `ReportStatusManager`
 - Обновлена документация по тестированию и статусной модели
+- Удалены legacy-вью настроек: `TelegramSettingsView`, `NotificationSettingsView`; секции инлайн в `SettingsView`, навигация упрощена в `SettingsCoordinator`
 
 ## 🚧 В процессе / Предстоит
 
@@ -85,6 +86,7 @@
 
 - [ ] Подключить `MainViewNew` в `ContentView` (заменить `MainView(store:)`)
 - [x] Подключить `ReportsViewClean` в таб «Отчёты»
+- [x] Удалить legacy‑вью настроек (`TelegramSettingsView`, `NotificationSettingsView`); секции инлайн в `SettingsView`
 - [ ] Реализовать `TagManagerViewModelNew` + `TagManagerViewClean`; подключить в таб «Теги»
 - [ ] Реализовать `PlanningViewModelNew` + `PlanningViewClean`; подключить в таб «План»
 - [ ] Перенести формы: `RegularReportFormViewClean`, `PostFormViewClean`, `DailyReportViewClean` на use‑cases/репозитории
