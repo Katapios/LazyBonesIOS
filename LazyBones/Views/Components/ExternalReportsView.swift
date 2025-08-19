@@ -46,6 +46,7 @@ struct ExternalReportsView: View {
         VStack(spacing: 8) {
             HStack(spacing: 12) {
                 Button(action: { 
+                    print("[ExtReports] View: Refresh button tapped")
                     Task {
                         await viewModel.handle(.refreshFromTelegram)
                     }
@@ -56,7 +57,7 @@ struct ExternalReportsView: View {
                     }
                 }
                 .buttonStyle(.bordered)
-                .disabled(!viewModel.state.telegramConnected || viewModel.state.isRefreshing)
+                .disabled(viewModel.state.isRefreshing)
                 
                 Button(action: { 
                     Task {

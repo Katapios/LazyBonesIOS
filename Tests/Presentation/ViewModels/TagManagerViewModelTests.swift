@@ -156,7 +156,7 @@ class TagManagerViewModelTests: XCTestCase {
     
     func testFinishEditTag_WithBadCategory_UpdatesBadTag() {
         // Given
-        mockStore.badTags = ["old bad tag"]
+        mockStore.saveBadTags(["old bad tag"])
         viewModel.tagCategory = 1
         viewModel.editingTagIndex = 0
         viewModel.editingTagText = "new bad tag"

@@ -34,6 +34,7 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
         case .loadReports:
             await loadReports()
         case .refreshFromTelegram:
+            print("[ExtReports] VM: handle(.refreshFromTelegram) received")
             await refreshFromTelegram()
         case .clearHistory:
             await clearHistory()
@@ -103,6 +104,10 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
     }
     
     private func refreshFromTelegram() async {
+        // Extra diagnostics to bypass possible logger filters
+        print("[ExtReports] VM: Refresh from Telegram triggered")
+        Logger.info("Refresh from Telegram triggered", log: Logger.telegram)
+        Logger.info("[ExtReports] VM: Refresh from Telegram triggered", log: Logger.general)
         state.isRefreshing = true
         state.error = nil
         
@@ -116,7 +121,11 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
             telegramIntegrationService.fetchExternalPosts { success in
                 Task { @MainActor in
                     if success {
-                        // После успешного обновления извлекаем отчеты через Use Case
+                        // Немедленно обновляем UI внешними отчетами из сервиса
+                        let domainPosts = PostMapper.toDomainModels(self.telegramIntegrationService.getAllPosts())
+                        self.state.reports = domainPosts
+                        self.updateButtonStates()
+                        // Затем извлекаем отчеты через Use Case (если UseCase вернет пусто — state.reports сохранится)
                         await self.loadReports()
                         Logger.info("Successfully refreshed reports from Telegram", log: Logger.telegram)
                     } else {

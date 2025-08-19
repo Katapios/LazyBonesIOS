@@ -171,14 +171,15 @@ class AutoSendIntegrationTests: XCTestCase {
         try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 секунда
         
         XCTAssertTrue(telegramService.sendMessageCalled)
-        XCTAssertNotNil(telegramService.lastSentText)
+        // При наличии двух отчетов сервис отправляет два отдельных сообщения
+        XCTAssertEqual(telegramService.sentMessages.count, 2)
         
-        // Проверяем, что текст содержит данные обоих отчетов
-        let sentText = telegramService.lastSentText ?? ""
-        XCTAssertTrue(sentText.contains("Кодил"))
-        XCTAssertTrue(sentText.contains("Не гулял"))
-        XCTAssertTrue(sentText.contains("План 1"))
-        XCTAssertTrue(sentText.contains("План 2"))
+        // Проверяем суммарное содержание обоих сообщений
+        let combined = telegramService.sentMessages.joined(separator: "\n")
+        XCTAssertTrue(combined.contains("Кодил"))
+        XCTAssertTrue(combined.contains("Не гулял"))
+        XCTAssertTrue(combined.contains("План 1"))
+        XCTAssertTrue(combined.contains("План 2"))
     }
     
     func testCompleteAutoSendFlow_NoReports() async {
@@ -322,11 +323,13 @@ private final class MockTelegramService: TelegramServiceProtocol {
     var sendMessageCalled = false
     var lastSentText: String?
     var lastChatId: String?
+    var sentMessages: [String] = []
     
     func sendMessage(_ text: String, to chatId: String) async throws {
         sendMessageCalled = true
         lastSentText = text
         lastChatId = chatId
+        sentMessages.append(text)
         
         if !shouldSucceed {
             throw NSError(domain: "TelegramError", code: 500, userInfo: [NSLocalizedDescriptionKey: "Mock error"])

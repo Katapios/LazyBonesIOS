@@ -59,23 +59,31 @@ class ICloudFileManager {
             throw ICloudFileError.accessDenied
         }
         
-        // Попробуем использовать Desktop Directory для лучшей видимости в Finder
-        if let desktopURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first {
-            Logger.info("ICloudFileManager: Desktop directory available: \(desktopURL.path)", log: Logger.general)
-            
-            // Проверяем, можем ли мы писать в Desktop
-            let testFileURL = desktopURL.appendingPathComponent(".test")
-            do {
-                try "test".write(to: testFileURL, atomically: true, encoding: .utf8)
-                try FileManager.default.removeItem(at: testFileURL)
-                Logger.info("ICloudFileManager: Desktop directory is writable", log: Logger.general)
-                let folderURL = desktopURL.appendingPathComponent(folderName)
-                Logger.info("ICloudFileManager: Using Desktop directory for folder: \(folderURL.path)", log: Logger.general)
-                return folderURL
-            } catch {
-                Logger.warning("ICloudFileManager: Desktop directory is not writable: \(error)", log: Logger.general)
+        // Попробуем использовать Desktop Directory для лучшей видимости в Finder (только на реальном устройстве и при наличии iCloud токена)
+        #if !targetEnvironment(simulator)
+        if FileManager.default.ubiquityIdentityToken != nil {
+            if let desktopURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first {
+                Logger.debug("ICloudFileManager: Desktop directory available: \(desktopURL.path)", log: Logger.general)
+                
+                // Проверяем, можем ли мы писать в Desktop
+                let testFileURL = desktopURL.appendingPathComponent(".test")
+                do {
+                    try "test".write(to: testFileURL, atomically: true, encoding: .utf8)
+                    try FileManager.default.removeItem(at: testFileURL)
+                    Logger.debug("ICloudFileManager: Desktop directory is writable", log: Logger.general)
+                    let folderURL = desktopURL.appendingPathComponent(folderName)
+                    Logger.info("ICloudFileManager: Using Desktop directory for folder: \(folderURL.path)", log: Logger.general)
+                    return folderURL
+                } catch {
+                    Logger.debug("ICloudFileManager: Desktop directory is not writable: \(error)", log: Logger.general)
+                }
             }
+        } else {
+            Logger.debug("ICloudFileManager: Skipping Desktop directory check because iCloud token is not available", log: Logger.general)
         }
+        #else
+        Logger.debug("ICloudFileManager: Skipping Desktop directory check on Simulator", log: Logger.general)
+        #endif
         
         Logger.info("ICloudFileManager: Using Documents directory as fallback", log: Logger.general)
         let folderURL = documentsURL.appendingPathComponent(folderName)

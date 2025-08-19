@@ -276,7 +276,7 @@ class CustomReportsViewModelTests: XCTestCase {
             type: .custom,
             isEvaluated: false
         )
-        viewModel.state.reports = [activeReport]
+        mockRepository.posts = [activeReport]
 
         // When
         await viewModel.handle(.loadReports)
@@ -296,7 +296,7 @@ class CustomReportsViewModelTests: XCTestCase {
             type: .custom,
             isEvaluated: false
         )
-        viewModel.state.reports = [unevaluatedReport]
+        mockRepository.posts = [unevaluatedReport]
 
         // When
         await viewModel.handle(.loadReports)

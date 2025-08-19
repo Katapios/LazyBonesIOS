@@ -48,6 +48,6 @@ struct ExternalReportsState {
     
     /// Можно ли очистить историю
     var canClearHistory: Bool {
-        return !reports.isEmpty && !isLoading
+        return !isLoading
     }
 } 
