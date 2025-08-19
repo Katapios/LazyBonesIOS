@@ -9,11 +9,15 @@ class ReportsViewModelTests: XCTestCase {
     
     override func setUp() {
         super.setUp()
+        // Изолируем состояние UserDefaults для ключа переоценки
+        UserDefaults.standard.removeObject(forKey: "allowCustomReportReevaluation")
         mockStore = PostStore()
         viewModel = ReportsViewModel(store: mockStore)
     }
     
     override func tearDown() {
+        // Чистим ключ, чтобы не влиять на другие тесты
+        UserDefaults.standard.removeObject(forKey: "allowCustomReportReevaluation")
         viewModel = nil
         mockStore = nil
         super.tearDown()

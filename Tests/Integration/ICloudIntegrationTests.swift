@@ -13,6 +13,8 @@ class ICloudIntegrationTests: XCTestCase {
         
         // Используем shared контейнер
         dependencyContainer = DependencyContainer.shared
+        // Изолируем окружение: очищаем DI перед регистрацией моков
+        dependencyContainer.clear()
         
         // Регистрируем моки вместо реальных сервисов
         registerMockServices()

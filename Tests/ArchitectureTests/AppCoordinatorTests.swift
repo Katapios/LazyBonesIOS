@@ -12,6 +12,9 @@ class AppCoordinatorTests: XCTestCase {
         super.setUp()
         dependencyContainer = DependencyContainer.shared
         dependencyContainer.clear()
+        // Re-register DI after clearing to ensure required services and VMs are resolvable
+        dependencyContainer.registerCoreServices()
+        dependencyContainer.registerPresentationAdapters()
         coordinator = AppCoordinator(dependencyContainer: dependencyContainer)
     }
     
