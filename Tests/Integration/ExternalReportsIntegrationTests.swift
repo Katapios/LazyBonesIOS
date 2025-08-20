@@ -3,19 +3,22 @@ import XCTest
 
 @MainActor
 class ExternalReportsIntegrationTests: XCTestCase {
-    var mockGetReportsUseCase: MockGetReportsUseCase!
+    var mockGetExternalReportsUseCase: MockGetExternalReportsUseCase!
+    var mockRefreshExternalReportsUseCase: MockRefreshExternalReportsUseCase!
     var mockDeleteReportUseCase: MockDeleteReportUseCase!
     var mockTelegramIntegrationService: MockTelegramIntegrationService!
     var viewModel: ExternalReportsViewModel!
     
     override func setUp() {
         super.setUp()
-        mockGetReportsUseCase = MockGetReportsUseCase()
+        mockGetExternalReportsUseCase = MockGetExternalReportsUseCase()
+        mockRefreshExternalReportsUseCase = MockRefreshExternalReportsUseCase()
         mockDeleteReportUseCase = MockDeleteReportUseCase()
         mockTelegramIntegrationService = MockTelegramIntegrationService()
         
         viewModel = ExternalReportsViewModel(
-            getReportsUseCase: mockGetReportsUseCase,
+            getExternalReportsUseCase: mockGetExternalReportsUseCase,
+            refreshExternalReportsUseCase: mockRefreshExternalReportsUseCase,
             deleteReportUseCase: mockDeleteReportUseCase,
             telegramIntegrationService: mockTelegramIntegrationService
         )
@@ -23,13 +26,20 @@ class ExternalReportsIntegrationTests: XCTestCase {
 
 // MARK: - Local Mocks
 
-final class MockGetReportsUseCase: GetReportsUseCaseProtocol {
-    var mockResult: Result<[DomainPost], GetReportsError> = .success([])
-    func execute(input: GetReportsInput) async throws -> [DomainPost] {
-        switch mockResult {
+final class MockGetExternalReportsUseCase: GetExternalReportsUseCaseProtocol {
+    var result: Result<[DomainPost], GetReportsError> = .success([])
+    func execute(input: GetExternalReportsInput) async throws -> [DomainPost] {
+        switch result {
         case .success(let posts): return posts
         case .failure(let err): throw err
         }
+    }
+}
+
+final class MockRefreshExternalReportsUseCase: RefreshExternalReportsUseCaseProtocol {
+    var shouldThrow: Error?
+    func execute() async throws {
+        if let err = shouldThrow { throw err }
     }
 }
 
@@ -45,7 +55,8 @@ final class MockDeleteReportUseCase: DeleteReportUseCaseProtocol {
 }
     
     override func tearDown() {
-        mockGetReportsUseCase = nil
+        mockGetExternalReportsUseCase = nil
+        mockRefreshExternalReportsUseCase = nil
         mockDeleteReportUseCase = nil
         mockTelegramIntegrationService = nil
         viewModel = nil
@@ -65,7 +76,7 @@ final class MockDeleteReportUseCase: DeleteReportUseCaseProtocol {
                 type: .external
             )
         ]
-        mockGetReportsUseCase.mockResult = .success(testReports)
+        mockGetExternalReportsUseCase.result = .success(testReports)
         
         // When
         await viewModel.handle(.loadReports)
@@ -81,13 +92,15 @@ final class MockDeleteReportUseCase: DeleteReportUseCaseProtocol {
         // Given
         mockTelegramIntegrationService.telegramToken = "test_token"
         mockTelegramIntegrationService.fetchExternalPostsResult = true
+        mockRefreshExternalReportsUseCase.shouldThrow = nil
         
         // When
         await viewModel.handle(.refreshFromTelegram)
         
         // Then
         XCTAssertFalse(viewModel.state.isRefreshing)
-        XCTAssertTrue(mockTelegramIntegrationService.fetchExternalPostsCalled)
+        XCTAssertNil(viewModel.state.error)
+        XCTAssertTrue(viewModel.state.telegramConnected)
     }
     
     func testClearHistoryIntegration() async {
@@ -190,7 +203,7 @@ final class MockDeleteReportUseCase: DeleteReportUseCaseProtocol {
     
     func testErrorHandlingIntegration() async {
         // Given
-        mockGetReportsUseCase.mockResult = .failure(.repositoryError(NSError(domain: "test", code: 1)))
+        mockGetExternalReportsUseCase.result = .failure(.repositoryError(NSError(domain: "test", code: 1)))
         
         // When
         await viewModel.handle(.loadReports)
@@ -200,4 +213,5 @@ final class MockDeleteReportUseCase: DeleteReportUseCaseProtocol {
         XCTAssertTrue(viewModel.state.reports.isEmpty)
         XCTAssertFalse(viewModel.state.isLoading)
     }
-} 
+}
+ 

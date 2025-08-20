@@ -138,12 +138,13 @@ final class MainViewModelTimerTests: XCTestCase {
     func test_timer_beforeStart() {
         let udm = MVM_UserDefaultsMock()
         let nowHour = Calendar.current.component(.hour, from: Date())
-        udm.startHour = ((nowHour + 2) % 24)
-        udm.endHour = ((nowHour + 3) % 24)
         registerDependencies(udm: udm)
         
         let store = PostStore()
         let vm = MainViewModel(store: store)
+        // Устанавливаем окно через стор (NotificationManagerService не используется напрямую в VM)
+        vm.store.notificationStartHour = ((nowHour + 2) % 24)
+        vm.store.notificationEndHour = ((nowHour + 3) % 24)
         vm.currentTime = Date()
         
         XCTAssertEqual(vm.timerLabel, "До старта")
@@ -155,12 +156,12 @@ final class MainViewModelTimerTests: XCTestCase {
     func test_timer_duringPeriod() {
         let udm = MVM_UserDefaultsMock()
         let nowHour = Calendar.current.component(.hour, from: Date())
-        udm.startHour = nowHour
-        udm.endHour = (nowHour + 1) % 24
         registerDependencies(udm: udm)
         
         let store = PostStore()
         let vm = MainViewModel(store: store)
+        vm.store.notificationStartHour = nowHour
+        vm.store.notificationEndHour = (nowHour + 1) % 24
         vm.currentTime = Date()
         
         XCTAssertEqual(vm.timerLabel, "До конца")
@@ -173,12 +174,12 @@ final class MainViewModelTimerTests: XCTestCase {
     func test_timer_afterEnd() {
         let udm = MVM_UserDefaultsMock()
         let nowHour = Calendar.current.component(.hour, from: Date())
-        udm.startHour = ((nowHour - 2) + 24) % 24
-        udm.endHour = ((nowHour - 1) + 24) % 24
         registerDependencies(udm: udm)
         
         let store = PostStore()
         let vm = MainViewModel(store: store)
+        vm.store.notificationStartHour = ((nowHour - 2) + 24) % 24
+        vm.store.notificationEndHour = ((nowHour - 1) + 24) % 24
         vm.currentTime = Date()
         
         XCTAssertEqual(vm.timerLabel, "До старта")

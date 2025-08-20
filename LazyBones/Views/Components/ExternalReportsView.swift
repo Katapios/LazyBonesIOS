@@ -58,7 +58,7 @@ struct ExternalReportsView: View {
                     }
                 }
                 .buttonStyle(.bordered)
-                .disabled(viewModel.state.isRefreshing)
+                .disabled(!viewModel.state.canRefreshFromTelegram)
                 
                 Button(action: { 
                     Task {
@@ -71,11 +71,7 @@ struct ExternalReportsView: View {
                     }
                 }
                 .buttonStyle(.bordered)
-                .onTapGesture {
-                    if let url = URL(string: "https://t.me/+Ny08CEMnQJplMGJi") {
-                        openURL(url)
-                    }
-                }
+                
                 
                 if viewModel.state.isRefreshing {
                     ProgressView()
@@ -209,7 +205,7 @@ struct ExternalReportsView: View {
                     badItems: ["Не выполнил задачу 3"],
                     published: true,
                     voiceNotes: [],
-                    type: .regular
+                    type: .external
                 ),
                 DomainPost(
                     id: UUID(),
@@ -218,7 +214,7 @@ struct ExternalReportsView: View {
                     badItems: [],
                     published: true,
                     voiceNotes: [],
-                    type: .regular
+                    type: .external
                 )
             ]
         }

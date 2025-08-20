@@ -48,6 +48,7 @@ struct ExternalReportsState {
     
     /// Можно ли очистить историю
     var canClearHistory: Bool {
-        return !isLoading
+        return telegramConnected && !isLoading
     }
-} 
+}
+ 
