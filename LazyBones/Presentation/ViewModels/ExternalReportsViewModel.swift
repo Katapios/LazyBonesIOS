@@ -34,7 +34,6 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
         case .loadReports:
             await loadReports()
         case .refreshFromTelegram:
-            print("[ExtReports] VM: handle(.refreshFromTelegram) received")
             await refreshFromTelegram()
         case .clearHistory:
             await clearHistory()
@@ -104,8 +103,7 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
     }
     
     private func refreshFromTelegram() async {
-        // Extra diagnostics to bypass possible logger filters
-        print("[ExtReports] VM: Refresh from Telegram triggered")
+        // Diagnostics
         Logger.info("Refresh from Telegram triggered", log: Logger.telegram)
         Logger.info("[ExtReports] VM: Refresh from Telegram triggered", log: Logger.general)
         state.isRefreshing = true

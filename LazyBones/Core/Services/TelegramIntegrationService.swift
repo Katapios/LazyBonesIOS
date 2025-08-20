@@ -120,7 +120,6 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
         // Пере-разрешаем TelegramService с актуальным токеном
         if let resolved: TelegramServiceProtocol = container.resolve(TelegramServiceProtocol.self) {
             self.telegramService = resolved
-            print("[ExtReports] SVC: TelegramService refreshed (has token? \(self.telegramToken != nil && !(self.telegramToken ?? "").isEmpty))")
         }
     }
     
@@ -128,13 +127,11 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
     
     func fetchExternalPosts(completion: @escaping (Bool) -> Void) {
         Logger.info("[ExtReports] Start fetchExternalPosts", log: Logger.telegram)
-        print("[ExtReports] SVC: fetchExternalPosts entered")
         
         // Проверяем, есть ли настройки Telegram
         Logger.debug("[ExtReports] Current settings: token set? \(telegramToken != nil && !(telegramToken ?? "").isEmpty), chatId: \(telegramChatId ?? "nil"), lastUpdateId: \(lastUpdateId.map(String.init) ?? "nil")", log: Logger.telegram)
         guard let token = telegramToken, !token.isEmpty else {
             Logger.warning("[ExtReports] Aborting: Telegram token is not set", log: Logger.telegram)
-            print("[ExtReports] SVC: abort fetch — token is missing")
             completion(false)
             return
         }
@@ -142,7 +139,6 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
         Task {
             do {
                 Logger.info("[ExtReports] Calling getUpdates with offset=\(lastUpdateId.map(String.init) ?? "nil")", log: Logger.telegram)
-                print("[ExtReports] SVC: calling getUpdates(offset=\(lastUpdateId.map(String.init) ?? "nil"))")
                 // Получаем TelegramService для обновлений
                 var telegramServiceForUpdates = self.telegramService
                 if telegramServiceForUpdates == nil {
@@ -154,7 +150,6 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
                 }
                 guard let telegramServiceForUpdates else {
                     Logger.error("[ExtReports] TelegramService not available after resolve", log: Logger.telegram)
-                    print("[ExtReports] SVC: TelegramService resolve failed")
                     completion(false)
                     return
                 }
@@ -176,7 +171,6 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
                     return nil
                 }
                 Logger.debug("[ExtReports] Updates=\(updates.count), Messages=\(messages.count)", log: Logger.telegram)
-                print("[ExtReports] SVC: updates=\(updates.count), messages=\(messages.count)")
                 
                 // Преобразуем сообщения в объекты Post
                 var newExternalPosts: [Post] = []
@@ -188,7 +182,6 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
                 }
                 
                 Logger.debug("[ExtReports] Converted posts: \(newExternalPosts.count)", log: Logger.telegram)
-                print("[ExtReports] SVC: converted posts=\(newExternalPosts.count)")
                 
                 // Предварительно вычисляем следующий lastUpdateId до перехода на MainActor,
                 // чтобы не захватывать 'updates' внутри MainActor.run (Swift 6 strict concurrency)
@@ -214,14 +207,12 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
                     
                     Logger.info("[ExtReports] Saved external posts total: \(self.externalPosts.count)", log: Logger.telegram)
                     Logger.info("Fetched \(finalExternalPosts.count) external posts", log: Logger.telegram)
-                    print("[ExtReports] SVC: saved total=\(self.externalPosts.count), fetched now=\(finalExternalPosts.count), lastUpdateId=\(self.lastUpdateId.map(String.init) ?? "nil")")
                     completion(true)
                 }
                 
             } catch {
                 await MainActor.run {
                     Logger.error("Failed to fetch external posts: \(error)", log: Logger.telegram)
-                    print("[ExtReports] SVC: fetchExternalPosts error=\(error)")
                     completion(false)
                 }
             }
