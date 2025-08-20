@@ -56,7 +56,7 @@ struct ContentView: View {
             .tag(AppCoordinator.Tab.reports)
             
             NavigationStack(path: $appCoordinator.navigationPath) {
-                SettingsView()
+                appCoordinator.settingsRootView()
             }
             .tabItem {
                 Label(AppCoordinator.Tab.settings.title, systemImage: AppCoordinator.Tab.settings.icon)
@@ -89,6 +89,8 @@ struct ContentView: View {
         }
         .onChange(of: appCoordinator.currentTab) { _, newTab in
             Logger.debug("Tab changed to: \(newTab.title)", log: Logger.ui)
+            // Включаем соответствующий координатор при переключении вкладки
+            appCoordinator.switchToTab(newTab)
         }
         .overlay {
             if appCoordinator.isLoading {

@@ -104,8 +104,9 @@ final class SettingsViewModelNewTests: XCTestCase {
         @Published var currentDay: Date = Calendar.current.startOfDay(for: Date())
 
         var unlockCalled = 0
+        var updateCalled = 0
 
-        func updateStatus() {}
+        func updateStatus() { updateCalled += 1 }
         func checkForNewDay() {}
         func unlockReportCreation() { unlockCalled += 1 }
         func loadStatus() {}
@@ -118,6 +119,7 @@ final class SettingsViewModelNewTests: XCTestCase {
         var exportCallCount = 0
         var fileAccessGranted = true
         var iCloudAccessGranted = true
+        var exportError: ExportReportsError? = nil
 
         func exportReports(
             reportType: ICloudReportType,
@@ -127,6 +129,7 @@ final class SettingsViewModelNewTests: XCTestCase {
             format: ReportFormat
         ) async throws -> ExportReportsOutput {
             exportCallCount += 1
+            if let err = exportError { throw err }
             return ExportReportsOutput(success: true, exportedCount: 1, error: nil)
         }
 
@@ -297,6 +300,36 @@ final class SettingsViewModelNewTests: XCTestCase {
         // enable
         vm.setAutoSendEnabled(true)
         XCTAssertTrue(autosend.autoSendEnabled)
+    }
+
+    func testResetReportUnlock_ResetsForceUnlockAndUpdatesStatus() async {
+        // Given: set forced unlock true, then reset
+        status.forceUnlock = true
+        legacySync.savedForceUnlock = nil
+        legacySync.syncCalls = 0
+        status.updateCalled = 0
+
+        // When
+        await vm.handle(.resetReportUnlock)
+
+        // Then
+        XCTAssertFalse(status.forceUnlock)
+        XCTAssertEqual(status.updateCalled, 1)
+        XCTAssertEqual(legacySync.savedForceUnlock, false)
+        XCTAssertGreaterThanOrEqual(legacySync.syncCalls, 1)
+    }
+
+    func testExportToICloud_ThrowsSetsHumanReadableMessage() async {
+        // Given
+        icloud.fileAccessGranted = true
+        icloud.iCloudAccessGranted = true
+        icloud.exportError = .formattingError
+
+        // When
+        await vm.handle(.exportToICloud)
+
+        // Then
+        XCTAssertEqual(vm.state.exportResult, "❌ Ошибка форматирования")
     }
 }
 

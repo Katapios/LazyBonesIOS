@@ -155,6 +155,15 @@ class AppCoordinator: BaseCoordinator, ObservableObject, ErrorHandlingCoordinato
     }
 }
 
+// MARK: - Root Views Factory
+extension AppCoordinator {
+    /// Корневой вью для вкладки "Настройки" через координатор/DI
+    func settingsRootView() -> SettingsView {
+        // При необходимости можно будет инстанцировать VM из DI и передать явно
+        return SettingsView()
+    }
+}
+
 // MARK: - Tabs
 
 extension AppCoordinator {
@@ -195,4 +204,4 @@ extension AppCoordinator {
             }
         }
     }
-} 
+}
