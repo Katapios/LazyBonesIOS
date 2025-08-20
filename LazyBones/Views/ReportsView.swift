@@ -144,7 +144,8 @@ struct ReportsView: View {
 
     private var externalReportsSection: some View {
         ExternalReportsView(
-            getReportsUseCase: DependencyContainer.shared.resolve(GetReportsUseCase.self)!,
+            getExternalReportsUseCase: DependencyContainer.shared.resolve(GetExternalReportsUseCase.self)!,
+            refreshExternalReportsUseCase: DependencyContainer.shared.resolve(RefreshExternalReportsUseCase.self)!,
             deleteReportUseCase: DependencyContainer.shared.resolve(DeleteReportUseCase.self)!,
             telegramIntegrationService: DependencyContainer.shared.resolve(TelegramIntegrationServiceType.self)!
         )

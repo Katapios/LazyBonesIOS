@@ -8,16 +8,19 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
     @Published var isLoading: Bool = false
     @Published var error: Error? = nil
     
-    private let getReportsUseCase: any GetReportsUseCaseProtocol
+    private let getExternalReportsUseCase: any GetExternalReportsUseCaseProtocol
+    private let refreshExternalReportsUseCase: any RefreshExternalReportsUseCaseProtocol
     private let deleteReportUseCase: any DeleteReportUseCaseProtocol
     private let telegramIntegrationService: any TelegramIntegrationServiceProtocol
     
     init(
-        getReportsUseCase: any GetReportsUseCaseProtocol,
+        getExternalReportsUseCase: any GetExternalReportsUseCaseProtocol,
+        refreshExternalReportsUseCase: any RefreshExternalReportsUseCaseProtocol,
         deleteReportUseCase: any DeleteReportUseCaseProtocol,
         telegramIntegrationService: any TelegramIntegrationServiceProtocol
     ) {
-        self.getReportsUseCase = getReportsUseCase
+        self.getExternalReportsUseCase = getExternalReportsUseCase
+        self.refreshExternalReportsUseCase = refreshExternalReportsUseCase
         self.deleteReportUseCase = deleteReportUseCase
         self.telegramIntegrationService = telegramIntegrationService
         super.init(initialState: ExternalReportsState())
@@ -75,9 +78,9 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
         state.error = nil
         
         do {
-            // Загружаем внешние отчеты через Use Case
-            let input = GetReportsInput(date: state.selectedDate, type: .external, includeExternal: true)
-            let reports = try await getReportsUseCase.execute(input: input)
+            // Загружаем внешние отчеты через специализированный Use Case
+            let input = GetExternalReportsInput(date: state.selectedDate)
+            let reports = try await getExternalReportsUseCase.execute(input: input)
             // Если UseCase вернул пусто, оставляем существующие (важно для тестов кнопок)
             if !reports.isEmpty {
                 state.reports = reports
@@ -109,32 +112,16 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
         state.isRefreshing = true
         state.error = nil
         
-        // Разрешаем обновление независимо от наличия токена (для согласованности с тестами)
-        
-        // Принудительно обновляем TelegramService для получения актуального токена
-        telegramIntegrationService.refreshTelegramService()
-        
-        // Используем completion-based API для совместимости
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            telegramIntegrationService.fetchExternalPosts { success in
-                Task { @MainActor in
-                    if success {
-                        // Немедленно обновляем UI внешними отчетами из сервиса
-                        let domainPosts = PostMapper.toDomainModels(self.telegramIntegrationService.getAllPosts())
-                        self.state.reports = domainPosts
-                        self.updateButtonStates()
-                        // Затем извлекаем отчеты через Use Case (если UseCase вернет пусто — state.reports сохранится)
-                        await self.loadReports()
-                        Logger.info("Successfully refreshed reports from Telegram", log: Logger.telegram)
-                    } else {
-                        self.state.error = NSError(domain: "ExternalReports", code: 1, userInfo: [NSLocalizedDescriptionKey: "Ошибка загрузки из Telegram. Проверьте подключение к интернету и настройки Telegram."])
-                        Logger.error("Failed to refresh reports from Telegram", log: Logger.telegram)
-                    }
-                    self.state.isRefreshing = false
-                    continuation.resume()
-                }
-            }
+        // Обновляем данные через Use Case, затем перезагружаем список из репозитория
+        do {
+            try await refreshExternalReportsUseCase.execute()
+            await loadReports()
+            Logger.info("Successfully refreshed reports from Telegram via UseCase", log: Logger.telegram)
+        } catch {
+            state.error = NSError(domain: "ExternalReports", code: 1, userInfo: [NSLocalizedDescriptionKey: "Ошибка загрузки из Telegram. Проверьте подключение к интернету и настройки Telegram."])
+            Logger.error("Failed to refresh reports from Telegram: \(error.localizedDescription)", log: Logger.telegram)
         }
+        state.isRefreshing = false
     }
     
     private func clearHistory() async {
@@ -244,3 +231,4 @@ class ExternalReportsViewModel: BaseViewModel<ExternalReportsState, ExternalRepo
         }
     }
 }
+

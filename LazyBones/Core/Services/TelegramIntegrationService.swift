@@ -159,7 +159,6 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
                 // Резервный фетч без offset, если ничего не пришло, но offset задан
                 if updates.isEmpty, lastUpdateId != nil {
                     Logger.info("[ExtReports] No updates with offset. Retrying without offset...", log: Logger.telegram)
-                    print("[ExtReports] SVC: no updates with offset — retry without offset")
                     updates = try await telegramServiceForUpdates.getUpdates(offset: nil)
                 }
                 

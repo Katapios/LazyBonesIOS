@@ -4,19 +4,37 @@ import SwiftUI
 
 @MainActor
 class ExternalReportsViewTests: XCTestCase {
-    var mockGetReportsUseCase: MockGetReportsUseCase!
+    // Локальные моки для новых UseCase
+    final class MockGetExternalReportsUseCase: GetExternalReportsUseCaseProtocol {
+        var result: Result<[DomainPost], GetReportsError> = .success([])
+        func execute(input: GetExternalReportsInput) async throws -> [DomainPost] {
+            switch result {
+            case .success(let reports): return reports
+            case .failure(let error): throw error
+            }
+        }
+    }
+    
+    final class MockRefreshExternalReportsUseCase: RefreshExternalReportsUseCaseProtocol {
+        func execute() async throws { /* no-op */ }
+    }
+    
+    var mockGetExternalReportsUseCase: MockGetExternalReportsUseCase!
+    var mockRefreshExternalReportsUseCase: MockRefreshExternalReportsUseCase!
     var mockDeleteReportUseCase: MockDeleteReportUseCase!
     var mockTelegramIntegrationService: MockTelegramIntegrationService!
     
     override func setUp() {
         super.setUp()
-        mockGetReportsUseCase = MockGetReportsUseCase()
+        mockGetExternalReportsUseCase = MockGetExternalReportsUseCase()
+        mockRefreshExternalReportsUseCase = MockRefreshExternalReportsUseCase()
         mockDeleteReportUseCase = MockDeleteReportUseCase()
         mockTelegramIntegrationService = MockTelegramIntegrationService()
     }
     
     override func tearDown() {
-        mockGetReportsUseCase = nil
+        mockGetExternalReportsUseCase = nil
+        mockRefreshExternalReportsUseCase = nil
         mockDeleteReportUseCase = nil
         mockTelegramIntegrationService = nil
         super.tearDown()
@@ -25,7 +43,8 @@ class ExternalReportsViewTests: XCTestCase {
     func testExternalReportsViewInitialization() {
         // Given
         let view = ExternalReportsView(
-            getReportsUseCase: mockGetReportsUseCase,
+            getExternalReportsUseCase: mockGetExternalReportsUseCase,
+            refreshExternalReportsUseCase: mockRefreshExternalReportsUseCase,
             deleteReportUseCase: mockDeleteReportUseCase,
             telegramIntegrationService: mockTelegramIntegrationService
         )
@@ -36,11 +55,12 @@ class ExternalReportsViewTests: XCTestCase {
     
     func testExternalReportsViewWithEmptyReports() {
         // Given
-        mockGetReportsUseCase.mockResult = .success([])
+        mockGetExternalReportsUseCase.result = .success([])
         mockTelegramIntegrationService.telegramToken = nil
         
         let view = ExternalReportsView(
-            getReportsUseCase: mockGetReportsUseCase,
+            getExternalReportsUseCase: mockGetExternalReportsUseCase,
+            refreshExternalReportsUseCase: mockRefreshExternalReportsUseCase,
             deleteReportUseCase: mockDeleteReportUseCase,
             telegramIntegrationService: mockTelegramIntegrationService
         )
@@ -72,11 +92,12 @@ class ExternalReportsViewTests: XCTestCase {
             )
         ]
         
-        mockGetReportsUseCase.mockResult = .success(testReports)
+        mockGetExternalReportsUseCase.result = .success(testReports)
         mockTelegramIntegrationService.telegramToken = "test_token"
         
         let view = ExternalReportsView(
-            getReportsUseCase: mockGetReportsUseCase,
+            getExternalReportsUseCase: mockGetExternalReportsUseCase,
+            refreshExternalReportsUseCase: mockRefreshExternalReportsUseCase,
             deleteReportUseCase: mockDeleteReportUseCase,
             telegramIntegrationService: mockTelegramIntegrationService
         )
@@ -87,11 +108,12 @@ class ExternalReportsViewTests: XCTestCase {
     
     func testExternalReportsViewWithError() {
         // Given
-        mockGetReportsUseCase.mockResult = .failure(.repositoryError(NSError(domain: "Test", code: 1)))
+        mockGetExternalReportsUseCase.result = .failure(.repositoryError(NSError(domain: "Test", code: 1)))
         mockTelegramIntegrationService.telegramToken = "test_token"
         
         let view = ExternalReportsView(
-            getReportsUseCase: mockGetReportsUseCase,
+            getExternalReportsUseCase: mockGetExternalReportsUseCase,
+            refreshExternalReportsUseCase: mockRefreshExternalReportsUseCase,
             deleteReportUseCase: mockDeleteReportUseCase,
             telegramIntegrationService: mockTelegramIntegrationService
         )
@@ -99,4 +121,5 @@ class ExternalReportsViewTests: XCTestCase {
         // Then
         XCTAssertNotNil(view)
     }
-} 
+}
+ 

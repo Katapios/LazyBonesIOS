@@ -4,18 +4,39 @@ import XCTest
 @MainActor
 class ExternalReportsViewModelTests: XCTestCase {
     var viewModel: ExternalReportsViewModel!
-    var mockGetReportsUseCase: MockGetReportsUseCase!
+    // Новые моки UseCase
+    final class MockGetExternalReportsUseCase: GetExternalReportsUseCaseProtocol {
+        var result: Result<[DomainPost], GetReportsError> = .success([])
+        func execute(input: GetExternalReportsInput) async throws -> [DomainPost] {
+            switch result {
+            case .success(let reports): return reports
+            case .failure(let error): throw error
+            }
+        }
+    }
+    
+    final class MockRefreshExternalReportsUseCase: RefreshExternalReportsUseCaseProtocol {
+        var shouldThrow: Error?
+        func execute() async throws {
+            if let err = shouldThrow { throw err }
+        }
+    }
+    
+    var mockGetExternalReportsUseCase: MockGetExternalReportsUseCase!
+    var mockRefreshExternalReportsUseCase: MockRefreshExternalReportsUseCase!
     var mockDeleteReportUseCase: MockDeleteReportUseCase!
     var mockTelegramIntegrationService: MockTelegramIntegrationService!
     
     override func setUp() {
         super.setUp()
-        mockGetReportsUseCase = MockGetReportsUseCase()
+        mockGetExternalReportsUseCase = MockGetExternalReportsUseCase()
+        mockRefreshExternalReportsUseCase = MockRefreshExternalReportsUseCase()
         mockDeleteReportUseCase = MockDeleteReportUseCase()
         mockTelegramIntegrationService = MockTelegramIntegrationService()
         
         viewModel = ExternalReportsViewModel(
-            getReportsUseCase: mockGetReportsUseCase,
+            getExternalReportsUseCase: mockGetExternalReportsUseCase,
+            refreshExternalReportsUseCase: mockRefreshExternalReportsUseCase,
             deleteReportUseCase: mockDeleteReportUseCase,
             telegramIntegrationService: mockTelegramIntegrationService
         )
@@ -23,7 +44,8 @@ class ExternalReportsViewModelTests: XCTestCase {
     
     override func tearDown() {
         viewModel = nil
-        mockGetReportsUseCase = nil
+        mockGetExternalReportsUseCase = nil
+        mockRefreshExternalReportsUseCase = nil
         mockDeleteReportUseCase = nil
         mockTelegramIntegrationService = nil
         super.tearDown()
@@ -54,7 +76,7 @@ class ExternalReportsViewModelTests: XCTestCase {
                 authorId: 456
             )
         ]
-        mockGetReportsUseCase.mockResult = .success(expectedReports)
+        mockGetExternalReportsUseCase.result = .success(expectedReports)
         mockTelegramIntegrationService.telegramToken = "test_token"
         
         // When
@@ -72,7 +94,7 @@ class ExternalReportsViewModelTests: XCTestCase {
     func testLoadReports_Error() async {
         // Given
         let expectedError = NSError(domain: "Test", code: 1, userInfo: nil)
-        mockGetReportsUseCase.mockResult = .failure(.repositoryError(expectedError))
+        mockGetExternalReportsUseCase.result = .failure(.repositoryError(expectedError))
         
         // When
         await viewModel.handle(.loadReports)
@@ -87,7 +109,6 @@ class ExternalReportsViewModelTests: XCTestCase {
     
     func testRefreshFromTelegram_Success() async {
         // Given
-        mockTelegramIntegrationService.fetchExternalPostsResult = true
         let expectedReports = [
             DomainPost(
                 id: UUID(),
@@ -109,7 +130,8 @@ class ExternalReportsViewModelTests: XCTestCase {
                 authorId: 101
             )
         ]
-        mockGetReportsUseCase.mockResult = .success(expectedReports)
+        mockGetExternalReportsUseCase.result = .success(expectedReports)
+        mockRefreshExternalReportsUseCase.shouldThrow = nil
         
         // When
         await viewModel.handle(.refreshFromTelegram)
@@ -123,7 +145,7 @@ class ExternalReportsViewModelTests: XCTestCase {
     
     func testRefreshFromTelegram_Error() async {
         // Given
-        mockTelegramIntegrationService.fetchExternalPostsResult = false
+        mockRefreshExternalReportsUseCase.shouldThrow = NSError(domain: "Refresh", code: 999)
         
         // When
         await viewModel.handle(.refreshFromTelegram)

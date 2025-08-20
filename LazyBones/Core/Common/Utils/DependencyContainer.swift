@@ -150,6 +150,15 @@ extension DependencyContainer {
             )
         })
         
+        // External Posts Repository (UserDefaults-based)
+        register(ExternalPostRepository.self, factory: {
+            let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
+            return ExternalPostRepository(userDefaultsManager: userDefaultsManager)
+        })
+        register(ExternalPostRepositoryProtocol.self, factory: {
+            return self.resolve(ExternalPostRepository.self)!
+        })
+        
         // Notification Manager Service
         register(NotificationManagerServiceType.self, factory: {
             let notificationService = self.resolve(NotificationServiceProtocol.self)!
@@ -262,10 +271,27 @@ extension DependencyContainer {
             return self.resolve(PlanningRepository.self)!
         })
         
+        // Telegram fetcher adapter for Domain
+        register(TelegramFetcherProtocol.self, factory: {
+            let integration = self.resolve(TelegramIntegrationServiceType.self)!
+            return TelegramFetcherAdapter(integrationService: integration)
+        })
+        
         // Регистрируем конкретные типы вместо протоколов для избежания предупреждений Swift 6
         register(GetReportsUseCase.self, factory: {
             let postRepository = self.resolve(PostRepository.self)!
             return GetReportsUseCase(postRepository: postRepository)
+        })
+        
+        // External reports UseCases
+        register(GetExternalReportsUseCase.self, factory: {
+            let repo = self.resolve(ExternalPostRepositoryProtocol.self)!
+            return GetExternalReportsUseCase(repository: repo)
+        })
+        register(RefreshExternalReportsUseCase.self, factory: {
+            let repo = self.resolve(ExternalPostRepositoryProtocol.self)!
+            let fetcher = self.resolve(TelegramFetcherProtocol.self)!
+            return RefreshExternalReportsUseCase(repository: repo, fetcher: fetcher)
         })
         
         register(UpdateStatusUseCase.self, factory: {

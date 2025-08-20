@@ -6,12 +6,14 @@ struct ExternalReportsView: View {
     @Environment(\.openURL) private var openURL
     
     init(
-        getReportsUseCase: any GetReportsUseCaseProtocol,
+        getExternalReportsUseCase: any GetExternalReportsUseCaseProtocol,
+        refreshExternalReportsUseCase: any RefreshExternalReportsUseCaseProtocol,
         deleteReportUseCase: any DeleteReportUseCaseProtocol,
         telegramIntegrationService: any TelegramIntegrationServiceProtocol
     ) {
         self._viewModel = StateObject(wrappedValue: ExternalReportsViewModel(
-            getReportsUseCase: getReportsUseCase,
+            getExternalReportsUseCase: getExternalReportsUseCase,
+            refreshExternalReportsUseCase: refreshExternalReportsUseCase,
             deleteReportUseCase: deleteReportUseCase,
             telegramIntegrationService: telegramIntegrationService
         ))
@@ -196,36 +198,83 @@ struct ExternalReportsView: View {
 }
 
 #Preview {
-    let mockGetReportsUseCase = MockGetReportsUseCase()
-    let mockDeleteReportUseCase = MockDeleteReportUseCase()
-    let mockTelegramIntegrationService = MockTelegramIntegrationService()
+    // Локальные простые моки для превью
+    final class PreviewGetExternalReports: GetExternalReportsUseCaseProtocol {
+        func execute(input: GetExternalReportsInput) async throws -> [DomainPost] {
+            return [
+                DomainPost(
+                    id: UUID(),
+                    date: Date(),
+                    goodItems: ["Выполнил задачу 1", "Выполнил задачу 2"],
+                    badItems: ["Не выполнил задачу 3"],
+                    published: true,
+                    voiceNotes: [],
+                    type: .regular
+                ),
+                DomainPost(
+                    id: UUID(),
+                    date: Date().addingTimeInterval(-86400),
+                    goodItems: ["Выполнил задачу 4"],
+                    badItems: [],
+                    published: true,
+                    voiceNotes: [],
+                    type: .regular
+                )
+            ]
+        }
+    }
     
-    // Настраиваем моки для Preview
-    mockTelegramIntegrationService.telegramToken = "test_token"
-    mockGetReportsUseCase.mockResult = .success([
-        DomainPost(
-            id: UUID(),
-            date: Date(),
-            goodItems: ["Выполнил задачу 1", "Выполнил задачу 2"],
-            badItems: ["Не выполнил задачу 3"],
-            published: true,
-            voiceNotes: [],
-            type: .regular
-        ),
-        DomainPost(
-            id: UUID(),
-            date: Date().addingTimeInterval(-86400),
-            goodItems: ["Выполнил задачу 4"],
-            badItems: [],
-            published: true,
-            voiceNotes: [],
-            type: .regular
-        )
-    ])
+    final class PreviewRefreshExternalReports: RefreshExternalReportsUseCaseProtocol {
+        func execute() async throws { /* no-op for preview */ }
+    }
+    
+    final class PreviewDeleteReport: DeleteReportUseCaseProtocol {
+        func execute(input: DeleteReportInput) async throws { /* no-op for preview */ }
+    }
+    
+    final class PreviewTelegramService: TelegramIntegrationServiceProtocol {
+        // Properties required by protocol
+        var externalPosts: [Post] = []
+        var telegramToken: String? = "test_token"
+        var telegramChatId: String? = "preview_chat"
+        var telegramBotId: String? = "preview_bot"
+        var lastUpdateId: Int? = nil
+
+        // Settings Management
+        func saveTelegramSettings(token: String?, chatId: String?, botId: String?) {
+            telegramToken = token
+            telegramChatId = chatId
+            telegramBotId = botId
+        }
+        func loadTelegramSettings() -> (token: String?, chatId: String?, botId: String?) {
+            (telegramToken, telegramChatId, telegramBotId)
+        }
+        func saveLastUpdateId(_ updateId: Int) { lastUpdateId = updateId }
+        func resetLastUpdateId() { lastUpdateId = nil }
+        func refreshTelegramService() {}
+
+        // External Posts Management
+        func fetchExternalPosts(completion: @escaping (Bool) -> Void) { completion(true) }
+        func saveExternalPosts() {}
+        func loadExternalPosts() {}
+        func deleteBotMessages(completion: @escaping (Bool) -> Void) { completion(true) }
+        func deleteAllBotMessages(completion: @escaping (Bool) -> Void) { completion(true) }
+
+        // Message Conversion
+        func convertTelegramMessageToPost(_ message: TelegramMessage) -> Post? { nil }
+
+        // Combined Posts
+        func getAllPosts() -> [Post] { externalPosts }
+
+        // Report Formatting
+        func formatCustomReportForTelegram(_ report: Post, deviceName: String) -> String { "Preview formatted" }
+    }
     
     return ExternalReportsView(
-        getReportsUseCase: mockGetReportsUseCase,
-        deleteReportUseCase: mockDeleteReportUseCase,
-        telegramIntegrationService: mockTelegramIntegrationService
+        getExternalReportsUseCase: PreviewGetExternalReports(),
+        refreshExternalReportsUseCase: PreviewRefreshExternalReports(),
+        deleteReportUseCase: PreviewDeleteReport(),
+        telegramIntegrationService: PreviewTelegramService()
     )
-} 
+}
+ 
