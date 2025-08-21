@@ -48,7 +48,6 @@
 		7CFB92212E4E2AEE004162B5 /* MainViewModelTimerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91EC2E4E2AEE004162B5 /* MainViewModelTimerTests.swift */; };
 		7CFB92222E4E2AEE004162B5 /* MainViewModelNewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91EA2E4E2AEE004162B5 /* MainViewModelNewTests.swift */; };
 		7CFB92232E4E2AEE004162B5 /* ReportsViewModelNewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91F02E4E2AEE004162B5 /* ReportsViewModelNewTests.swift */; };
-		7CFB92242E4E2AEE004162B5 /* TagManagerViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91F32E4E2AEE004162B5 /* TagManagerViewModelTests.swift */; };
 		7CFB92252E4E2AEE004162B5 /* NewDayLogicTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91FB2E4E2AEE004162B5 /* NewDayLogicTest.swift */; };
 		7CFB92262E4E2AEE004162B5 /* TelegramIntegrationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB92022E4E2AEE004162B5 /* TelegramIntegrationServiceTests.swift */; };
 		7CFB92272E4E2AEE004162B5 /* ReportsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91F12E4E2AEE004162B5 /* ReportsViewModelTests.swift */; };
@@ -140,7 +139,6 @@
 		7CFB91F02E4E2AEE004162B5 /* ReportsViewModelNewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportsViewModelNewTests.swift; sourceTree = "<group>"; };
 		7CFB91F12E4E2AEE004162B5 /* ReportsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportsViewModelTests.swift; sourceTree = "<group>"; };
 		7CFB91F22E4E2AEE004162B5 /* SettingsViewModelNewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModelNewTests.swift; sourceTree = "<group>"; };
-		7CFB91F32E4E2AEE004162B5 /* TagManagerViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagManagerViewModelTests.swift; sourceTree = "<group>"; };
 		7CFB91F52E4E2AEE004162B5 /* ExternalReportsViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalReportsViewTests.swift; sourceTree = "<group>"; };
 		7CFB91F82E4E2AEE004162B5 /* AutoSendIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoSendIntegrationTests.swift; sourceTree = "<group>"; };
 		7CFB91F92E4E2AEE004162B5 /* AutoSendServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoSendServiceTests.swift; sourceTree = "<group>"; };
@@ -384,7 +382,6 @@
 				7CFB91F02E4E2AEE004162B5 /* ReportsViewModelNewTests.swift */,
 				7CFB91F12E4E2AEE004162B5 /* ReportsViewModelTests.swift */,
 				7CFB91F22E4E2AEE004162B5 /* SettingsViewModelNewTests.swift */,
-				7CFB91F32E4E2AEE004162B5 /* TagManagerViewModelTests.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -652,7 +649,6 @@
 				7CFB92212E4E2AEE004162B5 /* MainViewModelTimerTests.swift in Sources */,
 				7CFB92222E4E2AEE004162B5 /* MainViewModelNewTests.swift in Sources */,
 				7CFB92232E4E2AEE004162B5 /* ReportsViewModelNewTests.swift in Sources */,
-				7CFB92242E4E2AEE004162B5 /* TagManagerViewModelTests.swift in Sources */,
 				7CFB92252E4E2AEE004162B5 /* NewDayLogicTest.swift in Sources */,
 				7CFB92262E4E2AEE004162B5 /* TelegramIntegrationServiceTests.swift in Sources */,
 				7CFB92272E4E2AEE004162B5 /* ReportsViewModelTests.swift in Sources */,

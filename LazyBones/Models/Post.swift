@@ -258,7 +258,6 @@ class PostStore: ObservableObject, PostStoreProtocol {
         load()
         loadNotificationSettings()
         // Автоотправка теперь управляется через AutoSendService
-        loadTags()
     }
         // --- Notification settings ---
     @Published var notificationsEnabled: Bool = false {
