@@ -317,6 +317,7 @@ private final class MockUserDefaultsManager: UserDefaultsManagerProtocol {
         stringValues["telegramToken"] = token
         stringValues["telegramChatId"] = chatId
         stringValues["telegramBotId"] = botId
+        setCalled = true
     }
     func saveNotificationSettings(enabled: Bool, intervalHours: Int, startHour: Int, endHour: Int, mode: String) {}
     func loadNotificationSettings() -> (enabled: Bool, intervalHours: Int, startHour: Int, endHour: Int, mode: String) { (false, 1, 8, 22, "hourly") }

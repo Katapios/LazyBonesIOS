@@ -150,6 +150,20 @@ extension DependencyContainer {
             )
         })
         
+        // Telegram Settings Repository & UseCases (Clean Architecture)
+        register(TelegramSettingsRepository.self, factory: {
+            let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
+            return TelegramSettingsRepositoryImpl(userDefaults: userDefaultsManager)
+        })
+        register(LoadTelegramSettingsUseCase.self, factory: {
+            let repo = self.resolve(TelegramSettingsRepository.self)!
+            return LoadTelegramSettingsUseCaseImpl(repository: repo)
+        })
+        register(SaveTelegramSettingsUseCase.self, factory: {
+            let repo = self.resolve(TelegramSettingsRepository.self)!
+            return SaveTelegramSettingsUseCaseImpl(repository: repo)
+        })
+
         // External Posts Repository (UserDefaults-based)
         register(ExternalPostRepository.self, factory: {
             let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
@@ -177,6 +191,20 @@ extension DependencyContainer {
                 userDefaultsManager: userDefaultsManager,
                 postTelegramService: postTelegramService
             )
+        })
+        
+        // AutoSend Settings Repository & UseCases (Clean Architecture)
+        register(AutoSendSettingsRepository.self, factory: {
+            let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
+            return AutoSendSettingsRepositoryImpl(userDefaults: userDefaultsManager)
+        })
+        register(LoadAutoSendSettingsUseCase.self, factory: {
+            let repo = self.resolve(AutoSendSettingsRepository.self)!
+            return LoadAutoSendSettingsUseCaseImpl(repository: repo)
+        })
+        register(SaveAutoSendSettingsUseCase.self, factory: {
+            let repo = self.resolve(AutoSendSettingsRepository.self)!
+            return SaveAutoSendSettingsUseCaseImpl(repository: repo)
         })
         
         // Telegram Config Updater

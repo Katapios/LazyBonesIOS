@@ -47,6 +47,9 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
     // MARK: - Dependencies
     private let userDefaultsManager: UserDefaultsManagerProtocol
     private var telegramService: TelegramServiceProtocol?
+    private let loadTelegramSettingsUC: LoadTelegramSettingsUseCase
+    private let saveTelegramSettingsUC: SaveTelegramSettingsUseCase
+    private let telegramSettingsRepo: TelegramSettingsRepository
     
     // MARK: - Initialization
     init(
@@ -55,6 +58,11 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
     ) {
         self.userDefaultsManager = userDefaultsManager
         self.telegramService = telegramService
+        // CA wiring (internal): build repository and use cases using provided dependencies
+        let repo = TelegramSettingsRepositoryImpl(userDefaults: userDefaultsManager)
+        self.telegramSettingsRepo = repo
+        self.loadTelegramSettingsUC = LoadTelegramSettingsUseCaseImpl(repository: repo)
+        self.saveTelegramSettingsUC = SaveTelegramSettingsUseCaseImpl(repository: repo)
         
         _ = loadTelegramSettings()
         loadExternalPosts()
@@ -67,8 +75,9 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
         telegramChatId = chatId
         telegramBotId = botId
         
-        // Используем специальный метод для сохранения настроек Telegram
-        userDefaultsManager.saveTelegramSettings(token: token, chatId: chatId, botId: botId)
+        // CA: сохраняем через use case (внутри будет вызван ud.saveTelegramSettings)
+        let settings = TelegramSettings(token: token, chatId: chatId, botId: botId, lastUpdateId: lastUpdateId)
+        saveTelegramSettingsUC.execute(settings)
         
         // Обновляем TelegramService через абстракцию конфигурации
         let container = DependencyContainer.shared
@@ -82,10 +91,11 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
     }
     
     func loadTelegramSettings() -> (token: String?, chatId: String?, botId: String?) {
-        telegramToken = userDefaultsManager.string(forKey: "telegramToken")
-        telegramChatId = userDefaultsManager.string(forKey: "telegramChatId")
-        telegramBotId = userDefaultsManager.string(forKey: "telegramBotId")
-        lastUpdateId = userDefaultsManager.integer(forKey: "lastUpdateId")
+        let settings = loadTelegramSettingsUC.execute()
+        telegramToken = settings.token
+        telegramChatId = settings.chatId
+        telegramBotId = settings.botId
+        lastUpdateId = settings.lastUpdateId
         
         // Обновляем TelegramService через абстракцию конфигурации
         let container = DependencyContainer.shared
@@ -102,12 +112,12 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
     
     func saveLastUpdateId(_ updateId: Int) {
         lastUpdateId = updateId
-        userDefaultsManager.set(updateId, forKey: "lastUpdateId")
+        telegramSettingsRepo.saveLastUpdateId(updateId)
     }
     
     func resetLastUpdateId() {
         lastUpdateId = nil
-        userDefaultsManager.remove(forKey: "lastUpdateId")
+        telegramSettingsRepo.resetLastUpdateId()
         Logger.info("Last update ID reset", log: Logger.telegram)
     }
     
@@ -201,7 +211,7 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
                     // Обновляем lastUpdateId (используем предрасчитанное значение)
                     if let nextUpdateId = nextUpdateId {
                         self.lastUpdateId = nextUpdateId
-                        self.userDefaultsManager.set(nextUpdateId, forKey: "lastUpdateId")
+                        self.telegramSettingsRepo.saveLastUpdateId(nextUpdateId)
                     }
                     
                     Logger.info("[ExtReports] Saved external posts total: \(self.externalPosts.count)", log: Logger.telegram)
@@ -245,7 +255,7 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
         
         // Сбрасываем lastUpdateId для возможности получения новых сообщений
         lastUpdateId = nil
-        userDefaultsManager.remove(forKey: "lastUpdateId")
+        telegramSettingsRepo.resetLastUpdateId()
         
         Logger.info("Successfully cleared all external posts and reset update ID", log: Logger.telegram)
         completion(true)

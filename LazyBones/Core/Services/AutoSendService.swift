@@ -51,6 +51,8 @@ class AutoSendService: AutoSendServiceProtocol {
     // MARK: - Dependencies
     private let userDefaultsManager: UserDefaultsManagerProtocol
     private let postTelegramService: PostTelegramServiceProtocol
+    private let loadAutoSendSettingsUC: LoadAutoSendSettingsUseCase
+    private let saveAutoSendSettingsUC: SaveAutoSendSettingsUseCase
     
     // MARK: - Private Properties
     private var isLoadingSettings = false
@@ -62,12 +64,10 @@ class AutoSendService: AutoSendServiceProtocol {
     
     private var lastAutoSendDate: Date? {
         get {
-            let ud = UserDefaults(suiteName: PostStore.appGroup)
-            return ud?.object(forKey: "lastAutoSendDate") as? Date
+            return userDefaultsManager.get(Date.self, forKey: "lastAutoSendDate")
         }
         set {
-            let ud = UserDefaults(suiteName: PostStore.appGroup)
-            ud?.set(newValue, forKey: "lastAutoSendDate")
+            userDefaultsManager.set(newValue, forKey: "lastAutoSendDate")
         }
     }
     
@@ -78,6 +78,10 @@ class AutoSendService: AutoSendServiceProtocol {
     ) {
         self.userDefaultsManager = userDefaultsManager
         self.postTelegramService = postTelegramService
+        // CA wiring (internal): build repository and use cases using provided dependencies
+        let repo = AutoSendSettingsRepositoryImpl(userDefaults: userDefaultsManager)
+        self.loadAutoSendSettingsUC = LoadAutoSendSettingsUseCaseImpl(repository: repo)
+        self.saveAutoSendSettingsUC = SaveAutoSendSettingsUseCaseImpl(repository: repo)
         
         loadAutoSendSettings()
     }
@@ -86,29 +90,23 @@ class AutoSendService: AutoSendServiceProtocol {
     
     func loadAutoSendSettings() {
         isLoadingSettings = true
-        
-        let userDefaults = UserDefaults(suiteName: PostStore.appGroup)
-        autoSendEnabled = userDefaults?.bool(forKey: "autoSendToTelegram") ?? false
-        
-        if let date = userDefaults?.object(forKey: "autoSendTime") as? Date {
-            print("[AutoSend][LOAD] Загружено время автоотправки: \(date)")
-            autoSendTime = date
-        } else {
-            print("[AutoSend][LOAD] Время автоотправки не найдено, используется дефолт: \(autoSendTime)")
-        }
-        
-        lastAutoSendStatus = userDefaults?.string(forKey: "lastAutoSendStatus")
-        
+        let settings = loadAutoSendSettingsUC.execute()
+        autoSendEnabled = settings.enabled
+        autoSendTime = settings.time
+        lastAutoSendStatus = settings.lastStatus
+        // lastAutoSendDate already backed by UD; we can leave it as is or mirror settings.lastDate if needed
         isLoadingSettings = false
     }
     
     func saveAutoSendSettings() {
-        let userDefaults = UserDefaults(suiteName: PostStore.appGroup)
-        userDefaults?.set(autoSendEnabled, forKey: "autoSendToTelegram")
-        userDefaults?.set(autoSendTime, forKey: "autoSendTime")
-        userDefaults?.set(lastAutoSendStatus, forKey: "lastAutoSendStatus")
+        let settings = AutoSendSettings(
+            enabled: autoSendEnabled,
+            time: autoSendTime,
+            lastStatus: lastAutoSendStatus,
+            lastDate: lastAutoSendDate
+        )
+        saveAutoSendSettingsUC.execute(settings)
         print("[AutoSend][SAVE] Сохраняю время автоотправки: \(autoSendTime)")
-        
         // Обновляем виджет при изменении настроек автоотправки
         WidgetCenter.shared.reloadAllTimelines()
     }
