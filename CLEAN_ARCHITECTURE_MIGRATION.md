@@ -30,10 +30,10 @@
 - __Что уже на Clean в рантайме__:
   - Таб «Отчёты»: `ReportsViewClean` + `ReportsViewModelNew`
   - Таб «Настройки»: `SettingsView` использует `SettingsViewModelNew`
+  - Таб «Теги»: `TagManagerViewClean` + `TagManagerViewModelNew`
 - __Что ещё на legacy в рантайме__:
   - Таб «Главная»: `ContentView` всё ещё показывает `MainView` (старый, через `PostStore`), хотя есть `MainViewNew`
   - Таб «План» (`DailyPlanningFormView`) — использует legacy состояние/сервисы
-  - Таб «Теги» (`TagManagerView(store:)`) — использует `PostStore`
   - Формы отчётов: `RegularReportFormView`, `PostFormView`, `DailyReportView` — завязаны на `PostStore`
 - __Инфраструктура/DI__:
   - DI контейнер (`DependencyContainer`) регистрирует use‑cases, репозитории, сервисы и фабрики `*ViewModelNew`
@@ -51,18 +51,18 @@
 - Обновлена документация по тестированию и статусной модели
 - Удалены legacy-вью настроек: `TelegramSettingsView`, `NotificationSettingsView`; секции инлайн в `SettingsView`, навигация упрощена в `SettingsCoordinator`
  - Расширены юнит‑тесты `SettingsViewModelNew`: сценарии `resetReportUnlock` и негативный `iCloud export` (ошибка форматирования)
+- Реализованы `TagManagerViewModelNew` и `TagManagerViewClean`; подключены в таб «Теги»
 
 ## 🚧 В процессе / Предстоит
 
 1) Подключение Clean View в `ContentView`
 - Заменить `MainView(store:)` на `MainViewNew()`
 - Заменить `ReportsView` (если где-то остался) на `ReportsViewClean()` — уже подключён в табе «Отчёты»
-- Заменить `TagManagerView(store:)` на новый `TagManagerViewClean()` (после реализации)
+- Заменить `TagManagerView(store:)` на новый `TagManagerViewClean()` — уже подключён в табе «Теги»
 - Заменить `DailyPlanningFormView()` на новый `PlanningViewClean()` (после реализации)
 - Удалить передачу `.environmentObject(store)` из `ContentView`
 
-2) Новые ViewModel/Views для Tags и Planning
-- Реализовать `TagManagerViewModelNew` (через `TagRepositoryProtocol`) и `TagManagerViewClean`
+2) Новые ViewModel/Views для Planning
 - Реализовать `PlanningViewModelNew` и `PlanningViewClean` (вкладка «План»), использовать use‑cases для сохранения/публикации
 
 3) Миграция форм отчётов с PostStore на UseCases
@@ -89,7 +89,7 @@
 - [ ] Подключить `MainViewNew` в `ContentView` (заменить `MainView(store:)`)
 - [x] Подключить `ReportsViewClean` в таб «Отчёты»
 - [x] Удалить legacy‑вью настроек (`TelegramSettingsView`, `NotificationSettingsView`); секции инлайн в `SettingsView`
-- [ ] Реализовать `TagManagerViewModelNew` + `TagManagerViewClean`; подключить в таб «Теги»
+- [x] Реализовать `TagManagerViewModelNew` + `TagManagerViewClean`; подключить в таб «Теги»
 - [ ] Реализовать `PlanningViewModelNew` + `PlanningViewClean`; подключить в таб «План»
 - [ ] Перенести формы: `RegularReportFormViewClean`, `PostFormViewClean`, `DailyReportViewClean` на use‑cases/репозитории
 - [ ] Убрать `.environmentObject(PostStore.shared)` из `ContentView` и связанных
