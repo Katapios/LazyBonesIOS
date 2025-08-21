@@ -22,6 +22,12 @@ class TagsCoordinator: BaseCoordinator {
         Logger.debug("Showing tag manager", log: Logger.ui)
     }
     
+    /// Собирает экран менеджера тегов на новой архитектуре
+    func makeTagManagerView() -> some View {
+        let vm = dependencyContainer.resolve(TagManagerViewModelNew.self)!
+        return TagManagerViewClean(viewModel: vm)
+    }
+    
     func showTagStatistics() {
         // Показать статистику использования тегов
         Logger.debug("Showing tag statistics", log: Logger.ui)

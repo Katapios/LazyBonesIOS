@@ -6,6 +6,7 @@ class PlanningViewModel: ObservableObject {
     // Dependencies
     @Published var store: PostStore
     private let planningRepository: PlanningRepositoryProtocol
+    private let tagProvider: TagProviderProtocol?
     
     // UI State
     @Published var planItems: [String] = []
@@ -23,16 +24,19 @@ class PlanningViewModel: ObservableObject {
     init(store: PostStore, planningRepository: PlanningRepositoryProtocol = DependencyContainer.shared.resolve(PlanningRepositoryProtocol.self)!) {
         self.store = store
         self.planningRepository = planningRepository
+        self.tagProvider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
     }
     
     // Computed
     var planTags: [TagItem] {
-        store.goodTags.map { TagItem(text: $0, icon: "tag", color: .green) }
+        let source = tagProvider?.goodTags ?? store.goodTags
+        return source.map { TagItem(text: $0, icon: "tag", color: .green) }
     }
     
     // Lifecycle helpers
     func onAppear() {
         store.loadTags()
+        Task { await tagProvider?.refresh() }
         store.loadTelegramSettings()
         loadPlan()
         lastPlanDate = Calendar.current.startOfDay(for: Date())

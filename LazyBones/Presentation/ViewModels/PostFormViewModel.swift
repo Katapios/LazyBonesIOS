@@ -22,6 +22,9 @@ class PostFormViewModel: ObservableObject {
     // MARK: - Subscriptions
     private var storeCancellable: AnyCancellable?
     
+    // MARK: - Tags Provider (Clean Architecture)
+    private let tagProvider: TagProviderProtocol?
+    
     // MARK: - Properties
     let title: String
     let post: Post?
@@ -43,6 +46,7 @@ class PostFormViewModel: ObservableObject {
         self.post = post
         self.onSave = onSave
         self.onPublish = onPublish
+        self.tagProvider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
         
         if let post = post {
             self.goodItems = post.goodItems.map {
@@ -60,6 +64,8 @@ class PostFormViewModel: ObservableObject {
         
         // Гарантируем загрузку начальных тегов (дефолтные при первом запуске)
         self.store.loadTags()
+        // Параллельно подтягиваем теги из чистой архитектуры
+        Task { await self.tagProvider?.refresh() }
         
         // Подписка на изменения стора, чтобы пробрасывать их во вью-модель
         self.storeCancellable = store.objectWillChange.sink { [weak self] _ in
@@ -69,11 +75,17 @@ class PostFormViewModel: ObservableObject {
     
     // MARK: - Computed Properties
     var goodTags: [TagItem] {
-        store.goodTags.map { TagItem(text: $0, icon: "tag", color: .green) }
+        // Всегда резолвим провайдера динамически, чтобы получать актуальные теги после refresh()
+        let provider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
+        let source = provider?.goodTags ?? store.goodTags
+        return source.map { TagItem(text: $0, icon: "tag", color: .green) }
     }
     
     var badTags: [TagItem] {
-        store.badTags.map { TagItem(text: $0, icon: "tag", color: .red) }
+        // Всегда резолвим провайдера динамически, чтобы получать актуальные теги после refresh()
+        let provider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
+        let source = provider?.badTags ?? store.badTags
+        return source.map { TagItem(text: $0, icon: "tag", color: .red) }
     }
     
     var isReportDone: Bool {
@@ -256,22 +268,7 @@ class PostFormViewModel: ObservableObject {
 }
 
 // MARK: - Supporting Types
-struct TagItem: Identifiable, Hashable {
-    let id = UUID()
-    let text: String
-    let icon: String
-    let color: Color
-
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-    }
-
-    static func == (lhs: TagItem, rhs: TagItem) -> Bool {
-        lhs.id == rhs.id
-    }
-}
-
 struct ChecklistItem: Identifiable, Equatable {
     let id: UUID
     var text: String
-} 
+}

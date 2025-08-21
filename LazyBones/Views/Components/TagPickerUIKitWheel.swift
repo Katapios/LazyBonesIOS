@@ -17,6 +17,7 @@ struct TagPickerUIKitWheel: UIViewRepresentable {
         context.coordinator.pickerView = picker
         // Инициализируем кэшированные значения
         context.coordinator.lastRowsCount = tags.count
+        context.coordinator.lastTagsSignature = tags.map { $0.text }.joined(separator: "|")
         context.coordinator.lastSelectedRow = selectedIndex
         // Добавим tap gesture только если тег один
         if tags.count == 1 {
@@ -30,9 +31,12 @@ struct TagPickerUIKitWheel: UIViewRepresentable {
     func updateUIView(_ uiView: UIPickerView, context: Context) {
         // Обновляем данные только при необходимости (используем кэш counts)
         let rowsChanged = context.coordinator.lastRowsCount != tags.count
-        if rowsChanged {
+        let newSignature = tags.map { $0.text }.joined(separator: "|")
+        let contentChanged = context.coordinator.lastTagsSignature != newSignature
+        if rowsChanged || contentChanged {
             uiView.reloadAllComponents()
             context.coordinator.lastRowsCount = tags.count
+            context.coordinator.lastTagsSignature = newSignature
         }
 
         // Безопасно обрабатываем selectedIndex
@@ -42,9 +46,9 @@ struct TagPickerUIKitWheel: UIViewRepresentable {
             safeIndex = 0
         }
 
-        // Устанавливаем выбранную строку только если реально отличается
+        // Устанавливаем выбранную строку при изменении структуры или содержимого
         let currentlySelected = uiView.selectedRow(inComponent: 0)
-        if (rowsChanged || needsCorrection), tags.indices.contains(safeIndex), currentlySelected != safeIndex {
+        if (rowsChanged || contentChanged || needsCorrection), tags.indices.contains(safeIndex), currentlySelected != safeIndex {
             // Подавляем обратный вызов didSelectRow на время программного выбора
             context.coordinator.isProgrammaticSelection = true
             uiView.selectRow(safeIndex, inComponent: 0, animated: false)
@@ -56,17 +60,14 @@ struct TagPickerUIKitWheel: UIViewRepresentable {
 
         // Не трогаем binding без необходимости. Корректируем только в случае выхода за границы/пустых тегов.
         if needsCorrection, selectedIndex != safeIndex {
-            if Thread.isMainThread {
+            // Никогда не публикуем изменения binding синхронно из updateUIView, чтобы избежать предупреждения SwiftUI
+            DispatchQueue.main.async {
                 self.selectedIndex = safeIndex
-            } else {
-                DispatchQueue.main.async { self.selectedIndex = safeIndex }
             }
         }
 
-        // Обновляем жесты для одиночного тега только если изменилось количество строк
-        if rowsChanged {
-            updateGestureRecognizers(for: uiView, context: context)
-        }
+        // Обновляем жесты при изменении количества строк (число влияет на необходимость жеста)
+        if rowsChanged { updateGestureRecognizers(for: uiView, context: context) }
     }
     
     private func updateGestureRecognizers(for uiView: UIPickerView, context: Context) {
@@ -92,6 +93,7 @@ struct TagPickerUIKitWheel: UIViewRepresentable {
         var lastSelectedRow: Int?
         var isProgrammaticSelection: Bool = false
         var lastRowsCount: Int = 0
+        var lastTagsSignature: String = ""
         weak var pickerView: UIPickerView?
         init(_ parent: TagPickerUIKitWheel) {
             self.parent = parent
@@ -102,19 +104,24 @@ struct TagPickerUIKitWheel: UIViewRepresentable {
         }
         func pickerView(_ pickerView: UIPickerView, viewForRow row: Int, forComponent component: Int, reusing view: UIView?) -> UIView {
             let label = UILabel()
+            guard parent.tags.indices.contains(row) else { return label }
             let tag = parent.tags[row]
-            let icon = UIImage(systemName: tag.icon)?.withTintColor(UIColor(tag.color), renderingMode: .alwaysOriginal)
-            let attachment = NSTextAttachment()
-            attachment.image = icon
-            attachment.bounds = CGRect(x: 0, y: -2, width: 20, height: 20)
-            let iconString = NSAttributedString(attachment: attachment)
-            let textString = NSAttributedString(string: "  " + tag.text, attributes: [
+            // Безопасный цвет (фоллбэк на label, если что-то пойдет не так)
+            let uiColor = UIColor(tag.color)
+            let textAttributes: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 18, weight: .medium),
-                .foregroundColor: UIColor(tag.color)
-            ])
+                .foregroundColor: uiColor
+            ]
             let result = NSMutableAttributedString()
-            result.append(iconString)
-            result.append(textString)
+            if let baseIcon = UIImage(systemName: tag.icon) {
+                let tinted = baseIcon.withTintColor(uiColor, renderingMode: .alwaysOriginal)
+                let attachment = NSTextAttachment()
+                attachment.image = tinted
+                attachment.bounds = CGRect(x: 0, y: -2, width: 20, height: 20)
+                result.append(NSAttributedString(attachment: attachment))
+                result.append(NSAttributedString(string: "  "))
+            }
+            result.append(NSAttributedString(string: tag.text, attributes: textAttributes))
             label.attributedText = result
             label.textAlignment = .center
             return label

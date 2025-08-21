@@ -40,7 +40,9 @@ struct ContentView: View {
             .tag(AppCoordinator.Tab.planning)
             
             NavigationStack(path: $appCoordinator.navigationPath) {
-                TagManagerView(store: store)
+                TagManagerViewClean(
+                    viewModel: DependencyContainer.shared.resolve(TagManagerViewModelNew.self)!
+                )
             }
             .tabItem {
                 Label(AppCoordinator.Tab.tags.title, systemImage: AppCoordinator.Tab.tags.icon)

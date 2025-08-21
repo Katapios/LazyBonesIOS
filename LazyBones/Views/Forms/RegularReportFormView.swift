@@ -19,13 +19,17 @@ struct RegularReportFormView: View {
     enum TabType { case good, bad }
     @State private var pickerIndexGood: Int = 0
     @State private var pickerIndexBad: Int = 0
+    @State private var tagsVersion: Int = 0
+    // Локальные массивы тегов
+    @State private var currentGoodRawTags: [String] = []
+    @State private var currentBadRawTags: [String] = []
 
-    // MARK: - Глобальные теги
+    // MARK: - Теги из локального состояния (фоллбэк на store только при первичной загрузке)
     private var goodTags: [TagItem] {
-        store.goodTags.map { TagItem(text: $0, icon: "tag", color: .green) }
+        currentGoodRawTags.map { TagItem(text: $0, icon: "tag", color: .green) }
     }
     private var badTags: [TagItem] {
-        store.badTags.map { TagItem(text: $0, icon: "tag", color: .red) }
+        currentBadRawTags.map { TagItem(text: $0, icon: "tag", color: .red) }
     }
 
     init(
@@ -163,10 +167,11 @@ struct RegularReportFormView: View {
                                             minHeight: 120,
                                             maxHeight: 120
                                         )
-                                        .id(selectedTab)
+                                        .id("\(selectedTab)-\(tagsVersion)")
                                         .clipped()
                                         
-                                        let selectedTag = allTags[(selectedTab == .good ? pickerIndexGood : pickerIndexBad)]
+                                        let safeIdx = min(max(0, (selectedTab == .good ? pickerIndexGood : pickerIndexBad)), max(allTags.count - 1, 0))
+                                        let selectedTag = allTags[safeIdx]
                                         let isTagAdded = (selectedTab == .good ? goodItems : badItems).contains(where: { $0.text == selectedTag.text })
                                         Button(action: {
                                             if selectedTab == .good {
@@ -218,8 +223,13 @@ struct RegularReportFormView: View {
                             
                             // --- Логика предложения сохранить тег ---
                             if let newText = (selectedTab == .good ? goodItems.last?.text : badItems.last?.text),
-                               !newText.trimmingCharacters(in: .whitespaces).isEmpty,
-                               !(selectedTab == .good ? store.goodTags : store.badTags).contains(newText) {
+                               let candidate = Optional(newText.trimmingCharacters(in: .whitespacesAndNewlines)),
+                               !candidate.isEmpty,
+                               {
+                                   let currentRaw = (selectedTab == .good ? currentGoodRawTags : currentBadRawTags)
+                                   let current = currentRaw.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                                   return !current.contains(candidate)
+                               }() {
                                 VStack(alignment: .leading, spacing: 8) {
                                     HStack {
                                         Image(systemName: "plus")
@@ -238,15 +248,44 @@ struct RegularReportFormView: View {
                                             }
                                         }
                                         Button("Сохранить") {
+                                            let repo = DependencyContainer.shared.resolve(TagRepositoryProtocol.self)
+                                            let trimmed = newText.trimmingCharacters(in: .whitespacesAndNewlines)
                                             if selectedTab == .good {
-                                                store.addGoodTag(newText)
+                                                Task {
+                                                    print("[RegularReportFormView] willAddTag good=\(trimmed)")
+                                                    try? await repo?.addGoodTag(trimmed)
+                                                    let provider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
+                                                    await provider?.refresh()
+                                                    let afterGood = provider?.goodTags.count ?? -1
+                                                    let afterBad = provider?.badTags.count ?? -1
+                                                    print("[RegularReportFormView] providerAfterRefresh good=\(afterGood) bad=\(afterBad)")
+                                                    await MainActor.run {
+                                                        reloadTagsFromProvider()
+                                                        print("[RegularReportFormView] afterReload good=\(currentGoodRawTags.count) bad=\(currentBadRawTags.count) firstGood=\(currentGoodRawTags.first ?? "-") firstBad=\(currentBadRawTags.first ?? "-")")
+                                                        tagsVersion &+= 1
+                                                        if !goodItems.isEmpty {
+                                                            goodItems[goodItems.count-1].text = ""
+                                                        }
+                                                    }
+                                                }
                                             } else {
-                                                store.addBadTag(newText)
-                                            }
-                                            if selectedTab == .good {
-                                                addGoodItem()
-                                            } else {
-                                                addBadItem()
+                                                Task {
+                                                    print("[RegularReportFormView] willAddTag bad=\(trimmed)")
+                                                    try? await repo?.addBadTag(trimmed)
+                                                    let provider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
+                                                    await provider?.refresh()
+                                                    let afterGood = provider?.goodTags.count ?? -1
+                                                    let afterBad = provider?.badTags.count ?? -1
+                                                    print("[RegularReportFormView] providerAfterRefresh good=\(afterGood) bad=\(afterBad)")
+                                                    await MainActor.run {
+                                                        reloadTagsFromProvider()
+                                                        print("[RegularReportFormView] afterReload good=\(currentGoodRawTags.count) bad=\(currentBadRawTags.count) firstGood=\(currentGoodRawTags.first ?? "-") firstBad=\(currentBadRawTags.first ?? "-")")
+                                                        tagsVersion &+= 1
+                                                        if !badItems.isEmpty {
+                                                            badItems[badItems.count-1].text = ""
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                         .buttonStyle(.borderedProminent)
@@ -316,8 +355,38 @@ struct RegularReportFormView: View {
             .onAppear {
                 // Гарантируем инициализацию тегов при открытии формы
                 store.loadTags()
+                // Первичная загрузка локальных массивов + refresh провайдера
+                reloadTagsFromProvider()
+                Task {
+                    let provider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
+                    await provider?.refresh()
+                    await MainActor.run {
+                        reloadTagsFromProvider()
+                        tagsVersion &+= 1
+                    }
+                }
+            }
+            .onChange(of: selectedTab, initial: false) { _, _ in
+                // При переключении good/bad пересоздаем колесо
+                tagsVersion &+= 1
             }
         }
+    }
+    
+    // MARK: - Tags Loading
+    func reloadTagsFromProvider() {
+        let provider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
+        let good = provider?.goodTags ?? store.goodTags
+        let bad = provider?.badTags ?? store.badTags
+        currentGoodRawTags = good
+        currentBadRawTags = bad
+        // Безопасно корректируем индексы пикеров
+        if currentGoodRawTags.isEmpty { pickerIndexGood = 0 }
+        else if pickerIndexGood >= currentGoodRawTags.count { pickerIndexGood = 0 }
+        if currentBadRawTags.isEmpty { pickerIndexBad = 0 }
+        else if pickerIndexBad >= currentBadRawTags.count { pickerIndexBad = 0 }
+        // DEBUG
+        print("[RegularReportFormView] reloadTagsFromProvider: good=\(currentGoodRawTags.count) bad=\(currentBadRawTags.count) sel=\(selectedTab) idxG=\(pickerIndexGood) idxB=\(pickerIndexBad) ver=\(tagsVersion)")
     }
 
     // MARK: - Actions

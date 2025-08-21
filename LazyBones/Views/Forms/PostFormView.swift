@@ -77,6 +77,16 @@ struct PostFormView: View {
     @StateObject private var viewModel: PostFormViewModel
     @FocusState private var goodFocus: UUID?
     @FocusState private var badFocus: UUID?
+    @State private var tagsVersion: Int = 0
+    @State private var goodWheelTags: [TagItem] = []
+
+    // Нормализация тега: убираем возможные префиксы эмодзи и пробелы
+    private func normalizeTag(_ text: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("✅ ") { return String(trimmed.dropFirst(2)).trimmingCharacters(in: .whitespaces) }
+        if trimmed.hasPrefix("❌ ") { return String(trimmed.dropFirst(2)).trimmingCharacters(in: .whitespaces) }
+        return trimmed
+    }
 
     init(
         store: PostStore,
@@ -206,11 +216,8 @@ struct PostFormView: View {
                         .padding(.bottom, 32)  // Ещё больший отступ
                         // --- ЗОНА WHEEL + КНОПКА + ТЕГИ ---
                         VStack(spacing: 0) {
-                            let allTags: [TagItem] =
-                                viewModel.selectedTab == .good ? viewModel.goodTags : viewModel.badTags
-                            let pickerIndex: Binding<Int> =
-                                viewModel.selectedTab == .good
-                                ? $viewModel.pickerIndexGood : $viewModel.pickerIndexBad
+                            let allTags: [TagItem] = goodWheelTags.isEmpty ? viewModel.goodTags : goodWheelTags
+                            let pickerIndex: Binding<Int> = $viewModel.pickerIndexGood
                             if !allTags.isEmpty {
                                 VStack(spacing: 0) {
                                     HStack(alignment: .center, spacing: 6) {
@@ -223,28 +230,12 @@ struct PostFormView: View {
                                             minHeight: 120,
                                             maxHeight: 120
                                         )
-                                        .id(viewModel.selectedTab)
+                                        .id("\(tagsVersion)")
                                         .clipped()
-                                        let selectedTag = allTags[
-                                            (viewModel.selectedTab == .good
-                                                ? viewModel.pickerIndexGood : viewModel.pickerIndexBad)
-                                        ]
-                                        let isTagAdded =
-                                            (viewModel.selectedTab == .good
-                                            ? viewModel.goodItems : viewModel.badItems).contains(
-                                                where: {
-                                                    $0.text == selectedTag.text
-                                                })
+                                        let selectedTag = allTags[viewModel.pickerIndexGood]
+                                        let isTagAdded = viewModel.goodItems.contains(where: { normalizeTag($0.text) == selectedTag.text })
                                         Button(action: {
-                                            if viewModel.selectedTab == .good {
-                                                if !isTagAdded {
-                                                    viewModel.addGoodTag(selectedTag)
-                                                }
-                                            } else {
-                                                if !isTagAdded {
-                                                    viewModel.addBadTag(selectedTag)
-                                                }
-                                            }
+                                            if !isTagAdded { viewModel.addGoodTag(selectedTag) }
                                         }) {
                                             Image(
                                                 systemName: isTagAdded
@@ -300,9 +291,11 @@ struct PostFormView: View {
                             }
                             // Восстанавливаем старую логику: добавление/удаление good/bad пункта по + и - через TagPicker и кнопки, без отдельного поля ввода
                             // --- Логика предложения сохранить тег ---
-                            if let newText = (viewModel.selectedTab == .good ? viewModel.goodItems.last?.text : viewModel.badItems.last?.text),
-                               !newText.trimmingCharacters(in: .whitespaces).isEmpty,
-                               !(viewModel.selectedTab == .good ? viewModel.store.goodTags : viewModel.store.badTags).contains(newText) {
+                            if let newTextRaw = viewModel.goodItems.last?.text {
+                                let newText = normalizeTag(newTextRaw)
+                                let provider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
+                                let existsInProvider = provider?.goodTags.contains(newText) ?? false
+                                if !newText.isEmpty, !existsInProvider {
                                 VStack(alignment: .leading, spacing: 8) {
                                     HStack {
                                         Image(systemName: "plus")
@@ -314,22 +307,31 @@ struct PostFormView: View {
                                     }
                                     HStack {
                                         Button("Отмена") {
-                                            if viewModel.selectedTab == .good {
-                                                viewModel.goodItems[viewModel.goodItems.count-1].text = ""
-                                            } else {
-                                                viewModel.badItems[viewModel.badItems.count-1].text = ""
-                                            }
+                                            viewModel.goodItems[viewModel.goodItems.count-1].text = ""
                                         }
                                         Button("Сохранить") {
-                                            if viewModel.selectedTab == .good {
-                                                viewModel.store.addGoodTag(newText)
-                                            } else {
-                                                viewModel.store.addBadTag(newText)
-                                            }
-                                            if viewModel.selectedTab == .good {
-                                                viewModel.addGoodItem()
-                                            } else {
-                                                viewModel.addBadItem()
+                                            let trimmed = newText.trimmingCharacters(in: .whitespaces)
+                                            Task {
+                                                let repo = DependencyContainer.shared.resolve(TagRepositoryProtocol.self)
+                                                let provider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
+                                                try? await repo?.addGoodTag(trimmed)
+                                                await provider?.refresh()
+                                                await MainActor.run {
+                                                    // Обновляем локальный источник колесика из провайдера
+                                                    let arr = provider?.goodTags ?? []
+                                                    goodWheelTags = arr.map { TagItem(text: $0, icon: "tag", color: .green) }
+                                                    // Выбираем сохранённый тег, если он есть
+                                                    if let idx = arr.firstIndex(of: trimmed) {
+                                                        viewModel.pickerIndexGood = idx
+                                                    } else {
+                                                        viewModel.pickerIndexGood = 0
+                                                    }
+                                                    // Форс перерисовку и подготовить следующий пустой пункт
+                                                    tagsVersion += 1
+                                                    viewModel.addGoodItem()
+                                                    // Синхронизация легаси стора (для других мест UI, которые ещё читают store.goodTags)
+                                                    viewModel.store.loadTags()
+                                                }
                                             }
                                         }
                                         .buttonStyle(.borderedProminent)
@@ -339,6 +341,7 @@ struct PostFormView: View {
                                 .background(Color.blue.opacity(0.1))
                                 .cornerRadius(12)
                                 .padding(.vertical, 4)
+                                }
                             }
                         }
                         .padding(.vertical, 6)
@@ -370,6 +373,18 @@ struct PostFormView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                 }
                 .hideKeyboardOnTap()
+                .task {
+                    // Инициализируем колесо актуальными тегами при открытии
+                    let provider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
+                    await provider?.refresh()
+                    await MainActor.run {
+                        goodWheelTags = (provider?.goodTags ?? []).map { TagItem(text: $0, icon: "tag", color: .green) }
+                        tagsVersion += 1
+                        if let idx = provider?.goodTags.firstIndex(of: normalizeTag(viewModel.goodItems.last?.text ?? "")) {
+                            viewModel.pickerIndexGood = idx
+                        }
+                    }
+                }
                 .navigationTitle(viewModel.title)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {

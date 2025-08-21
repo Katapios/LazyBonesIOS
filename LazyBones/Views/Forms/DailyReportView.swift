@@ -25,15 +25,21 @@ struct DailyReportView: View {
     @State private var selectedTab: TabType = .good
     @State private var voiceNotes: [VoiceNote] = []
     @State private var showVoiceRecorder: Bool = false
+    // Локальные теги и версия для форс-перерисовки колеса
+    @State private var currentGoodRawTags: [String] = []
+    @State private var currentBadRawTags: [String] = []
+    @State private var tagsVersion: Int = 0
+    
+    // Источник тегов: резолвим провайдера на каждый вызов (избегаем устаревшего инстанса)
     
     enum TabType { case good, bad }
     
     var goodTags: [TagItem] {
-        store.goodTags.map { TagItem(text: $0, icon: "tag", color: .green) }
+        currentGoodRawTags.map { TagItem(text: $0, icon: "tag", color: .green) }
     }
     
     var badTags: [TagItem] {
-        store.badTags.map { TagItem(text: $0, icon: "tag", color: .red) }
+        currentBadRawTags.map { TagItem(text: $0, icon: "tag", color: .red) }
     }
     
     var planTags: [TagItem] {
@@ -70,6 +76,29 @@ struct DailyReportView: View {
                 store.loadTags()
                 loadSavedData()
                 lastPlanDate = Calendar.current.startOfDay(for: Date())
+                // Инициализируем локальные теги и обновляем провайдер (единый источник)
+                reloadTagsFromProvider()
+                Task {
+                    let provider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
+                    await provider?.refresh()
+                    await MainActor.run {
+                        reloadTagsFromProvider()
+                        tagsVersion &+= 1
+                    }
+                }
+            }
+            .onChange(of: showTagPicker, initial: false) { oldVal, newVal in
+                if newVal {
+                    // При открытии пикера теги должны быть актуальны
+                    reloadTagsFromProvider()
+                    tagsVersion &+= 1
+                }
+            }
+            .onChange(of: selectedTab, initial: false) { _, _ in
+                // Переключение вкладок — обновляем теги и пересоздаём колесо
+                reloadTagsFromProvider()
+                tagsVersion &+= 1
+                pickerIndex = 0
             }
             .onChange(of: Calendar.current.startOfDay(for: Date()), initial: false) { oldDay, newDay in
                 if newDay != lastPlanDate {
@@ -251,7 +280,7 @@ struct DailyReportView: View {
                             maxHeight: 160
                         )
                         .clipped()
-                        .id(selectedTab) // Пересоздаем при смене вкладки
+                        .id("\(selectedTab)-\(tagsVersion)") // Пересоздаем при смене вкладки/версии тегов
                         
                         // Безопасная коррекция индекса, чтобы избежать падения при изменении списка тегов
                         let safeIndex = min(max(0, pickerIndex), max(planTags.count - 1, 0))
@@ -357,18 +386,46 @@ struct DailyReportView: View {
                     .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
                 
-                // Показываем prompt для сохранения тега
-                if !newPlanItem.isEmpty && !(selectedTab == .good ? store.goodTags : store.badTags).contains(newPlanItem) {
+                // Показываем prompt для сохранения тега (через репозиторий + refresh провайдера)
+                if !newPlanItem.isEmpty && !(selectedTab == .good ? currentGoodRawTags : currentBadRawTags).contains(newPlanItem) {
                     HStack {
                         Text("Сохранить тег?")
                             .font(.caption)
                             .foregroundColor(.secondary)
                         Spacer()
                         Button("Сохранить") {
+                            let repo = DependencyContainer.shared.resolve(TagRepositoryProtocol.self)
+                            let tagToSave = newPlanItem // важно зафиксировать до addPlanItem()
                             if selectedTab == .good {
-                                store.addGoodTag(newPlanItem)
+                                Task {
+                                    print("[DailyReportView] willAddTag good=\(tagToSave)")
+                                    try? await repo?.addGoodTag(tagToSave)
+                                    let provider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
+                                    await provider?.refresh()
+                                    let afterGood = provider?.goodTags.count ?? -1
+                                    let afterBad = provider?.badTags.count ?? -1
+                                    print("[DailyReportView] providerAfterRefresh good=\(afterGood) bad=\(afterBad)")
+                                    await MainActor.run {
+                                        reloadTagsFromProvider()
+                                        print("[DailyReportView] afterReload good=\(currentGoodRawTags.count) bad=\(currentBadRawTags.count) firstGood=\(currentGoodRawTags.first ?? "-") firstBad=\(currentBadRawTags.first ?? "-")")
+                                        tagsVersion &+= 1
+                                    }
+                                }
                             } else {
-                                store.addBadTag(newPlanItem)
+                                Task {
+                                    print("[DailyReportView] willAddTag bad=\(tagToSave)")
+                                    try? await repo?.addBadTag(tagToSave)
+                                    let provider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
+                                    await provider?.refresh()
+                                    let afterGood = provider?.goodTags.count ?? -1
+                                    let afterBad = provider?.badTags.count ?? -1
+                                    print("[DailyReportView] providerAfterRefresh good=\(afterGood) bad=\(afterBad)")
+                                    await MainActor.run {
+                                        reloadTagsFromProvider()
+                                        print("[DailyReportView] afterReload good=\(currentGoodRawTags.count) bad=\(currentBadRawTags.count) firstGood=\(currentGoodRawTags.first ?? "-") firstBad=\(currentBadRawTags.first ?? "-")")
+                                        tagsVersion &+= 1
+                                    }
+                                }
                             }
                             addPlanItem()
                         }
@@ -425,6 +482,22 @@ struct DailyReportView: View {
     }
     
     // MARK: - Functions
+    func reloadTagsFromProvider() {
+        let provider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
+        let good = provider?.goodTags ?? store.goodTags
+        let bad = provider?.badTags ?? store.badTags
+        currentGoodRawTags = good
+        currentBadRawTags = bad
+        // Безопасно корректируем индекс после обновления источника
+        let count = (selectedTab == .good ? currentGoodRawTags.count : currentBadRawTags.count)
+        if count == 0 {
+            pickerIndex = 0
+        } else if pickerIndex >= count {
+            pickerIndex = 0
+        }
+        // DEBUG
+        print("[DailyReportView] reloadTagsFromProvider: good=\(currentGoodRawTags.count) bad=\(currentBadRawTags.count) sel=\(selectedTab) idx=\(pickerIndex) ver=\(tagsVersion)")
+    }
     func loadSavedData() {
         let key = "third_screen_plan_" + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
         

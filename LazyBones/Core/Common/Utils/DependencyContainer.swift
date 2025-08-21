@@ -230,7 +230,7 @@ extension DependencyContainer {
         })
         
         register(TagRepository.self, factory: {
-            return TagRepository(userDefaults: .standard)
+            return TagRepository(userDefaults: AppConfig.sharedUserDefaults)
         })
         
         // Planning Repository & DataSource
@@ -368,6 +368,19 @@ extension DependencyContainer {
                 tagRepository: tagRepository
             )
         })
+
+        // TagManagerViewModelNew фабрика (единая точка создания VM для Tags экрана)
+        register(TagManagerViewModelNew.self, factory: {
+            let tagRepository = self.resolve(TagRepositoryProtocol.self)!
+            return TagManagerViewModelNew(tagRepository: tagRepository)
+        })
+
+        // TagProvider для предоставления тегов в Presentation слое без PostStore (синглтон)
+        do {
+            let tagRepository = self.resolve(TagRepositoryProtocol.self)!
+            let provider = DefaultTagProvider(repository: tagRepository)
+            register(TagProviderProtocol.self, instance: provider)
+        }
     }
     
     /// Зарегистрировать Telegram сервис
