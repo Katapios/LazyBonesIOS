@@ -43,8 +43,13 @@ struct DailyPlanningFormView: View {
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
             .onAppear {
-                // Гарантируем инициализацию тегов при показе формы
-                store.loadTags()
+                // Гарантируем инициализацию тегов при показе формы через TagProvider
+                Task {
+                    let provider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
+                    await provider?.refresh()
+                    // Синхронизируем легаси-стор для совместимости экранов, которые ещё читают store
+                    await MainActor.run { store.loadTags() }
+                }
             }
         }
     }
@@ -62,6 +67,15 @@ struct DailyPlanningFormView: View {
 struct PlanningContentView: View {
     @EnvironmentObject var store: PostStore
     @StateObject private var viewModel: PlanningViewModel
+    @State private var tagsVersion: Int = 0
+
+    // Нормализация тега: убираем возможные префиксы эмодзи и пробелы
+    private func normalizeTag(_ text: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("✅ ") { return String(trimmed.dropFirst(2)).trimmingCharacters(in: .whitespaces) }
+        if trimmed.hasPrefix("❌ ") { return String(trimmed.dropFirst(2)).trimmingCharacters(in: .whitespaces) }
+        return trimmed
+    }
 
     init() {
         // PostStore берется из Environment в onAppear, поэтому инициализируем временно
@@ -136,6 +150,7 @@ struct PlanningContentView: View {
                             tags: viewModel.planTags,
                             selectedIndex: $viewModel.pickerIndex
                         ) { _ in }
+                        .id("plan-wheel-\(tagsVersion)")
                         .frame(
                             maxWidth: .infinity,
                             minHeight: 120,
@@ -169,16 +184,35 @@ struct PlanningContentView: View {
                     .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
                 
-                // Показываем prompt для сохранения тега
-                if !viewModel.newPlanItem.isEmpty && !store.goodTags.contains(viewModel.newPlanItem) {
+                // Показываем prompt для сохранения тега (через TagProvider)
+                let newText = normalizeTag(viewModel.newPlanItem)
+                let provider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
+                let existsInProvider = provider?.goodTags.contains(newText) ?? false
+                if !newText.isEmpty && !existsInProvider {
                     HStack {
                         Text("Сохранить тег?")
                             .font(.caption)
                             .foregroundColor(.secondary)
                         Spacer()
                         Button("Сохранить") {
-                            store.goodTags.append(viewModel.newPlanItem)
-                            store.saveGoodTags(store.goodTags)
+                            let trimmed = newText.trimmingCharacters(in: .whitespaces)
+                            Task {
+                                let repo = DependencyContainer.shared.resolve(TagRepositoryProtocol.self)
+                                let provider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
+                                try? await repo?.addGoodTag(trimmed)
+                                await provider?.refresh()
+                                await MainActor.run {
+                                    // Форс перерисовку колеса и выставление индекса на сохранённый тег
+                                    tagsVersion += 1
+                                    if let arr = provider?.goodTags, let idx = arr.firstIndex(of: trimmed) {
+                                        viewModel.pickerIndex = idx
+                                    } else {
+                                        viewModel.pickerIndex = 0
+                                    }
+                                    // Синхронизация легаси стора (до полного выпила чтений из него)
+                                    store.loadTags()
+                                }
+                            }
                         }
                         .font(.caption)
                         .foregroundColor(.blue)

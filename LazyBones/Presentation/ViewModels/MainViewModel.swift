@@ -13,6 +13,7 @@ class MainViewModel: ObservableObject {
     // MARK: - Private Properties
     private var timer: Timer?
     private var statusChangeObserver: NSObjectProtocol?
+    private let tagProvider: TagProviderProtocol? = DependencyContainer.shared.resolve(TagProviderProtocol.self)
     
     // MARK: - Initialization
     init(store: PostStore) {
@@ -312,11 +313,11 @@ class MainViewModel: ObservableObject {
     
     // MARK: - Tag Management (связь с тегами)
     var goodTags: [String] {
-        store.goodTags
+        tagProvider?.goodTags ?? store.goodTags
     }
     
     var badTags: [String] {
-        store.badTags
+        tagProvider?.badTags ?? store.badTags
     }
     
     // MARK: - Background Task Management

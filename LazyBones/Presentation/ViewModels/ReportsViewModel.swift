@@ -14,12 +14,13 @@ class ReportsViewModel: ObservableObject {
     @Published var showEvaluationSheet: Bool = false
     @Published var evaluatingPost: Post? = nil
     @Published var allowCustomReportReevaluation: Bool = false
+    private let tagProvider: TagProviderProtocol? = DependencyContainer.shared.resolve(TagProviderProtocol.self)
     
     // MARK: - Computed Properties
     var posts: [Post] { store.posts }
     var externalPosts: [Post] { store.externalPosts }
-    var goodTags: [String] { store.goodTags }
-    var badTags: [String] { store.badTags }
+    var goodTags: [String] { tagProvider?.goodTags ?? store.goodTags }
+    var badTags: [String] { tagProvider?.badTags ?? store.badTags }
     
     // MARK: - Filtered Posts
     var regularPosts: [Post] {
