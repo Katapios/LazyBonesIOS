@@ -354,7 +354,6 @@ struct RegularReportFormView: View {
             }
             .onAppear {
                 // Гарантируем инициализацию тегов при открытии формы
-                store.loadTags()
                 // Первичная загрузка локальных массивов + refresh провайдера
                 reloadTagsFromProvider()
                 Task {

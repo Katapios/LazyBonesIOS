@@ -72,8 +72,7 @@ struct DailyReportView: View {
             .hideKeyboardOnTap()
             .onAppear {
                 // Загружаем сохраненные данные при появлении
-                // Подстраховочно загружаем теги, чтобы TagPicker имел данные
-                store.loadTags()
+                // Теги берём через TagProvider; убираем прямую загрузку из стора
                 loadSavedData()
                 lastPlanDate = Calendar.current.startOfDay(for: Date())
                 // Инициализируем локальные теги и обновляем провайдер (единый источник)

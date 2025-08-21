@@ -3,6 +3,7 @@ import SwiftUI
 
 /// ViewModel-адаптер для TagManagerView, который оборачивает PostStore
 /// Управляет тегами (хорошие и плохие) с возможностью добавления, редактирования и удаления
+@available(*, deprecated, message: "Legacy VM: используйте TagProvider/TagRepository в новых экранах")
 @MainActor
 class TagManagerViewModel: ObservableObject {
     
@@ -14,6 +15,9 @@ class TagManagerViewModel: ObservableObject {
     @Published var editingTagText: String = ""
     @Published var showDeleteTagAlert = false
     @Published var tagToDelete: String? = nil
+    
+    // MARK: - Dependencies
+    private let tagProvider: TagProviderProtocol? = DependencyContainer.shared.resolve(TagProviderProtocol.self)
     
     // MARK: - Initialization
     init(store: PostStore) {
@@ -48,8 +52,8 @@ class TagManagerViewModel: ObservableObject {
         
         newTag = ""
         
-        // Принудительно обновляем теги для синхронизации с UI
-        store.loadTags()
+        // Принудительно обновляем провайдера тегов (единый источник правды)
+        Task { await tagProvider?.refresh() }
         objectWillChange.send()
     }
     
@@ -75,8 +79,8 @@ class TagManagerViewModel: ObservableObject {
         editingTagIndex = nil
         editingTagText = ""
         
-        // Принудительно обновляем теги для синхронизации с UI
-        store.loadTags()
+        // Принудительно обновляем провайдера тегов (единый источник правды)
+        Task { await tagProvider?.refresh() }
         objectWillChange.send()
     }
     
@@ -92,8 +96,8 @@ class TagManagerViewModel: ObservableObject {
         
         tagToDelete = nil
         
-        // Принудительно обновляем теги для синхронизации с UI
-        store.loadTags()
+        // Принудительно обновляем провайдера тегов (единый источник правды)
+        Task { await tagProvider?.refresh() }
         objectWillChange.send()
     }
     
@@ -109,9 +113,9 @@ class TagManagerViewModel: ObservableObject {
         showDeleteTagAlert = false
     }
     
-    /// Загрузить теги
+    /// Загрузить теги (legacy): теперь только refresh провайдера
     func loadTags() {
-        store.loadTags()
+        Task { await tagProvider?.refresh() }
         objectWillChange.send()
     }
 } 

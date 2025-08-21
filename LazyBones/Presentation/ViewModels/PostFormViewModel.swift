@@ -62,9 +62,7 @@ class PostFormViewModel: ObservableObject {
             self.voiceNotes = []
         }
         
-        // Гарантируем загрузку начальных тегов (дефолтные при первом запуске)
-        self.store.loadTags()
-        // Параллельно подтягиваем теги из чистой архитектуры
+        // Инициируем загрузку тегов через TagProvider (единый источник правды)
         Task { await self.tagProvider?.refresh() }
         
         // Подписка на изменения стора, чтобы пробрасывать их во вью-модель

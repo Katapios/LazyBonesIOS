@@ -329,8 +329,6 @@ struct PostFormView: View {
                                                     // Форс перерисовку и подготовить следующий пустой пункт
                                                     tagsVersion += 1
                                                     viewModel.addGoodItem()
-                                                    // Синхронизация легаси стора (для других мест UI, которые ещё читают store.goodTags)
-                                                    viewModel.store.loadTags()
                                                 }
                                             }
                                         }

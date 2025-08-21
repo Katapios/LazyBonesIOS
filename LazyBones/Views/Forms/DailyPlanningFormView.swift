@@ -47,8 +47,6 @@ struct DailyPlanningFormView: View {
                 Task {
                     let provider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
                     await provider?.refresh()
-                    // Синхронизируем легаси-стор для совместимости экранов, которые ещё читают store
-                    await MainActor.run { store.loadTags() }
                 }
             }
         }
@@ -209,8 +207,6 @@ struct PlanningContentView: View {
                                     } else {
                                         viewModel.pickerIndex = 0
                                     }
-                                    // Синхронизация легаси стора (до полного выпила чтений из него)
-                                    store.loadTags()
                                 }
                             }
                         }

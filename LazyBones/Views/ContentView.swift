@@ -71,12 +71,16 @@ struct ContentView: View {
             Logger.info("ContentView initialized", log: Logger.ui)
             // Гарантированно загружаем данные до запуска координации и таймеров
             store.load()
-            store.loadTags()
             store.loadTelegramSettings()
             // Переинициализируем Telegram сервисы из DI, чтобы не требовать ручного сохранения настроек после перезапуска
             store.refreshTelegramServices()
             store.updateReportStatus()
             appCoordinator.start()
+            // Перевод на CA по тегам: используем TagProvider как источник правды
+            Task {
+                let provider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
+                await provider?.refresh()
+            }
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {

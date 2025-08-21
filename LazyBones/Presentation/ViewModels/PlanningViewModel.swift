@@ -35,7 +35,6 @@ class PlanningViewModel: ObservableObject {
     
     // Lifecycle helpers
     func onAppear() {
-        store.loadTags()
         Task { await tagProvider?.refresh() }
         store.loadTelegramSettings()
         loadPlan()
