@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Combine
 
 /// ViewModel-адаптер для TagManagerView, который оборачивает PostStore
 /// Управляет тегами (хорошие и плохие) с возможностью добавления, редактирования и удаления
@@ -16,12 +17,19 @@ class TagManagerViewModel: ObservableObject {
     @Published var showDeleteTagAlert = false
     @Published var tagToDelete: String? = nil
     
+    // MARK: - Subscriptions
+    private var storeCancellable: AnyCancellable?
+    
     // MARK: - Dependencies
     private let tagProvider: TagProviderProtocol? = DependencyContainer.shared.resolve(TagProviderProtocol.self)
     
     // MARK: - Initialization
     init(store: PostStore) {
         self.store = store
+        // Пробрасываем изменения из PostStore, чтобы список тегов обновлялся без ручного objectWillChange
+        self.storeCancellable = store.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
     }
     
     // MARK: - Computed Properties
@@ -52,9 +60,10 @@ class TagManagerViewModel: ObservableObject {
         
         newTag = ""
         
-        // Принудительно обновляем провайдера тегов (единый источник правды)
-        Task { await tagProvider?.refresh() }
-        objectWillChange.send()
+        // Обновляем провайдера тегов в фоне, чтобы не блокировать UI
+        Task.detached(priority: .background) { [tagProvider] in
+            await tagProvider?.refresh()
+        }
     }
     
     /// Начать редактирование тега
@@ -79,9 +88,10 @@ class TagManagerViewModel: ObservableObject {
         editingTagIndex = nil
         editingTagText = ""
         
-        // Принудительно обновляем провайдера тегов (единый источник правды)
-        Task { await tagProvider?.refresh() }
-        objectWillChange.send()
+        // Обновляем провайдера тегов в фоне, чтобы не блокировать UI
+        Task.detached(priority: .background) { [tagProvider] in
+            await tagProvider?.refresh()
+        }
     }
     
     /// Удалить тег
@@ -96,9 +106,10 @@ class TagManagerViewModel: ObservableObject {
         
         tagToDelete = nil
         
-        // Принудительно обновляем провайдера тегов (единый источник правды)
-        Task { await tagProvider?.refresh() }
-        objectWillChange.send()
+        // Обновляем провайдера тегов в фоне, чтобы не блокировать UI
+        Task.detached(priority: .background) { [tagProvider] in
+            await tagProvider?.refresh()
+        }
     }
     
     /// Подготовить удаление тега
@@ -115,7 +126,8 @@ class TagManagerViewModel: ObservableObject {
     
     /// Загрузить теги (legacy): теперь только refresh провайдера
     func loadTags() {
-        Task { await tagProvider?.refresh() }
-        objectWillChange.send()
+        Task.detached(priority: .background) { [tagProvider] in
+            await tagProvider?.refresh()
+        }
     }
 } 

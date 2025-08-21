@@ -23,7 +23,7 @@ struct TagManagerView: View {
                 }.disabled(viewModel.isNewTagEmpty)
             }
             List {
-                ForEach(viewModel.currentTags.indices, id: \.self) { idx in
+                ForEach(Array(viewModel.currentTags.enumerated()), id: \.offset) { idx, tag in
                     HStack {
                         if viewModel.editingTagIndex == idx {
                             TextField("Тег", text: $viewModel.editingTagText)
@@ -34,7 +34,7 @@ struct TagManagerView: View {
                             }
                             .buttonStyle(PlainButtonStyle())
                         } else {
-                            Text(viewModel.currentTags[idx])
+                            Text(tag)
                             Spacer()
                             Button(action: { viewModel.startEditTag(idx) }) {
                                 Image(systemName: "pencil")
@@ -42,7 +42,7 @@ struct TagManagerView: View {
                             .buttonStyle(PlainButtonStyle())
                         }
                         if viewModel.editingTagIndex != idx {
-                            Button(action: { viewModel.prepareDeleteTag(viewModel.currentTags[idx]) }) {
+                            Button(action: { viewModel.prepareDeleteTag(tag) }) {
                                 Image(systemName: "trash")
                                     .foregroundColor(.red)
                             }
