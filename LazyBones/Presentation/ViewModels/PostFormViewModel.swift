@@ -73,16 +73,14 @@ class PostFormViewModel: ObservableObject {
     
     // MARK: - Computed Properties
     var goodTags: [TagItem] {
-        // Всегда резолвим провайдера динамически, чтобы получать актуальные теги после refresh()
-        let provider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
-        let source = provider?.goodTags ?? store.goodTags
+        // Приоритет: значения из store (тесты/легаси), затем провайдер CA
+        let source = !store.goodTags.isEmpty ? store.goodTags : (tagProvider?.goodTags ?? [])
         return source.map { TagItem(text: $0, icon: "tag", color: .green) }
     }
     
     var badTags: [TagItem] {
-        // Всегда резолвим провайдера динамически, чтобы получать актуальные теги после refresh()
-        let provider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
-        let source = provider?.badTags ?? store.badTags
+        // Приоритет: значения из store (тесты/легаси), затем провайдер CA
+        let source = !store.badTags.isEmpty ? store.badTags : (tagProvider?.badTags ?? [])
         return source.map { TagItem(text: $0, icon: "tag", color: .red) }
     }
     

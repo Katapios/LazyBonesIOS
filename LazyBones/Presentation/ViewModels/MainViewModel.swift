@@ -313,11 +313,11 @@ class MainViewModel: ObservableObject {
     
     // MARK: - Tag Management (связь с тегами)
     var goodTags: [String] {
-        tagProvider?.goodTags ?? store.goodTags
+        !store.goodTags.isEmpty ? store.goodTags : (tagProvider?.goodTags ?? [])
     }
     
     var badTags: [String] {
-        tagProvider?.badTags ?? store.badTags
+        !store.badTags.isEmpty ? store.badTags : (tagProvider?.badTags ?? [])
     }
     
     // MARK: - Background Task Management
