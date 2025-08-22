@@ -28,11 +28,13 @@ class PostTelegramService: PostTelegramServiceProtocol {
     // MARK: - Public Methods
     
     func sendToTelegram(text: String, completion: @escaping (Bool) -> Void) {
-        Logger.info("Sending to Telegram: \(text.prefix(100))...", log: Logger.telegram)
+        Logger.info("[AutoSend][sendToTelegram] Sending: \(text.prefix(100))...", log: Logger.telegram)
         
         // Получаем chatId из userDefaultsManager
-        guard let chatId = userDefaultsManager.string(forKey: "telegramChatId"), !chatId.isEmpty else {
-            Logger.error("Telegram chatId is missing", log: Logger.telegram)
+        let chatIdOpt = userDefaultsManager.string(forKey: "telegramChatId")
+        Logger.debug("[AutoSend][sendToTelegram] chatId present? \(chatIdOpt != nil), value=\(chatIdOpt ?? "nil")", log: Logger.telegram)
+        guard let chatId = chatIdOpt, !chatId.isEmpty else {
+            Logger.error("[AutoSend][sendToTelegram] Telegram chatId is missing", log: Logger.telegram)
             completion(false)
             return
         }
@@ -41,32 +43,37 @@ class PostTelegramService: PostTelegramServiceProtocol {
             do {
                 try await telegramService.sendMessage(text, to: chatId)
                 await MainActor.run {
+                    Logger.info("[AutoSend][sendToTelegram] completion(true)", log: Logger.telegram)
                     completion(true)
                 }
-                Logger.info("Message sent successfully", log: Logger.telegram)
+                Logger.info("[AutoSend][sendToTelegram] Message sent successfully", log: Logger.telegram)
             } catch {
                 await MainActor.run {
+                    Logger.info("[AutoSend][sendToTelegram] completion(false)", log: Logger.telegram)
                     completion(false)
                 }
-                Logger.error("Failed to send message: \(error)", log: Logger.telegram)
+                Logger.error("[AutoSend][sendToTelegram] Failed to send message: \(error)", log: Logger.telegram)
             }
         }
     }
     
     func performAutoSendReport(completion: (() -> Void)? = nil) {
-        Logger.info("Performing auto send report", log: Logger.telegram)
+        Logger.info("[AutoSend] performAutoSendReport", log: Logger.telegram)
         
         let posts = loadPosts()
+        Logger.debug("[AutoSend] Loaded posts count=\(posts.count)", log: Logger.telegram)
         let today = Date()
         let calendar = Calendar.current
         
         // Получаем отчеты за сегодня
         let regular = posts.first(where: { $0.type == .regular && calendar.isDate($0.date, inSameDayAs: today) })
         let customReport = posts.first(where: { $0.type == .custom && calendar.isDate($0.date, inSameDayAs: today) })
+        Logger.debug("[AutoSend] regular? \(regular != nil), custom? \(customReport != nil)", log: Logger.telegram)
         
         // Проверяем, отправлял ли пользователь отчеты вручную
         let regularManuallySent = regular?.published ?? false
         let customManuallySent = customReport?.published ?? false
+        Logger.debug("[AutoSend] regularManuallySent=\(regularManuallySent) customManuallySent=\(customManuallySent)", log: Logger.telegram)
         
         // Если пользователь отправил оба отчета вручную, автоотправка не нужна
         if regularManuallySent && customManuallySent {
@@ -75,21 +82,28 @@ class PostTelegramService: PostTelegramServiceProtocol {
         }
         
         var toSend = 0
+        func maybeComplete() {
+            if toSend == 0 {
+                Logger.info("[AutoSend] maybeComplete -> completion", log: Logger.telegram)
+                completion?()
+            } else {
+                Logger.debug("[AutoSend] maybeComplete skipped, toSend=\(toSend)", log: Logger.telegram)
+            }
+        }
         
         // --- Обычный отчет ---
         if let regular = regular, !regular.goodItems.isEmpty {
             if !regularManuallySent {
                 toSend += 1
+                Logger.debug("[AutoSend] enqueue regular, toSend=\(toSend)", log: Logger.telegram)
                 sendToTelegram(text: formatRegularReport(regular)) { success in
                     if success {
                         // Помечаем отчет как отправленный
                         self.markReportAsPublished(regular)
                     }
                     toSend -= 1
-                    if toSend == 0 {
-                        Logger.info("Auto-send completed", log: Logger.telegram)
-                        completion?()
-                    }
+                    Logger.debug("[AutoSend] regular done, toSend=\(toSend)", log: Logger.telegram)
+                    maybeComplete()
                 }
             }
         }
@@ -98,16 +112,15 @@ class PostTelegramService: PostTelegramServiceProtocol {
         if let custom = customReport, !custom.goodItems.isEmpty {
             if !customManuallySent {
                 toSend += 1
+                Logger.debug("[AutoSend] enqueue custom, toSend=\(toSend)", log: Logger.telegram)
                 sendToTelegram(text: formatCustomReport(custom)) { success in
                     if success {
                         // Помечаем отчет как отправленный
                         self.markReportAsPublished(custom)
                     }
                     toSend -= 1
-                    if toSend == 0 {
-                        Logger.info("Auto-send completed", log: Logger.telegram)
-                        completion?()
-                    }
+                    Logger.debug("[AutoSend] custom done, toSend=\(toSend)", log: Logger.telegram)
+                    maybeComplete()
                 }
             }
         }
@@ -115,19 +128,19 @@ class PostTelegramService: PostTelegramServiceProtocol {
         // --- Если нет ни одного отчета ---
         if customReport == nil && regular == nil {
             toSend += 1
+            Logger.debug("[AutoSend] enqueue 'no reports' message, toSend=\(toSend)", log: Logger.telegram)
             sendToTelegram(text: "За сегодня не найдено ни одного отчета.") { _ in
                 toSend -= 1
-                if toSend == 0 {
-                    Logger.info("Auto-send completed", log: Logger.telegram)
-                    completion?()
-                }
+                Logger.debug("[AutoSend] 'no reports' done, toSend=\(toSend)", log: Logger.telegram)
+                maybeComplete()
             }
         }
         
-        Logger.info("Auto-send initiated for \(toSend) reports", log: Logger.telegram)
+        Logger.info("[AutoSend] initiated for toSend=\(toSend)", log: Logger.telegram)
         
         // Если нет отчетов для отправки, вызываем completion сразу
         if toSend == 0 {
+            Logger.info("[AutoSend] immediate completion (toSend=0)", log: Logger.telegram)
             completion?()
         }
     }

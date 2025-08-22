@@ -50,6 +50,7 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
     private let loadTelegramSettingsUC: LoadTelegramSettingsUseCase
     private let saveTelegramSettingsUC: SaveTelegramSettingsUseCase
     private let telegramSettingsRepo: TelegramSettingsRepository
+    private let externalPostsRepo: ExternalPostRepositoryProtocol
     
     // MARK: - Initialization
     init(
@@ -63,6 +64,8 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
         self.telegramSettingsRepo = repo
         self.loadTelegramSettingsUC = LoadTelegramSettingsUseCaseImpl(repository: repo)
         self.saveTelegramSettingsUC = SaveTelegramSettingsUseCaseImpl(repository: repo)
+        // Use repository bound to provided UserDefaultsManager to keep behavior testable and deterministic
+        self.externalPostsRepo = ExternalPostRepository(userDefaultsManager: userDefaultsManager)
         
         _ = loadTelegramSettings()
         loadExternalPosts()
@@ -229,17 +232,29 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
     }
     
     func saveExternalPosts() {
-        guard let data = try? JSONEncoder().encode(externalPosts) else { return }
-        userDefaultsManager.set(data, forKey: "externalPosts")
+        let posts = self.externalPosts
+        let semaphore = DispatchSemaphore(value: 0)
+        Task.detached { [externalPostsRepo] in
+            let domain = PostMapper.toDomainModels(posts)
+            _ = try? await externalPostsRepo.saveAll(domain)
+            semaphore.signal()
+        }
+        // Wait for background task to complete to preserve previous synchronous semantics
+        _ = semaphore.wait(timeout: .now() + 2)
     }
     
     func loadExternalPosts() {
-        guard let data = userDefaultsManager.data(forKey: "externalPosts"),
-              let decoded = try? JSONDecoder().decode([Post].self, from: data) else {
-            externalPosts = []
-            return
+        let semaphore = DispatchSemaphore(value: 0)
+        var loadedPosts: [Post] = []
+        Task.detached { [externalPostsRepo] in
+            let domain = (try? await externalPostsRepo.fetchAll()) ?? []
+            loadedPosts = PostMapper.toDataModels(domain)
+            semaphore.signal()
         }
-        externalPosts = decoded
+        // Wait for fetch to complete, then assign on the current thread (main in most cases)
+        _ = semaphore.wait(timeout: .now() + 5)
+        Logger.debug("[ExtReports] loadExternalPosts loaded=\(loadedPosts.count) firstType=\(String(describing: loadedPosts.first?.type))", log: Logger.telegram)
+        self.externalPosts = loadedPosts
     }
     
     func deleteBotMessages(completion: @escaping (Bool) -> Void) {
@@ -249,9 +264,11 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
     }
     
     func deleteAllBotMessages(completion: @escaping (Bool) -> Void) {
-        // В первую очередь очищаем локальное хранилище
+        // В первую очередь очищаем локальное хранилище через репозиторий
         externalPosts.removeAll()
-        saveExternalPosts()
+        Task { [externalPostsRepo] in
+            try? await externalPostsRepo.clear()
+        }
         
         // Сбрасываем lastUpdateId для возможности получения новых сообщений
         lastUpdateId = nil
