@@ -532,3 +532,78 @@ extension SettingsViewModelNewTests {
     }
 }
 
+
+// MARK: - Additional coverage
+
+extension SettingsViewModelNewTests {
+    func testSetAutoSendEnabled_FalsePropagatesToService() {
+        // Given
+        autosend.autoSendEnabled = true
+        vm.state.autoSendEnabled = true
+        // When
+        vm.setAutoSendEnabled(false)
+        // Then
+        XCTAssertFalse(autosend.autoSendEnabled)
+        XCTAssertFalse(vm.state.autoSendEnabled)
+    }
+
+    func testSaveTelegramSettings_ErrorSetsStatusMessage() async {
+        // Given: repository that throws on save
+        final class ThrowingRepo: SettingsRepositoryProtocol {
+            var savedEnabled: Bool?
+            var savedMode: NotificationMode?
+            var savedIntervalHours: Int?
+            var savedStartHour: Int?
+            var savedEndHour: Int?
+
+            func saveNotificationSettings(enabled: Bool, mode: NotificationMode, intervalHours: Int, startHour: Int, endHour: Int) async throws {
+                savedEnabled = enabled
+                savedMode = mode
+                savedIntervalHours = intervalHours
+                savedStartHour = startHour
+                savedEndHour = endHour
+            }
+
+            func loadNotificationSettings() async throws -> (enabled: Bool, mode: NotificationMode, intervalHours: Int, startHour: Int, endHour: Int) {
+                return (true, .twice, 4, 9, 21)
+            }
+
+            struct Dummy: Error {}
+            func saveTelegramSettings(token: String?, chatId: String?, botId: String?) async throws { throw Dummy() }
+            func loadTelegramSettings() async throws -> (token: String?, chatId: String?, botId: String?) { (nil, nil, nil) }
+
+            func saveReportStatus(_ status: ReportStatus) async throws {}
+            func loadReportStatus() async throws -> ReportStatus { .notStarted }
+            func saveForceUnlock(_ forceUnlock: Bool) async throws {}
+            func loadForceUnlock() async throws -> Bool { false }
+        }
+        let throwingRepo = ThrowingRepo()
+        vm = SettingsViewModelNew(
+            settingsRepository: throwingRepo,
+            notificationManager: notif,
+            postRepository: postRepo,
+            timerService: timer,
+            statusManager: status,
+            iCloudService: icloud,
+            autoSendService: autosend,
+            telegramConfigUpdater: tgUpdater,
+            telegramResolver: tgResolver,
+            legacyUISync: legacySync
+        )
+        // When
+        await vm.handle(.saveTelegramSettings(token: "t", chatId: "c", botId: "b"))
+        // Then
+        XCTAssertEqual(vm.state.telegramStatus, "Ошибка сохранения")
+    }
+
+    func testCheckTelegramConnection_EmptyFieldsShowsPrompt() async {
+        // Given
+        vm.state.telegramToken = ""
+        vm.state.telegramChatId = ""
+        // When
+        await vm.handle(.checkTelegramConnection)
+        // Then
+        XCTAssertEqual(vm.state.telegramStatus, "Введите токен и chat_id")
+    }
+}
+

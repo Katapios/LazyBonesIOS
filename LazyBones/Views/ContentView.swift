@@ -41,19 +41,7 @@ struct ContentView: View {
             .tag(AppCoordinator.Tab.planning)
             
             NavigationStack(path: $appCoordinator.navigationPath) {
-                // Избегаем лишних DI-резолвов, пока вкладка не активна
-                if appCoordinator.currentTab == .tags {
-                    if let vm = DependencyContainer.shared.resolve(TagManagerViewModelNew.self) {
-                        TagManagerViewClean(viewModel: vm)
-                    } else {
-                        EmptyView()
-                            .onAppear {
-                                Logger.warning("TagManagerViewModelNew not resolved; showing EmptyView in tests", log: Logger.ui)
-                            }
-                    }
-                } else {
-                    EmptyView()
-                }
+                appCoordinator.tagsRootView()
             }
             .tabItem {
                 Label(AppCoordinator.Tab.tags.title, systemImage: AppCoordinator.Tab.tags.icon)

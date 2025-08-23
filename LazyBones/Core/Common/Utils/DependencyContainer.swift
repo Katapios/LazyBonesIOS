@@ -103,6 +103,7 @@ extension DependencyContainer {
     /// Зарегистрировать основные сервисы приложения
     func registerCoreServices() {
         Logger.info("Registering core services", log: Logger.general)
+        let isRunningTests = NSClassFromString("XCTestCase") != nil
         
         // UserDefaults Manager
         register(UserDefaultsManager.self, instance: UserDefaultsManager.shared)
@@ -122,17 +123,25 @@ extension DependencyContainer {
         register(BackgroundTaskServiceProtocol.self, instance: BackgroundTaskService.shared)
         
         // Telegram Service
-        register(TelegramServiceProtocol.self, factory: {
-            let token = UserDefaultsManager.shared.string(forKey: "telegramToken") ?? ""
-            return TelegramService(token: token)
-        })
+        if isRunningTests {
+            register(TelegramServiceProtocol.self, instance: TelegramServiceStub())
+        } else {
+            register(TelegramServiceProtocol.self, factory: {
+                let token = UserDefaultsManager.shared.string(forKey: "telegramToken") ?? ""
+                return TelegramService(token: token)
+            })
+        }
         
         // Post-specific services
-        register(PostTelegramServiceProtocol.self, factory: {
-            let telegramService = self.resolve(TelegramServiceProtocol.self)!
-            let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
-            return PostTelegramService(telegramService: telegramService, userDefaultsManager: userDefaultsManager)
-        })
+        if isRunningTests {
+            register(PostTelegramServiceProtocol.self, instance: PostTelegramServiceStub())
+        } else {
+            register(PostTelegramServiceProtocol.self, factory: {
+                let telegramService = self.resolve(TelegramServiceProtocol.self)!
+                let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
+                return PostTelegramService(telegramService: telegramService, userDefaultsManager: userDefaultsManager)
+            })
+        }
         
         register(PostNotificationServiceProtocol.self, factory: {
             let notificationService = self.resolve(NotificationServiceProtocol.self)!
@@ -174,24 +183,32 @@ extension DependencyContainer {
         })
         
         // Notification Manager Service
-        register(NotificationManagerServiceType.self, factory: {
-            let notificationService = self.resolve(NotificationServiceProtocol.self)!
-            let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
-            return NotificationManagerService(
-                userDefaultsManager: userDefaultsManager,
-                notificationService: notificationService
-            )
-        })
+        if isRunningTests {
+            register(NotificationManagerServiceType.self, instance: NotificationManagerServiceStub())
+        } else {
+            register(NotificationManagerServiceType.self, factory: {
+                let notificationService = self.resolve(NotificationServiceProtocol.self)!
+                let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
+                return NotificationManagerService(
+                    userDefaultsManager: userDefaultsManager,
+                    notificationService: notificationService
+                )
+            })
+        }
         
         // Auto Send Service
-        register(AutoSendServiceType.self, factory: {
-            let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
-            let postTelegramService = self.resolve(PostTelegramServiceProtocol.self)!
-            return AutoSendService(
-                userDefaultsManager: userDefaultsManager,
-                postTelegramService: postTelegramService
-            )
-        })
+        if isRunningTests {
+            register(AutoSendServiceType.self, instance: AutoSendServiceStub())
+        } else {
+            register(AutoSendServiceType.self, factory: {
+                let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
+                let postTelegramService = self.resolve(PostTelegramServiceProtocol.self)!
+                return AutoSendService(
+                    userDefaultsManager: userDefaultsManager,
+                    postTelegramService: postTelegramService
+                )
+            })
+        }
         
         // AutoSend Settings Repository & UseCases (Clean Architecture)
         register(AutoSendSettingsRepository.self, factory: {
@@ -405,9 +422,14 @@ extension DependencyContainer {
 
         // TagProvider для предоставления тегов в Presentation слое без PostStore (синглтон)
         do {
-            let tagRepository = self.resolve(TagRepositoryProtocol.self)!
-            let provider = DefaultTagProvider(repository: tagRepository)
-            register(TagProviderProtocol.self, instance: provider)
+            let isRunningTests = NSClassFromString("XCTestCase") != nil
+            if isRunningTests {
+                register(TagProviderProtocol.self, instance: TagProviderStub())
+            } else {
+                let tagRepository = self.resolve(TagRepositoryProtocol.self)!
+                let provider = DefaultTagProvider(repository: tagRepository)
+                register(TagProviderProtocol.self, instance: provider)
+            }
         }
     }
     

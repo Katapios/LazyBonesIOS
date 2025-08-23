@@ -114,12 +114,22 @@ class PostTimerService: PostTimerServiceProtocol, ObservableObject {
             newTimeLeft = "До старта: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
             newProgress = 0.0
         } else if now >= start && now < end {
-            // Во время активного окна
-            let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: end)
-            newTimeLeft = "До конца: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
-            let totalDuration = end.timeIntervalSince(start)
-            let elapsed = now.timeIntervalSince(start)
-            newProgress = min(max(elapsed / totalDuration, 0.0), 1.0)
+            // Во время активного окна:
+            if currentReportStatus == .sent {
+                // Отчёт уже отправлен — показываем обратный отсчёт до старта следующего окна
+                let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
+                let nextStart = calendar.date(bySettingHour: startHour, minute: 0, second: 0, of: tomorrow)!
+                let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: nextStart)
+                newTimeLeft = "До старта: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+                newProgress = 0.0
+            } else {
+                // Обычное поведение — считаем до конца текущего окна
+                let diff = calendar.dateComponents([.hour, .minute, .second], from: now, to: end)
+                newTimeLeft = "До конца: " + String(format: "%02d:%02d:%02d", diff.hour ?? 0, diff.minute ?? 0, diff.second ?? 0)
+                let totalDuration = end.timeIntervalSince(start)
+                let elapsed = now.timeIntervalSince(start)
+                newProgress = min(max(elapsed / totalDuration, 0.0), 1.0)
+            }
         } else {
             // После конца — считаем до завтрашнего старта
             let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!

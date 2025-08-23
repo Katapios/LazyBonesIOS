@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import ObjectiveC
 import WidgetKit
+import BackgroundTasks
 
 /// Протокол для сервиса автоотправки
 protocol AutoSendServiceProtocol: ObservableObject {
@@ -27,6 +28,17 @@ class AutoSendService: AutoSendServiceProtocol {
         didSet {
             if !isLoadingSettings {
                 saveAutoSendSettings()
+                if autoSendEnabled {
+                    // Планируем фоновые задачи/таймеры
+                    scheduleAutoSendIfNeeded()
+                } else {
+                    // Отменяем таймер
+                    autoSendTimer?.invalidate()
+                    autoSendTimer = nil
+                    // Отменяем все BG задачи, чтобы не запускались после отключения
+                    BGTaskScheduler.shared.cancelAllTaskRequests()
+                    Logger.info("Auto-send disabled: cancelled all BG task requests", log: Logger.background)
+                }
             }
         }
     }
@@ -133,11 +145,14 @@ class AutoSendService: AutoSendServiceProtocol {
             return
         }
         
-        // Schedule the background task
+        // Schedule the background task (optional DI)
         do {
-            let backgroundTaskService = DependencyContainer.shared.resolve(BackgroundTaskServiceProtocol.self)!
-            try backgroundTaskService.scheduleSendReportTask()
-            Logger.info("✅ Background task scheduled successfully", log: Logger.background)
+            if let backgroundTaskService = DependencyContainer.shared.resolve(BackgroundTaskServiceProtocol.self) {
+                try backgroundTaskService.scheduleSendReportTask()
+                Logger.info("✅ Background task scheduled successfully", log: Logger.background)
+            } else {
+                Logger.warning("[AutoSend] BackgroundTaskService is not registered in DI. Skipping BG scheduling.", log: Logger.background)
+            }
         } catch {
             Logger.error("❌ Failed to schedule background task: \(error)", log: Logger.background)
             

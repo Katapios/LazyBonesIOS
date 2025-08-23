@@ -275,6 +275,14 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
             }
         }
         
+        // После попытки отправки за сегодня — отправляем неотправленные отчёты за прошлые дни
+        if let postTelegramService = DependencyContainer.shared.resolve(PostTelegramServiceProtocol.self) {
+            Logger.info("Triggering send of unsent reports from previous days", log: Logger.background)
+            postTelegramService.sendUnsentReportsFromPreviousDays()
+        } else {
+            Logger.warning("PostTelegramService not available; cannot send previous days reports", log: Logger.background)
+        }
+        
         // Log completion
         Logger.info("Auto-send reports processing completed", log: Logger.background)
     }

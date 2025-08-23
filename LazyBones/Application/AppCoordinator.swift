@@ -162,6 +162,16 @@ extension AppCoordinator {
         // При необходимости можно будет инстанцировать VM из DI и передать явно
         return SettingsView()
     }
+
+    /// Корневой вью для вкладки "Теги" через координатор/DI
+    func tagsRootView() -> some View {
+        if let vm = dependencyContainer.resolve(TagManagerViewModelNew.self) {
+            return AnyView(TagManagerViewClean(viewModel: vm))
+        } else {
+            Logger.warning("TagManagerViewModelNew not resolved; showing EmptyView (likely tests)", log: Logger.ui)
+            return AnyView(EmptyView())
+        }
+    }
 }
 
 // MARK: - Tabs

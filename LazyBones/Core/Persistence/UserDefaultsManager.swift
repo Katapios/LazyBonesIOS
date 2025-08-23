@@ -38,6 +38,13 @@ class UserDefaultsManager: UserDefaultsManagerProtocol {
     
     /// Сохранить значение
     func set<T>(_ value: T, forKey key: String) {
+        // Если передан Optional.nil — удаляем ключ, чтобы не писать nil в UserDefaults
+        let mirror = Mirror(reflecting: value)
+        if mirror.displayStyle == .optional && mirror.children.count == 0 {
+            userDefaults.removeObject(forKey: key)
+            userDefaults.synchronize()
+            return
+        }
         userDefaults.set(value, forKey: key)
         userDefaults.synchronize()
     }

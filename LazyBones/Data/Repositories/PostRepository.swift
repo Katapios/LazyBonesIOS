@@ -13,8 +13,22 @@ class PostRepository: PostRepositoryProtocol {
         let posts = try await dataSource.load()
         let dataPost = PostMapper.toDataModel(post)
         
-        // Обновляем существующий пост или добавляем новый
-        var updatedPosts = posts.filter { $0.id != post.id }
+        // Перезаписываем отчёт за текущий день по ТИПУ (regular/custom) только для внутренних постов
+        // Сохраняем отчёты за другие дни и внешние/iCloud без изменений
+        var updatedPosts = posts.filter { existing in
+            // Удаляем точное совпадение по id
+            if existing.id == post.id { return false }
+            // Для перезаписи: тот же день и тот же тип, и оба поста внутренние
+            let sameDay = DateUtils.isSameDay(existing.date, post.date)
+            let sameType = (existing.type == post.type)
+            let isInternalExisting = (existing.isExternal != true) && (existing.type != .external) && (existing.type != .iCloud)
+            let isInternalNew = (post.isExternal != true) && (post.type != .external) && (post.type != .iCloud)
+            if sameDay && sameType && isInternalExisting && isInternalNew {
+                // Удаляем существующий, чтобы положить свежий
+                return false
+            }
+            return true
+        }
         updatedPosts.append(dataPost)
         
         try await dataSource.save(updatedPosts)

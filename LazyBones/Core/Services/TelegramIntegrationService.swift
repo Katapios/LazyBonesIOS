@@ -68,7 +68,10 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
         self.externalPostsRepo = ExternalPostRepository(userDefaultsManager: userDefaultsManager)
         
         _ = loadTelegramSettings()
-        loadExternalPosts()
+        // Не блокируем текущий поток: загружаем внешние посты асинхронно с высоким приоритетом
+        Task(priority: .userInitiated) { [weak self] in
+            self?.loadExternalPosts()
+        }
     }
     
     // MARK: - Settings Management
@@ -232,29 +235,25 @@ class TelegramIntegrationService: TelegramIntegrationServiceProtocol {
     }
     
     func saveExternalPosts() {
+        // Выполняем сохранение неблокирующе с приоритетом "userInitiated"
         let posts = self.externalPosts
-        let semaphore = DispatchSemaphore(value: 0)
-        Task.detached { [externalPostsRepo] in
+        Task(priority: .userInitiated) { [externalPostsRepo] in
             let domain = PostMapper.toDomainModels(posts)
             _ = try? await externalPostsRepo.saveAll(domain)
-            semaphore.signal()
         }
-        // Wait for background task to complete to preserve previous synchronous semantics
-        _ = semaphore.wait(timeout: .now() + 2)
     }
     
     func loadExternalPosts() {
-        let semaphore = DispatchSemaphore(value: 0)
-        var loadedPosts: [Post] = []
-        Task.detached { [externalPostsRepo] in
+        // Неблокирующая загрузка с последующим обновлением состояния на MainActor
+        Task(priority: .userInitiated) { [weak self, externalPostsRepo] in
             let domain = (try? await externalPostsRepo.fetchAll()) ?? []
-            loadedPosts = PostMapper.toDataModels(domain)
-            semaphore.signal()
+            let loadedPosts = PostMapper.toDataModels(domain)
+            guard let strongSelf = self else { return }
+            await MainActor.run {
+                Logger.debug("[ExtReports] loadExternalPosts loaded=\(loadedPosts.count) firstType=\(String(describing: loadedPosts.first?.type))", log: Logger.telegram)
+                strongSelf.externalPosts = loadedPosts
+            }
         }
-        // Wait for fetch to complete, then assign on the current thread (main in most cases)
-        _ = semaphore.wait(timeout: .now() + 5)
-        Logger.debug("[ExtReports] loadExternalPosts loaded=\(loadedPosts.count) firstType=\(String(describing: loadedPosts.first?.type))", log: Logger.telegram)
-        self.externalPosts = loadedPosts
     }
     
     func deleteBotMessages(completion: @escaping (Bool) -> Void) {
