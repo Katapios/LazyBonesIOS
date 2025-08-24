@@ -106,27 +106,27 @@ struct ICloudReportsView: View {
             }
             
             // Информация о расположении файла
-            fileLocationInfoView
+            //fileLocationInfoView
         }
     }
     
-    private var fileLocationInfoView: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Информация о файле:")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundColor(.secondary)
-            
-            Text(viewModel.getFileLocationInfo())
-                .font(.caption2)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.leading)
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(Color(.systemGray6))
-        .cornerRadius(8)
-    }
+//    private var fileLocationInfoView: some View {
+//        VStack(alignment: .leading, spacing: 8) {
+//            Text("Информация о файле:")
+//                .font(.caption)
+//                .fontWeight(.semibold)
+//                .foregroundColor(.secondary)
+//            
+//            Text(viewModel.getFileLocationInfo())
+//                .font(.caption2)
+//                .foregroundColor(.secondary)
+//                .multilineTextAlignment(.leading)
+//        }
+//        .padding(.horizontal, 8)
+//        .padding(.vertical, 4)
+//        .background(Color(.systemGray6))
+//        .cornerRadius(8)
+//    }
     
     private var loadingView: some View {
         VStack(spacing: 16) {

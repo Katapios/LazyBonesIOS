@@ -114,32 +114,23 @@ class ReportsViewModelNew: BaseViewModel<ReportsState, ReportsEvent>, LoadableVi
         state.error = nil
         
         do {
-            // Загружаем обычные отчеты
-            let regularInput = GetReportsInput(
-                date: Date(),
-                type: .regular,
-                includeExternal: false
-            )
-            let regularReports = try await getReportsUseCase.execute(input: regularInput)
-            state.regularReports = regularReports
+            // Загружаем все отчеты без фильтра по дате, затем раскладываем по типам
+            let allReports = try await getReportsUseCase.execute(input: GetReportsInput())
             
-            // Загружаем кастомные отчеты
-            let customInput = GetReportsInput(
-                date: Date(),
-                type: .custom,
-                includeExternal: false
-            )
-            let customReports = try await getReportsUseCase.execute(input: customInput)
-            state.customReports = customReports
+            // Внутренние regular
+            state.regularReports = allReports
+                .filter { $0.type == .regular && ($0.isExternal != true) }
+                .sorted { $0.date > $1.date }
             
-            // Загружаем внешние отчеты
-            let externalInput = GetReportsInput(
-                date: Date(),
-                type: nil,
-                includeExternal: true
-            )
-            let allReports = try await getReportsUseCase.execute(input: externalInput)
-            state.externalReports = allReports.filter { $0.isExternal == true }
+            // Внутренние custom
+            state.customReports = allReports
+                .filter { $0.type == .custom && ($0.isExternal != true) }
+                .sorted { $0.date > $1.date }
+            
+            // Внешние (включая iCloud)
+            state.externalReports = allReports
+                .filter { $0.isExternal == true }
+                .sorted { $0.date > $1.date }
             
         } catch {
             state.error = error
