@@ -108,19 +108,10 @@ extension DependencyContainer {
         // UserDefaults Manager
         register(UserDefaultsManager.self, instance: UserDefaultsManager.shared)
         
-        // Posts Provider (PostStoreAdapter)
-        let postStoreAdapter = PostStoreAdapter()
-        register(PostsProviderProtocol.self, instance: postStoreAdapter)
-        // Регистрируем как any DomainPostsProviderProtocol для совместимости с Swift
-        register((any DomainPostsProviderProtocol).self, instance: postStoreAdapter)
-        
         // Notification Service
         register(NotificationServiceProtocol.self, factory: {
             NotificationService()
         })
-        
-        // Background Task Service
-        register(BackgroundTaskServiceProtocol.self, instance: BackgroundTaskService.shared)
         
         // Telegram Service
         if isRunningTests {
@@ -223,6 +214,9 @@ extension DependencyContainer {
             let repo = self.resolve(AutoSendSettingsRepository.self)!
             return SaveAutoSendSettingsUseCaseImpl(repository: repo)
         })
+        
+        // Background Task Service (после регистрации AutoSend и зависимостей)
+        register(BackgroundTaskServiceProtocol.self, instance: BackgroundTaskService.shared)
         
         // Telegram Config Updater
         register(TelegramConfigUpdaterProtocol.self, factory: {
@@ -353,6 +347,14 @@ extension DependencyContainer {
 
         // File existence checker
         register(FileExistenceChecking.self, instance: DefaultFileExistenceChecker())
+
+        // Posts Provider (PostStoreAdapter)
+        // ВАЖНО: размещаем регистрацию в самом конце, чтобы PostStore.shared
+        // создался после регистрации всех зависимостей (Telegram/Notifications/AutoSend и пр.)
+        let postStoreAdapter = PostStoreAdapter()
+        register(PostsProviderProtocol.self, instance: postStoreAdapter)
+        // Регистрируем как any DomainPostsProviderProtocol для совместимости с Swift
+        register((any DomainPostsProviderProtocol).self, instance: postStoreAdapter)
 
         Logger.info("Core services registered successfully", log: Logger.general)
     }

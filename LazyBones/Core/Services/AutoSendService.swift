@@ -26,37 +26,39 @@ class AutoSendService: AutoSendServiceProtocol {
     // MARK: - Published Properties
     @Published var autoSendEnabled: Bool = false {
         didSet {
-            if !isLoadingSettings {
-                saveAutoSendSettings()
-                if autoSendEnabled {
-                    // Планируем фоновые задачи/таймеры
-                    scheduleAutoSendIfNeeded()
-                } else {
-                    // Отменяем таймер
-                    autoSendTimer?.invalidate()
-                    autoSendTimer = nil
-                    // Отменяем все BG задачи, чтобы не запускались после отключения
-                    BGTaskScheduler.shared.cancelAllTaskRequests()
-                    Logger.info("Auto-send disabled: cancelled all BG task requests", log: Logger.background)
-                }
+            if isLoadingSettings { return }
+            if oldValue == autoSendEnabled { return }
+            saveAutoSendSettings()
+            if autoSendEnabled {
+                // Планируем фоновые задачи/таймеры
+                scheduleAutoSendIfNeeded()
+            } else {
+                // Отменяем таймер
+                autoSendTimer?.invalidate()
+                autoSendTimer = nil
+                // Отменяем все BG задачи, чтобы не запускались после отключения
+                BGTaskScheduler.shared.cancelAllTaskRequests()
+                Logger.info("Auto-send disabled: cancelled all BG task requests", log: Logger.background)
             }
         }
     }
     
     @Published var autoSendTime: Date = Calendar.current.date(bySettingHour: 21, minute: 0, second: 0, of: Date()) ?? Date() {
         didSet {
-            if !isLoadingSettings {
-                saveAutoSendSettings()
-                scheduleAutoSendIfNeeded()
-            }
+            if isLoadingSettings { return }
+            // Избегаем лишних сохранений, если время по сути не изменилось (до минут)
+            let cal = Calendar.current
+            if cal.isDate(oldValue, equalTo: autoSendTime, toGranularity: .minute) { return }
+            saveAutoSendSettings()
+            scheduleAutoSendIfNeeded()
         }
     }
     
     @Published var lastAutoSendStatus: String? = nil {
         didSet {
-            if !isLoadingSettings {
-                saveAutoSendSettings()
-            }
+            if isLoadingSettings { return }
+            if oldValue == lastAutoSendStatus { return }
+            saveAutoSendSettings()
         }
     }
     

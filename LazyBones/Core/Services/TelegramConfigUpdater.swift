@@ -23,8 +23,5 @@ final class TelegramConfigUpdater: TelegramConfigUpdaterProtocol {
             // Регистрируем пустой сервис, который безопасно резолвится.
             container.registerTelegramService(token: "")
         }
-        
-        // Обновляем зависимости, которые используют TelegramService (в инфраструктуре)
-        PostStore.shared.refreshTelegramServices()
     }
 }
