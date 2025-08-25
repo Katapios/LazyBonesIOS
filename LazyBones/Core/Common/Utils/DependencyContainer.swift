@@ -252,6 +252,30 @@ extension DependencyContainer {
             let postRepository = self.resolve(PostRepository.self)!
             return UpdateReportUseCase(postRepository: postRepository)
         })
+
+        // Plan Draft UseCases (Clean Architecture)
+        register(LoadPlanDraftUseCase.self, factory: {
+            let planningRepo = self.resolve(PlanningRepositoryProtocol.self)!
+            return LoadPlanDraftUseCase(planningRepository: planningRepo)
+        })
+        register(SavePlanDraftUseCase.self, factory: {
+            let planningRepo = self.resolve(PlanningRepositoryProtocol.self)!
+            return SavePlanDraftUseCase(planningRepository: planningRepo)
+        })
+        register(CreateCustomReportFromDraftUseCase.self, factory: {
+            let postRepository = self.resolve(PostRepositoryProtocol.self)!
+            return CreateCustomReportFromDraftUseCase(postRepository: postRepository)
+        })
+        register(PublishCustomReportUseCase.self, factory: {
+            let postRepository = self.resolve(PostRepositoryProtocol.self)!
+            let telegramIntegration = self.resolve(TelegramIntegrationServiceType.self)!
+            let postTelegramService = self.resolve(PostTelegramServiceProtocol.self)!
+            return PublishCustomReportUseCase(
+                postRepository: postRepository,
+                telegramIntegration: telegramIntegration,
+                postTelegramService: postTelegramService
+            )
+        })
         
         // Repositories
         register(PostRepository.self, factory: {
