@@ -157,18 +157,24 @@ struct VoiceRecorderRowView: View {
                 let fileSize = attributes[.size] as? Int64 ?? 0
                 
                 if fileSize > 0 {
-                    onVoiceNoteChanged(url.path)
+                    DispatchQueue.main.async {
+                        onVoiceNoteChanged(url.path)
+                    }
                 } else {
                     // Удаляем пустой файл
                     try? FileManager.default.removeItem(at: url)
                     recordingURL = nil
-                    onVoiceNoteChanged(nil)
+                    DispatchQueue.main.async {
+                        onVoiceNoteChanged(nil)
+                    }
                 }
             } catch {
                 // Если не удалось проверить файл, удаляем его
                 try? FileManager.default.removeItem(at: url)
                 recordingURL = nil
-                onVoiceNoteChanged(nil)
+                DispatchQueue.main.async {
+                    onVoiceNoteChanged(nil)
+                }
             }
         }
     }
@@ -205,7 +211,9 @@ struct VoiceRecorderRowView: View {
             do {
                 try FileManager.default.removeItem(at: url)
                 recordingURL = nil
-                onVoiceNoteChanged(nil)
+                DispatchQueue.main.async {
+                    onVoiceNoteChanged(nil)
+                }
             } catch {
                 showError("Ошибка удаления: \(error.localizedDescription)")
             }

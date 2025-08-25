@@ -253,6 +253,30 @@ extension DependencyContainer {
             return UpdateReportUseCase(postRepository: postRepository)
         })
 
+        // Regular Report (CA) UseCases
+        register(LoadRegularReportDraftUseCase.self, factory: {
+            let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
+            return LoadRegularReportDraftUseCase(userDefaultsManager: userDefaultsManager)
+        })
+        register(SaveRegularReportDraftUseCase.self, factory: {
+            let userDefaultsManager = self.resolve(UserDefaultsManager.self)!
+            return SaveRegularReportDraftUseCase(userDefaultsManager: userDefaultsManager)
+        })
+        register(RemoveTodayRegularReportUseCase.self, factory: {
+            let postsProvider = self.resolve(PostsProviderProtocol.self)!
+            return RemoveTodayRegularReportUseCase(postsProvider: postsProvider)
+        })
+        register(SaveRegularReportAsLocalUseCase.self, factory: {
+            let postsProvider = self.resolve(PostsProviderProtocol.self)!
+            let postStore = PostStore.shared
+            return SaveRegularReportAsLocalUseCase(postsProvider: postsProvider, postStore: postStore)
+        })
+        register(PublishRegularReportUseCase.self, factory: {
+            let postsProvider = self.resolve(PostsProviderProtocol.self)!
+            let postStore = PostStore.shared
+            return PublishRegularReportUseCase(postsProvider: postsProvider, postStore: postStore)
+        })
+
         // Plan Draft UseCases (Clean Architecture)
         register(LoadPlanDraftUseCase.self, factory: {
             let planningRepo = self.resolve(PlanningRepositoryProtocol.self)!
@@ -334,6 +358,21 @@ extension DependencyContainer {
             return self.resolve(PlanningRepository.self)!
         })
         
+        // ReportStatusManager for DI (used by DailyReportCAViewModel)
+        register((any ReportStatusManagerProtocol).self, factory: {
+            let timerService = self.resolve(PostTimerServiceProtocol.self)!
+            let notificationService = self.resolve(PostNotificationServiceProtocol.self)!
+            let postsProvider = self.resolve(PostsProviderProtocol.self)!
+            let manager: any ReportStatusManagerProtocol = ReportStatusManager(
+                localService: LocalReportService.shared,
+                timerService: timerService,
+                notificationService: notificationService,
+                postsProvider: postsProvider,
+                factory: ReportStatusFactory()
+            )
+            return manager
+        })
+
         // Telegram fetcher adapter for Domain
         register(TelegramFetcherProtocol.self, factory: {
             let integration = self.resolve(TelegramIntegrationServiceType.self)!

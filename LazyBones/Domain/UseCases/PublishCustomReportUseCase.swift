@@ -53,17 +53,14 @@ final class PublishCustomReportUseCase: PublishCustomReportUseCaseProtocol {
         guard custom.isEvaluated == true else { throw PublishCustomReportError.notEvaluated }
         
         // Форматируем сообщение и отправляем через PostTelegramService
-        let deviceName = UIDevice.current.name
+        let deviceName = await MainActor.run { UIDevice.current.name }
         let message = telegramIntegration.formatCustomReportForTelegram(PostMapper.toDataModel(custom), deviceName: deviceName)
-        var result = false
-        let semaphore = DispatchSemaphore(value: 0)
-        postTelegramService.sendToTelegram(text: message) { success in
-            result = success
-            semaphore.signal()
+        let success: Bool = await withCheckedContinuation { continuation in
+            postTelegramService.sendToTelegram(text: message) { success in
+                continuation.resume(returning: success)
+            }
         }
-        semaphore.wait()
-        
-        if !result { throw PublishCustomReportError.sendFailed }
+        if !success { throw PublishCustomReportError.sendFailed }
         return true
     }
 }

@@ -33,6 +33,9 @@ struct DailyPlanningFormView: View {
                 Circle()
                     .fill(selectedTab == 2 ? Color.accentColor : Color.gray.opacity(0.3))
                     .frame(width: 8, height: 8)
+                Circle()
+                    .fill(selectedTab == 3 ? Color.accentColor : Color.gray.opacity(0.3))
+                    .frame(width: 8, height: 8)
             }
             .padding(.bottom, 4)
             // --- TabView ---
@@ -46,6 +49,9 @@ struct DailyPlanningFormView: View {
                 // Третий экран — План за день (CA)
                 DailyPlanCAView()
                     .tag(2)
+                // Четвертый экран — Ежедневный отчет (CA)
+                DailyReportCAView()
+                    .tag(3)
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
             .onAppear {
@@ -63,6 +69,7 @@ struct DailyPlanningFormView: View {
         case 0: return "Отчет за день"
         case 1: return "План на день"
         case 2: return "План за день"
+        case 3: return "Ежедневный отчёт (CA)"
         default: return "Отчет за день"
         }
     }
