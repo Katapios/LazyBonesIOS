@@ -24,7 +24,7 @@
   - `LazyBones/Presentation/ViewModels/ReportsViewModelNew.swift`
   - `LazyBones/Presentation/ViewModels/SettingsViewModelNew.swift`
 - __Новые/чистые View__:
-  - Главная: `LazyBones/Views/MainViewNew.swift` (готова, но пока не подключена в `ContentView`)
+  - Главная: `LazyBones/Views/MainViewNew.swift` (подключена в `ContentView`)
   - Отчёты: `LazyBones/Views/ReportsViewClean.swift` (подключена в таб «Отчёты»)
   - Компоненты: `ReportCardViewNew.swift`, `CustomReportEvaluationViewNew.swift`
 - __Что уже на Clean в рантайме__:
@@ -32,7 +32,7 @@
   - Таб «Настройки»: `SettingsView` использует `SettingsViewModelNew`
   - Таб «Теги»: `TagManagerViewClean` + `TagManagerViewModelNew`
 - __Что ещё на legacy в рантайме__:
-  - Таб «Главная»: `ContentView` всё ещё показывает `MainView` (старый, через `PostStore`), хотя есть `MainViewNew`
+  - Таб «Главная»: `ContentView` показывает `MainViewNew` (Clean). В окружении ещё прокидывается `PostStore` для legacy‑экранов
   - Таб «План» (`DailyPlanningFormView`) — использует legacy состояние/сервисы
   - Формы отчётов: `RegularReportFormView`, `PostFormView`, `DailyReportView` — завязаны на `PostStore`
 - __Инфраструктура/DI__:
@@ -55,8 +55,8 @@
 
 ## 🚧 В процессе / Предстоит
 
-1) Подключение Clean View в `ContentView`
-- Заменить `MainView(store:)` на `MainViewNew()`
+1) Подключение Clean View в `ContentView` — частично выполнено
+- Заменить `MainView(store:)` на `MainViewNew()` — выполнено
 - Заменить `ReportsView` (если где-то остался) на `ReportsViewClean()` — уже подключён в табе «Отчёты»
 - Заменить `TagManagerView(store:)` на новый `TagManagerViewClean()` — уже подключён в табе «Теги»
 - Заменить `DailyPlanningFormView()` на новый `PlanningViewClean()` (после реализации)
@@ -86,7 +86,7 @@
 
 ## 🔄 План миграции (чек‑лист)
 
-- [ ] Подключить `MainViewNew` в `ContentView` (заменить `MainView(store:)`)
+- [x] Подключить `MainViewNew` в `ContentView` (заменить `MainView(store:)`)
 - [x] Подключить `ReportsViewClean` в таб «Отчёты»
 - [x] Удалить legacy‑вью настроек (`TelegramSettingsView`, `NotificationSettingsView`); секции инлайн в `SettingsView`
 - [x] Реализовать `TagManagerViewModelNew` + `TagManagerViewClean`; подключить в таб «Теги»
