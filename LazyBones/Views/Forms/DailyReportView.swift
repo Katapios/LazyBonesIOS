@@ -7,6 +7,7 @@ struct ThirdScreenPlanData: Codable {
     let voiceNotes: [VoiceNote]
 }
 
+@available(*, deprecated, message: "Use DailyReportCAView instead")
 struct DailyReportView: View {
     @EnvironmentObject var store: PostStore
     @State private var goodItems: [ChecklistItem] = []

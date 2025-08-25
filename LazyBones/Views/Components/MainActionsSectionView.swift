@@ -1,6 +1,7 @@
 import SwiftUI
 
 /// Секция с индикатором good/bad и кнопкой действия (не зависит от тиков таймера)
+@available(*, deprecated, message: "Legacy. Use PrimaryActionButtonSection + MoodProgressSection")
 struct MainActionsSectionView: View {
     let goodCount: Int
     let badCount: Int

@@ -1,5 +1,6 @@
 import SwiftUI
 
+@available(*, deprecated, message: "Legacy onboarding component")
 struct OnboardingStepView: View {
     let title: String
     let activeStep: Int // 0...3

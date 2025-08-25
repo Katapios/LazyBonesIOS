@@ -1,5 +1,6 @@
 import SwiftUI
 
+@available(*, deprecated, message: "Unused. Use MercuryThermometerView")
 struct ProgressBarGoodBadView: View {
     let goodCount: Int
     let badCount: Int

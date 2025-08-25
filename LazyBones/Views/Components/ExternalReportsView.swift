@@ -126,8 +126,8 @@ struct ExternalReportsView: View {
             }
             
             ForEach(viewModel.state.reports, id: \.id) { post in
-                ReportCardView(
-                    post: PostMapper.toDataModel(post),
+                ReportCardViewClean(
+                    post: post,
                     isSelectable: viewModel.state.isSelectionMode,
                     isSelected: viewModel.state.selectedReportIDs.contains(post.id),
                     onSelect: { 

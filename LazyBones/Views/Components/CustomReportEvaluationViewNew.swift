@@ -1,5 +1,6 @@
 import SwiftUI
 
+@available(*, deprecated, message: "Use CustomReportEvaluationViewClean instead")
 struct CustomReportEvaluationViewNew: View {
     let post: DomainPost
     let onComplete: (_ checked: [Bool]) -> Void

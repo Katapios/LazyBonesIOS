@@ -1,6 +1,7 @@
 import SwiftUI
 
 /// Форма создания/редактирования обычного отчета с полной функциональностью
+@available(*, deprecated, message: "Legacy form. Use CA-based flows (DailyPlanCAView/DailyReportCAView) instead")
 struct RegularReportFormView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var store: PostStore

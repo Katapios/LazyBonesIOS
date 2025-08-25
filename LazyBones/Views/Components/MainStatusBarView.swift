@@ -1,5 +1,6 @@
 import SwiftUI
 
+@available(*, deprecated, message: "Legacy. Use MainStatusBarViewNew or compose GreetingHeaderView + StatusTimerSection")
 struct MainStatusBarView: View {
     @EnvironmentObject var viewModel: MainViewModel
     @Environment(\.colorScheme) var colorScheme

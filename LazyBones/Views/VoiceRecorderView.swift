@@ -2,6 +2,7 @@ import SwiftUI
 import AVFoundation
 
 /// Компонент для работы с одной голосовой заметкой
+@available(*, deprecated, message: "Legacy voice recorder component; migrate to CA audio service/UI or remove")
 struct VoiceRecorderRowView: View {
     @State private var audioRecorder: AVAudioRecorder?
     @State private var audioPlayer: AVAudioPlayer?
@@ -228,6 +229,7 @@ struct VoiceRecorderRowView: View {
 }
 
 /// Список голосовых заметок с возможностью добавления
+@available(*, deprecated, message: "Legacy voice recorder list; migrate to CA audio service/UI or remove")
 struct VoiceRecorderListView: View {
     @Binding var voiceNotes: [VoiceNote]
     var body: some View {

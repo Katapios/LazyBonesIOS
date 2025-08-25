@@ -72,6 +72,7 @@ struct ChecklistSectionView: View {
     }
 }
 
+@available(*, deprecated, message: "Legacy form. Use CA-based flows (DailyPlanCAView/DailyReportCAView) instead")
 struct PostFormView: View {
     @Environment(\.dismiss) var dismiss
     @StateObject private var viewModel: PostFormViewModel

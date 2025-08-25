@@ -7,7 +7,14 @@ import SwiftUI
 
 struct DailyPlanningFormView: View {
     @EnvironmentObject var store: PostStore
-    @State private var selectedTab = 0 // По умолчанию открывается первый экран (третий экран)
+    @State private var selectedTab = 0 // По умолчанию открывается первый таб
+    // Данные по вкладкам: только CA-экраны
+    private var tabs: [(title: String, view: AnyView)] {
+        [
+            ("План за день", AnyView(DailyPlanCAView())),
+            ("Ежедневный отчёт (CA)", AnyView(DailyReportCAView()))
+        ]
+    }
     
     var postForToday: Post? {
         store.posts.first(where: { Calendar.current.isDateInToday($0.date) })
@@ -17,41 +24,26 @@ struct DailyPlanningFormView: View {
         VStack(spacing: 0) {
             // --- Кастомный заголовок ---
             HStack {
-                Text(getTitleForTab(selectedTab))
+                Text(tabs.indices.contains(selectedTab) ? tabs[selectedTab].title : "")
                     .font(.headline)
                     .frame(maxWidth: .infinity)
             }
             .padding(.bottom, 4)
             // --- Индикаторы свайпа ---
             HStack(spacing: 8) {
-                Circle()
-                    .fill(selectedTab == 0 ? Color.accentColor : Color.gray.opacity(0.3))
-                    .frame(width: 8, height: 8)
-                Circle()
-                    .fill(selectedTab == 1 ? Color.accentColor : Color.gray.opacity(0.3))
-                    .frame(width: 8, height: 8)
-                Circle()
-                    .fill(selectedTab == 2 ? Color.accentColor : Color.gray.opacity(0.3))
-                    .frame(width: 8, height: 8)
-                Circle()
-                    .fill(selectedTab == 3 ? Color.accentColor : Color.gray.opacity(0.3))
-                    .frame(width: 8, height: 8)
+                ForEach(Array(tabs.indices), id: \.self) { i in
+                    Circle()
+                        .fill(selectedTab == i ? Color.accentColor : Color.gray.opacity(0.3))
+                        .frame(width: 8, height: 8)
+                }
             }
             .padding(.bottom, 4)
             // --- TabView ---
             TabView(selection: $selectedTab) {
-                // Первый экран — отчет за день (с голосовыми заметками)
-                DailyReportView()
-                    .tag(0)
-                // Второй экран — план на день
-                PlanningContentView()
-                    .tag(1)
-                // Третий экран — План за день (CA)
-                DailyPlanCAView()
-                    .tag(2)
-                // Четвертый экран — Ежедневный отчет (CA)
-                DailyReportCAView()
-                    .tag(3)
+                ForEach(Array(tabs.indices), id: \.self) { i in
+                    tabs[i].view
+                        .tag(i)
+                }
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
             .onAppear {
@@ -65,17 +57,13 @@ struct DailyPlanningFormView: View {
     }
     
     private func getTitleForTab(_ tab: Int) -> String {
-        switch tab {
-        case 0: return "Отчет за день"
-        case 1: return "План на день"
-        case 2: return "План за день"
-        case 3: return "Ежедневный отчёт (CA)"
-        default: return "Отчет за день"
-        }
+        guard tabs.indices.contains(tab) else { return "" }
+        return tabs[tab].title
     }
 }
 
 // Весь старый функционал вынесен во вложенную вью
+@available(*, deprecated, message: "Legacy planning content. Use DailyPlanCAView/DailyReportCAView instead")
 struct PlanningContentView: View {
     @EnvironmentObject var store: PostStore
     @StateObject private var viewModel: PlanningViewModel

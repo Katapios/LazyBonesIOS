@@ -1,6 +1,7 @@
 import SwiftUI
 
 /// Главная вкладка: таймер, статус и кнопка создания/редактирования отчёта
+@available(*, deprecated, message: "Use MainViewNew instead")
 struct MainView: View {
     @StateObject private var viewModel: MainViewModel
     @Environment(\.colorScheme) var colorScheme
