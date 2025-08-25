@@ -4,7 +4,7 @@
 <dict>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>com.katapios.LazyBones1.sendReport</string>
+		<string>com.katapios.LazyBones2.sendReport</string>
 	</array>
 	<key>UIAppFonts</key>
 	<array>
@@ -15,15 +15,7 @@
 		<string>fetch</string>
 		<string>processing</string>
 	</array>
-	<key>LSSupportsOpeningDocumentsInPlace</key>
-	<true/>
 	<key>UIFileSharingEnabled</key>
 	<true/>
-	<key>NSDocumentsFolderUsageDescription</key>
-	<string>Приложению необходим доступ к iCloud Drive для синхронизации отчетов между устройствами</string>
-	<key>NSFileProviderDomainUsageDescription</key>
-	<string>Приложению необходим доступ к файлам для сохранения отчетов в iCloud Drive</string>
-	<key>NSFileProviderPresenceUsageDescription</key>
-	<string>Приложению необходим доступ к iCloud Drive для синхронизации отчетов</string>
 </dict>
 </plist>

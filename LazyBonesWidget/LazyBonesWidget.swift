@@ -300,7 +300,7 @@ struct LazyBonesWidgetEntryView : View {
 }
 
 struct LazyBonesWidget: Widget {
-    let kind: String = "LazyBonesWidget"
+    let kind: String = WidgetConfig.primaryWidgetKind
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: Provider()) { entry in

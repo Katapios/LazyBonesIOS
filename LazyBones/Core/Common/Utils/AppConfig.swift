@@ -7,10 +7,10 @@ struct AppConfig {
     // MARK: - Bundle Identifiers
     
     /// Основной bundle ID приложения
-    static let mainBundleId = "com.katapios.LazyBones1"
+    static let mainBundleId = "com.katapios.LazyBones2"
     
     /// Bundle ID для виджета
-    static let widgetBundleId = "com.katapios.LazyBones1.LazyBonesWidget"
+    static let widgetBundleId = "com.katapios.LazyBones2.LazyBonesWidget"
     
     // MARK: - App Groups
     
@@ -20,12 +20,12 @@ struct AppConfig {
     // MARK: - Background Task Identifiers
     
     /// Идентификатор для background task отправки отчета
-    static let backgroundTaskIdentifier = "com.katapios.LazyBones1.sendReport"
+    static let backgroundTaskIdentifier = "com.katapios.LazyBones2.sendReport"
     
     // MARK: - Widget Identifiers
     
     /// Идентификатор виджета
-    static let widgetKind = "com.katapios.LazyBones1.LazyBonesWidget"
+    static let widgetKind = "com.katapios.LazyBones2.LazyBonesWidget"
     
     // MARK: - UserDefaults
     

@@ -11,8 +11,12 @@ struct WidgetConfig {
     
     // MARK: - Widget Identifiers
     
-    /// Идентификатор виджета
-    static let widgetKind = "com.katapios.LazyBones1.LazyBonesWidget"
+    /// Идентификатор основного виджета (Timeline)
+    static let primaryWidgetKind = "com.katapios.LazyBones2.LazyBonesWidget"
+    /// Идентификатор управляемого виджета (ControlWidget)
+    static let controlWidgetKind = "com.katapios.LazyBones2.LazyBonesWidget.Control"
+    /// Для обратной совместимости (не использовать в новых местах)
+    static let widgetKind = primaryWidgetKind
     
     // MARK: - UserDefaults
     

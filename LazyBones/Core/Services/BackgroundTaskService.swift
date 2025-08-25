@@ -36,7 +36,7 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
     private let taskIdentifier: String
     private let userDefaultsManager: UserDefaultsManager
     private let autoSendService: AutoSendServiceType
-    private let registrationQueue = DispatchQueue(label: "com.katapios.LazyBones1.backgroundTaskRegistration")
+    private let registrationQueue = DispatchQueue(label: "\(AppConfig.mainBundleId).backgroundTaskRegistration")
     private var isRegistered = false
     
     // MARK: - Initialization
@@ -82,6 +82,7 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
                 return
             }
             
+            Logger.info("Bundle ID at registration: \(Bundle.main.bundleIdentifier ?? "nil")", log: Logger.background)
             Logger.info("Registering background tasks with identifier: \(self.taskIdentifier)", log: Logger.background)
             
             let success = BGTaskScheduler.shared.register(
