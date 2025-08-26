@@ -282,26 +282,26 @@ struct DailyReportView: View {
                         .clipped()
                         .id("\(selectedTab)-\(tagsVersion)") // Пересоздаем при смене вкладки/версии тегов
                         
-                        // Безопасная коррекция индекса, чтобы избежать падения при изменении списка тегов
-                        let safeIndex = min(max(0, pickerIndex), max(planTags.count - 1, 0))
-                        let selectedTag = planTags[safeIndex]
-                        let isTagAdded = (selectedTab == .good ? goodItems : badItems).contains(where: { $0.text == selectedTag.text })
-                        Button(action: {
-                            if (!isTagAdded) {
-                                if selectedTab == .good {
-                                    goodItems.append(ChecklistItem(id: UUID(), text: selectedTag.text))
-                                } else {
-                                    badItems.append(ChecklistItem(id: UUID(), text: selectedTag.text))
+                        // Кнопка добавления/подтверждения для выбранного тега
+                        if let tag = currentSelectedTag() {
+                            let added = isTagAlreadyAdded(tag)
+                            Button(action: {
+                                if !added {
+                                    if selectedTab == .good {
+                                        goodItems.append(ChecklistItem(id: UUID(), text: tag.text))
+                                    } else {
+                                        badItems.append(ChecklistItem(id: UUID(), text: tag.text))
+                                    }
+                                    savePlan()
                                 }
-                                savePlan()
+                            }) {
+                                Image(systemName: added ? "checkmark.circle.fill" : "plus.circle.fill")
+                                    .resizable()
+                                    .frame(width: 28, height: 28)
+                                    .foregroundColor(added ? .green : .blue)
                             }
-                        }) {
-                            Image(systemName: isTagAdded ? "checkmark.circle.fill" : "plus.circle.fill")
-                                .resizable()
-                                .frame(width: 28, height: 28)
-                                .foregroundColor(isTagAdded ? .green : .blue)
+                            .buttonStyle(PlainButtonStyle())
                         }
-                        .buttonStyle(PlainButtonStyle())
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 12)
@@ -333,7 +333,7 @@ struct DailyReportView: View {
                         if !voiceNotes.isEmpty {
                             VStack(alignment: .leading, spacing: 8) {
                                 ForEach(voiceNotes) { note in
-                                    VoiceRecorderRowView(
+                                    VoiceRecorderRowClean(
                                         initialPath: note.path,
                                         onVoiceNoteChanged: { newPath in
                                             if let newPath = newPath {
@@ -497,6 +497,26 @@ struct DailyReportView: View {
         }
         // DEBUG
         print("[DailyReportView] reloadTagsFromProvider: good=\(currentGoodRawTags.count) bad=\(currentBadRawTags.count) sel=\(selectedTab) idx=\(pickerIndex) ver=\(tagsVersion)")
+    }
+
+    // MARK: - TagPicker helpers (вынесены из body для облегчения тип-чекинга)
+    func safePickerIndex() -> Int {
+        let count = planTags.count
+        guard count > 0 else { return 0 }
+        return min(max(0, pickerIndex), max(count - 1, 0))
+    }
+    func currentSelectedTag() -> TagItem? {
+        let count = planTags.count
+        guard count > 0 else { return nil }
+        let idx = safePickerIndex()
+        return planTags[idx]
+    }
+    func isTagAlreadyAdded(_ tag: TagItem) -> Bool {
+        if selectedTab == .good {
+            return goodItems.contains(where: { $0.text == tag.text })
+        } else {
+            return badItems.contains(where: { $0.text == tag.text })
+        }
     }
     func loadSavedData() {
         let key = "third_screen_plan_" + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)

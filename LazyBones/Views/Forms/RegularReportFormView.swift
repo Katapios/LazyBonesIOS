@@ -108,7 +108,7 @@ struct RegularReportFormView: View {
                                             Text("(")
                                                 .font(.system(size: 14.3))
                                                 .foregroundColor(.secondary)
-                                            Text("\(goodItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count)")
+                                            Text("\(goodNonEmptyCount)")
                                                 .font(.system(size: 14.3))
                                                 .foregroundColor(.secondary)
                                             Text(")")
@@ -131,7 +131,7 @@ struct RegularReportFormView: View {
                                             Text("(")
                                                 .font(.system(size: 14.3))
                                                 .foregroundColor(.secondary)
-                                            Text("\(badItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count)")
+                                            Text("\(badNonEmptyCount)")
                                                 .font(.system(size: 14.3))
                                                 .foregroundColor(.secondary)
                                             Text(")")
@@ -170,27 +170,22 @@ struct RegularReportFormView: View {
                                         )
                                         .id("\(selectedTab)-\(tagsVersion)")
                                         .clipped()
-                                        
-                                        let safeIdx = min(max(0, (selectedTab == .good ? pickerIndexGood : pickerIndexBad)), max(allTags.count - 1, 0))
-                                        let selectedTag = allTags[safeIdx]
-                                        let isTagAdded = (selectedTab == .good ? goodItems : badItems).contains(where: { $0.text == selectedTag.text })
-                                        Button(action: {
-                                            if selectedTab == .good {
-                                                if !isTagAdded {
-                                                    addGoodTag(selectedTag)
+                                        if let tag = currentSelectedTag(allTags: allTags, isGood: selectedTab == .good) {
+                                            let added = isTagAlreadyAdded(tag: tag, isGood: selectedTab == .good)
+                                            Button(action: {
+                                                if selectedTab == .good {
+                                                    if !added { addGoodTag(tag) }
+                                                } else {
+                                                    if !added { addBadTag(tag) }
                                                 }
-                                            } else {
-                                                if !isTagAdded {
-                                                    addBadTag(selectedTag)
-                                                }
+                                            }) {
+                                                Image(systemName: added ? "checkmark.circle.fill" : "plus.circle.fill")
+                                                    .resizable()
+                                                    .frame(width: 28, height: 28)
+                                                    .foregroundColor(added ? .green : .blue)
                                             }
-                                        }) {
-                                            Image(systemName: isTagAdded ? "checkmark.circle.fill" : "plus.circle.fill")
-                                                .resizable()
-                                                .frame(width: 28, height: 28)
-                                                .foregroundColor(isTagAdded ? .green : .blue)
+                                            .buttonStyle(PlainButtonStyle())
                                         }
-                                        .buttonStyle(PlainButtonStyle())
                                     }
                                     .padding(.horizontal, 4)
                                     .contentShape(Rectangle())
@@ -224,13 +219,7 @@ struct RegularReportFormView: View {
                             
                             // --- Логика предложения сохранить тег ---
                             if let newText = (selectedTab == .good ? goodItems.last?.text : badItems.last?.text),
-                               let candidate = Optional(newText.trimmingCharacters(in: .whitespacesAndNewlines)),
-                               !candidate.isEmpty,
-                               {
-                                   let currentRaw = (selectedTab == .good ? currentGoodRawTags : currentBadRawTags)
-                                   let current = currentRaw.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                                   return !current.contains(candidate)
-                               }() {
+                               shouldSuggestSaveTag(newText, isGood: selectedTab == .good) {
                                 VStack(alignment: .leading, spacing: 8) {
                                     HStack {
                                         Image(systemName: "plus")
@@ -301,8 +290,45 @@ struct RegularReportFormView: View {
                         .padding(.vertical, 6)
 
                         // --- ЗОНА VOICE ---
-                        VStack(spacing: 0) {
-                            VoiceRecorderListView(voiceNotes: $voiceNotes)
+                        VStack(spacing: 8) {
+                            if !voiceNotes.isEmpty {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    ForEach(voiceNotes) { note in
+                                        VoiceRecorderRowClean(
+                                            initialPath: note.path,
+                                            onVoiceNoteChanged: { newPath in
+                                                if let newPath = newPath {
+                                                    if let idx = voiceNotes.firstIndex(where: { $0.id == note.id }) {
+                                                        voiceNotes[idx].path = newPath
+                                                    }
+                                                } else {
+                                                    if let idx = voiceNotes.firstIndex(where: { $0.id == note.id }) {
+                                                        voiceNotes.remove(at: idx)
+                                                    }
+                                                }
+                                            },
+                                            isFirst: voiceNotes.first?.id == note.id
+                                        )
+                                    }
+                                }
+                            } else {
+                                HStack {
+                                    Image(systemName: "mic.slash").foregroundColor(.gray)
+                                    Text("Создайте первую голосовую заметку")
+                                        .foregroundColor(.gray)
+                                        .font(.subheadline)
+                                }
+                                .padding(.vertical, 8)
+                            }
+                            Button(action: {
+                                voiceNotes.append(VoiceNote(id: UUID(), path: ""))
+                            }) {
+                                HStack {
+                                    Image(systemName: "plus.circle.fill")
+                                    Text("Добавить голосовую заметку")
+                                }
+                            }
+                            .padding(.top, 4)
                         }
                         .padding(.vertical, 6)
 
@@ -450,6 +476,38 @@ struct RegularReportFormView: View {
         badItems.contains(where: { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty })
     }
 
+    // MARK: - Simple counters to reduce inline complexity
+    private var goodNonEmptyCount: Int {
+        goodItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count
+    }
+
+    private var badNonEmptyCount: Int {
+        badItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count
+    }
+
+    // MARK: - TagPicker helpers
+    private func currentSelectedTag(allTags: [TagItem], isGood: Bool) -> TagItem? {
+        guard !allTags.isEmpty else { return nil }
+        let idx = isGood ? pickerIndexGood : pickerIndexBad
+        let safeIdx = min(max(0, idx), max(allTags.count - 1, 0))
+        return allTags[safeIdx]
+    }
+
+    private func isTagAlreadyAdded(tag: TagItem, isGood: Bool) -> Bool {
+        if isGood {
+            return goodItems.contains { $0.text == tag.text }
+        } else {
+            return badItems.contains { $0.text == tag.text }
+        }
+    }
+
+    private func shouldSuggestSaveTag(_ rawText: String, isGood: Bool) -> Bool {
+        let candidate = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !candidate.isEmpty else { return false }
+        let currentRaw = isGood ? currentGoodRawTags : currentBadRawTags
+        let current = currentRaw.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        return !current.contains(candidate)
+    }
     // MARK: - Icon Mapping
     private func getIconForItem(_ item: String, isGood: Bool) -> String {
         let lowercasedItem = item.lowercased()

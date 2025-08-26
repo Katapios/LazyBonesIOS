@@ -152,9 +152,7 @@ struct PostFormView: View {
                                             Text("(")
                                                 .font(.system(size: 14.3))
                                                 .foregroundColor(.secondary)
-                                            Text(
-                                                "\(viewModel.goodItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count)"
-                                            )
+                                            Text("\(goodNonEmptyCount)")
                                             .font(.system(size: 14.3))
                                             .foregroundColor(.secondary)
                                             Text(")")
@@ -189,9 +187,7 @@ struct PostFormView: View {
                                             Text("(")
                                                 .font(.system(size: 14.3))
                                                 .foregroundColor(.secondary)
-                                            Text(
-                                                "\(viewModel.badItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count)"
-                                            )
+                                            Text("\(badNonEmptyCount)")
                                             .font(.system(size: 14.3))
                                             .foregroundColor(.secondary)
                                             Text(")")
@@ -233,23 +229,24 @@ struct PostFormView: View {
                                         )
                                         .id("\(tagsVersion)")
                                         .clipped()
-                                        let selectedTag = allTags[viewModel.pickerIndexGood]
-                                        let isTagAdded = viewModel.goodItems.contains(where: { normalizeTag($0.text) == selectedTag.text })
-                                        Button(action: {
-                                            if !isTagAdded { viewModel.addGoodTag(selectedTag) }
-                                        }) {
-                                            Image(
-                                                systemName: isTagAdded
-                                                    ? "checkmark.circle.fill"
-                                                    : "plus.circle.fill"
-                                            )
-                                            .resizable()
-                                            .frame(width: 28, height: 28)
-                                            .foregroundColor(
-                                                isTagAdded ? .green : .blue
-                                            )
+                                        if let tag = currentSelectedGoodTag(allTags) {
+                                            let added = isGoodTagAlreadyAdded(tag)
+                                            Button(action: {
+                                                if !added { viewModel.addGoodTag(tag) }
+                                            }) {
+                                                Image(
+                                                    systemName: added
+                                                        ? "checkmark.circle.fill"
+                                                        : "plus.circle.fill"
+                                                )
+                                                .resizable()
+                                                .frame(width: 28, height: 28)
+                                                .foregroundColor(
+                                                    added ? .green : .blue
+                                                )
+                                            }
+                                            .buttonStyle(PlainButtonStyle())
                                         }
-                                        .buttonStyle(PlainButtonStyle())
                                     }
                                     .padding(.horizontal, 4)
                                     .contentShape(Rectangle())
@@ -345,8 +342,45 @@ struct PostFormView: View {
                         }
                         .padding(.vertical, 6)
                         // --- ЗОНА VOICE ---
-                        VStack(spacing: 0) {
-                            VoiceRecorderListView(voiceNotes: $viewModel.voiceNotes)
+                        VStack(spacing: 8) {
+                            if !viewModel.voiceNotes.isEmpty {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    ForEach(viewModel.voiceNotes) { note in
+                                        VoiceRecorderRowClean(
+                                            initialPath: note.path,
+                                            onVoiceNoteChanged: { newPath in
+                                                if let newPath = newPath {
+                                                    if let idx = viewModel.voiceNotes.firstIndex(where: { $0.id == note.id }) {
+                                                        viewModel.voiceNotes[idx].path = newPath
+                                                    }
+                                                } else {
+                                                    if let idx = viewModel.voiceNotes.firstIndex(where: { $0.id == note.id }) {
+                                                        viewModel.voiceNotes.remove(at: idx)
+                                                    }
+                                                }
+                                            },
+                                            isFirst: viewModel.voiceNotes.first?.id == note.id
+                                        )
+                                    }
+                                }
+                            } else {
+                                HStack {
+                                    Image(systemName: "mic.slash").foregroundColor(.gray)
+                                    Text("Создайте первую голосовую заметку")
+                                        .foregroundColor(.gray)
+                                        .font(.subheadline)
+                                }
+                                .padding(.vertical, 8)
+                            }
+                            Button(action: {
+                                viewModel.voiceNotes.append(VoiceNote(id: UUID(), path: ""))
+                            }) {
+                                HStack {
+                                    Image(systemName: "plus.circle.fill")
+                                    Text("Добавить голосовую заметку")
+                                }
+                            }
+                            .padding(.top, 4)
                         }
                         .padding(.vertical, 6)
                         // --- ЗОНА СТАТУСА/КНОПОК ---
@@ -433,7 +467,25 @@ struct PostFormView: View {
             })
     }
 
+    // MARK: - Simple counters to reduce inline complexity
+    private var goodNonEmptyCount: Int {
+        viewModel.goodItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count
+    }
 
+    private var badNonEmptyCount: Int {
+        viewModel.badItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count
+    }
+
+    // MARK: - Helpers for TagPicker (good)
+    private func currentSelectedGoodTag(_ allTags: [TagItem]) -> TagItem? {
+        guard !allTags.isEmpty else { return nil }
+        let idx = min(max(0, viewModel.pickerIndexGood), max(allTags.count - 1, 0))
+        return allTags[idx]
+    }
+
+    private func isGoodTagAlreadyAdded(_ tag: TagItem) -> Bool {
+        viewModel.goodItems.contains { normalizeTag($0.text) == tag.text }
+    }
 
 
 

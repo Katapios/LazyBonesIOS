@@ -1,5 +1,6 @@
 import SwiftUI
 
+@available(*, deprecated, message: "Use ReportCardViewClean instead")
 struct ReportCardView: View {
     let post: Post
     var isSelectable: Bool = false

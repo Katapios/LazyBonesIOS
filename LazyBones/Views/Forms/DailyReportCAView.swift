@@ -178,7 +178,7 @@ struct DailyReportCAView: View {
                                         Text("(")
                                             .font(.system(size: 14.3))
                                             .foregroundColor(.secondary)
-                                        Text("\(viewModel.goodItems.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count)")
+                                        Text("\(goodNonEmptyCount)")
                                             .font(.system(size: 14.3))
                                             .foregroundColor(.secondary)
                                         Text(")")
@@ -201,7 +201,7 @@ struct DailyReportCAView: View {
                                         Text("(")
                                             .font(.system(size: 14.3))
                                             .foregroundColor(.secondary)
-                                        Text("\(viewModel.badItems.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count)")
+                                        Text("\(badNonEmptyCount)")
                                             .font(.system(size: 14.3))
                                             .foregroundColor(.secondary)
                                         Text(")")
@@ -231,25 +231,25 @@ struct DailyReportCAView: View {
                                 .frame(maxWidth: .infinity, minHeight: 120, maxHeight: 160)
                                 .clipped()
 
-                                let safeIndex = min(max(0, viewModel.pickerIndex), max(planTags.count - 1, 0))
-                                let selectedTag = planTags[safeIndex]
-                                let isTagAdded = (viewModel.selectedTab == 0 ? viewModel.goodItems : viewModel.badItems).contains(where: { $0 == selectedTag.text })
-                                Button(action: {
-                                    if !isTagAdded {
-                                        if viewModel.selectedTab == 0 {
-                                            viewModel.goodItems.append(selectedTag.text)
-                                        } else {
-                                            viewModel.badItems.append(selectedTag.text)
+                                if let tag = currentSelectedPlanTag(from: planTags) {
+                                    let added = isPlanTagAlreadyAdded(tag)
+                                    Button(action: {
+                                        if !added {
+                                            if viewModel.selectedTab == 0 {
+                                                viewModel.goodItems.append(tag.text)
+                                            } else {
+                                                viewModel.badItems.append(tag.text)
+                                            }
+                                            viewModel.saveDraft()
                                         }
-                                        viewModel.saveDraft()
+                                    }) {
+                                        Image(systemName: added ? "checkmark.circle.fill" : "plus.circle.fill")
+                                            .resizable()
+                                            .frame(width: 28, height: 28)
+                                            .foregroundColor(added ? .green : .blue)
                                     }
-                                }) {
-                                    Image(systemName: isTagAdded ? "checkmark.circle.fill" : "plus.circle.fill")
-                                        .resizable()
-                                        .frame(width: 28, height: 28)
-                                        .foregroundColor(isTagAdded ? .green : .blue)
+                                    .buttonStyle(PlainButtonStyle())
                                 }
-                                .buttonStyle(PlainButtonStyle())
                             }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 12)
@@ -271,7 +271,7 @@ struct DailyReportCAView: View {
                                 if !viewModel.voiceNotes.isEmpty {
                                     VStack(alignment: .leading, spacing: 8) {
                                         ForEach(viewModel.voiceNotes) { note in
-                                            VoiceRecorderRowView(
+                                            VoiceRecorderRowClean(
                                                 initialPath: note.path,
                                                 onVoiceNoteChanged: { newPath in
                                                     if let newPath = newPath {
@@ -398,6 +398,29 @@ struct DailyReportCAView: View {
                     tagsVersion &+= 1
                 }
             }
+        }
+    }
+
+    // MARK: - Helpers to reduce type-checking complexity
+    private var goodNonEmptyCount: Int {
+        viewModel.goodItems.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
+    }
+
+    private var badNonEmptyCount: Int {
+        viewModel.badItems.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
+    }
+
+    private func currentSelectedPlanTag(from tags: [TagItem]) -> TagItem? {
+        guard !tags.isEmpty else { return nil }
+        let idx = min(max(0, viewModel.pickerIndex), max(tags.count - 1, 0))
+        return tags[idx]
+    }
+
+    private func isPlanTagAlreadyAdded(_ tag: TagItem) -> Bool {
+        if viewModel.selectedTab == 0 {
+            return viewModel.goodItems.contains(where: { $0 == tag.text })
+        } else {
+            return viewModel.badItems.contains(where: { $0 == tag.text })
         }
     }
 }
