@@ -33,6 +33,7 @@ class PostStoreAdapter: ObservableObject {
             .map { posts in
                 posts.map { PostAdapter.toDomain($0) }
             }
+            .receive(on: DispatchQueue.main)
             .assign(to: &$domainPosts)
         
         // Для reportStatus используем периодическое обновление,
@@ -54,21 +55,27 @@ class PostStoreAdapter: ObservableObject {
     /// Добавить отчет
     func addPost(_ domainPost: DomainPost) {
         let legacyPost = PostAdapter.toLegacy(domainPost)
-        postStore.add(post: legacyPost)
+        DispatchQueue.main.async {
+            self.postStore.add(post: legacyPost)
+        }
     }
     
     /// Обновить отчет
     func updatePost(_ domainPost: DomainPost) {
         let legacyPost = PostAdapter.toLegacy(domainPost)
-        postStore.update(post: legacyPost)
+        DispatchQueue.main.async {
+            self.postStore.update(post: legacyPost)
+        }
     }
     
     /// Удалить отчет
     func deletePost(_ domainPost: DomainPost) {
         // PostStore не имеет метода delete, поэтому удаляем из массива
-        postStore.posts.removeAll { $0.id == domainPost.id }
-        postStore.save()
-        postStore.updateReportStatus()
+        DispatchQueue.main.async {
+            self.postStore.posts.removeAll { $0.id == domainPost.id }
+            self.postStore.save()
+            self.postStore.updateReportStatus()
+        }
     }
     
     /// Получить отчеты за конкретную дату
@@ -83,22 +90,30 @@ class PostStoreAdapter: ObservableObject {
     
     /// Обновить статус отчета
     func updateReportStatus() {
-        postStore.updateReportStatus()
+        DispatchQueue.main.async {
+            self.postStore.updateReportStatus()
+        }
     }
     
     /// Очистить все отчеты
     func clearAllPosts() {
-        postStore.clear()
+        DispatchQueue.main.async {
+            self.postStore.clear()
+        }
     }
     
     /// Сохранить данные
     func save() {
-        postStore.save()
+        DispatchQueue.main.async {
+            self.postStore.save()
+        }
     }
     
     /// Загрузить данные
     func load() {
-        postStore.load()
+        DispatchQueue.main.async {
+            self.postStore.load()
+        }
     }
 }
 
@@ -111,8 +126,10 @@ extension PostStoreAdapter: PostsProviderProtocol {
     }
     
     func updatePosts(_ posts: [Post]) {
-        postStore.posts = posts
-        postStore.save()
+        DispatchQueue.main.async {
+            self.postStore.posts = posts
+            self.postStore.save()
+        }
     }
 }
 
