@@ -50,14 +50,12 @@ struct MainStatusBarView: View {
             .font(.headline)
             .fontWeight(.semibold)
             .font(.title2)
-            GradientRingTimerView(
+            SnakeRingTimerView(
                 progress: timerProgress,
                 timeText: timerTimeTextOnly,
                 label: timerLabel,
                 ringSize: 150,
-                ringLineWidth: 15,
-                timeFontSize: 24,
-                labelFontSize: 15
+                ringLineWidth: 15
             )
         }
         .frame(maxWidth: .infinity)

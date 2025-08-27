@@ -112,14 +112,12 @@ struct MainStatusBarViewNew: View {
             .font(.headline)
             .fontWeight(.semibold)
             .font(.title2)
-            GradientRingTimerView(
+            SnakeRingTimerView(
                 progress: viewModel.state.timeProgress,
                 timeText: viewModel.state.timerTimeTextOnly,
                 label: viewModel.state.timerLabel,
                 ringSize: 150,
-                ringLineWidth: 15,
-                timeFontSize: 24,
-                labelFontSize: 15
+                ringLineWidth: 15
             )
         }
         .frame(maxWidth: .infinity)
