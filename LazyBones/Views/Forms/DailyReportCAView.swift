@@ -403,24 +403,22 @@ struct DailyReportCAView: View {
 
     // MARK: - Helpers to reduce type-checking complexity
     private var goodNonEmptyCount: Int {
-        viewModel.goodItems.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
+        TagHelpers.nonEmptyCount(in: viewModel.goodItems)
     }
 
     private var badNonEmptyCount: Int {
-        viewModel.badItems.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
+        TagHelpers.nonEmptyCount(in: viewModel.badItems)
     }
 
     private func currentSelectedPlanTag(from tags: [TagItem]) -> TagItem? {
-        guard !tags.isEmpty else { return nil }
-        let idx = min(max(0, viewModel.pickerIndex), max(tags.count - 1, 0))
-        return tags[idx]
+        TagHelpers.selectedTag(from: tags, pickerIndex: viewModel.pickerIndex)
     }
 
     private func isPlanTagAlreadyAdded(_ tag: TagItem) -> Bool {
         if viewModel.selectedTab == 0 {
-            return viewModel.goodItems.contains(where: { $0 == tag.text })
+            return TagHelpers.isTagTextAdded(tag, in: viewModel.goodItems)
         } else {
-            return viewModel.badItems.contains(where: { $0 == tag.text })
+            return TagHelpers.isTagTextAdded(tag, in: viewModel.badItems)
         }
     }
 }

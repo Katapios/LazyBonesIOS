@@ -79,16 +79,21 @@ final class PublishRegularReportUseCase: PublishRegularReportUseCaseProtocol {
             text += "\n\u{1F3A4} <i>Голосовая заметка прикреплена</i>"
         }
         postStore.publish(text: text, voicePaths: validVoicePaths) { [weak self] success in
-            guard let self = self else { completion(false); return }
-            if success {
-                // Помечаем пост как опубликованный и сохраняем
-                post.published = true
-                self.postStore.update(post: post)
-                self.postStore.save()
-                // Обновляем статус модели отчётов
-                self.postStore.updateReportStatus()
+            guard let self = self else {
+                DispatchQueue.main.async { completion(false) }
+                return
             }
-            completion(success)
+            DispatchQueue.main.async {
+                if success {
+                    // Помечаем пост как опубликованный и сохраняем
+                    post.published = true
+                    self.postStore.update(post: post)
+                    self.postStore.save()
+                    // Обновляем статус модели отчётов
+                    self.postStore.updateReportStatus()
+                }
+                completion(success)
+            }
         }
     }
 }

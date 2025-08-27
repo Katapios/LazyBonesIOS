@@ -469,22 +469,21 @@ struct PostFormView: View {
 
     // MARK: - Simple counters to reduce inline complexity
     private var goodNonEmptyCount: Int {
-        viewModel.goodItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count
+        TagHelpers.nonEmptyCount(in: viewModel.goodItems.map { $0.text })
     }
 
     private var badNonEmptyCount: Int {
-        viewModel.badItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count
+        TagHelpers.nonEmptyCount(in: viewModel.badItems.map { $0.text })
     }
 
     // MARK: - Helpers for TagPicker (good)
     private func currentSelectedGoodTag(_ allTags: [TagItem]) -> TagItem? {
-        guard !allTags.isEmpty else { return nil }
-        let idx = min(max(0, viewModel.pickerIndexGood), max(allTags.count - 1, 0))
-        return allTags[idx]
+        TagHelpers.selectedTag(from: allTags, pickerIndex: viewModel.pickerIndexGood)
     }
 
     private func isGoodTagAlreadyAdded(_ tag: TagItem) -> Bool {
-        viewModel.goodItems.contains { normalizeTag($0.text) == tag.text }
+        let items = viewModel.goodItems.map { normalizeTag($0.text) }
+        return TagHelpers.isTagTextAdded(tag, in: items)
     }
 
 

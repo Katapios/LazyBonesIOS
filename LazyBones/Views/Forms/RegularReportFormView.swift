@@ -478,35 +478,32 @@ struct RegularReportFormView: View {
 
     // MARK: - Simple counters to reduce inline complexity
     private var goodNonEmptyCount: Int {
-        goodItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count
+        TagHelpers.nonEmptyCount(in: goodItems.map { $0.text })
     }
 
     private var badNonEmptyCount: Int {
-        badItems.filter { !$0.text.trimmingCharacters(in: .whitespaces).isEmpty }.count
+        TagHelpers.nonEmptyCount(in: badItems.map { $0.text })
     }
 
     // MARK: - TagPicker helpers
     private func currentSelectedTag(allTags: [TagItem], isGood: Bool) -> TagItem? {
         guard !allTags.isEmpty else { return nil }
         let idx = isGood ? pickerIndexGood : pickerIndexBad
-        let safeIdx = min(max(0, idx), max(allTags.count - 1, 0))
+        let safeIdx = TagHelpers.clampedIndex(idx, arrayCount: allTags.count)
         return allTags[safeIdx]
     }
 
     private func isTagAlreadyAdded(tag: TagItem, isGood: Bool) -> Bool {
         if isGood {
-            return goodItems.contains { $0.text == tag.text }
+            return TagHelpers.isTagTextAdded(tag, in: goodItems.map { $0.text })
         } else {
-            return badItems.contains { $0.text == tag.text }
+            return TagHelpers.isTagTextAdded(tag, in: badItems.map { $0.text })
         }
     }
 
     private func shouldSuggestSaveTag(_ rawText: String, isGood: Bool) -> Bool {
-        let candidate = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !candidate.isEmpty else { return false }
         let currentRaw = isGood ? currentGoodRawTags : currentBadRawTags
-        let current = currentRaw.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-        return !current.contains(candidate)
+        return TagHelpers.shouldSuggestSave(rawText: rawText, existingRaw: currentRaw)
     }
     // MARK: - Icon Mapping
     private func getIconForItem(_ item: String, isGood: Bool) -> String {
