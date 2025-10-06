@@ -21,8 +21,11 @@ struct SettingsView: View {
             dataSection
         }
         .navigationTitle("Настройки")
+        .animation(.easeInOut(duration: 0.3), value: viewModel.state.showSaved)
+        .animation(.easeInOut(duration: 0.3), value: viewModel.state.telegramStatus)
+        .animation(.easeInOut(duration: 0.3), value: viewModel.state.notificationMode)
         .onChange(of: scenePhase, initial: false) { oldPhase, newPhase in
-            if newPhase == .active {
+            if newPhase == .active && oldPhase != .active {
                 WidgetCenter.shared.reloadAllTimelines()
             }
         }
@@ -36,8 +39,10 @@ struct SettingsView: View {
         .onAppear {
             Task { await viewModel.handle(.loadSettings) }
         }
-        .onChange(of: viewModel.state.isBackgroundFetchTestEnabled, initial: false) { _, newValue in
-            Task { await viewModel.handle(.setBackgroundFetchTestEnabled(newValue)) }
+        .onChange(of: viewModel.state.isBackgroundFetchTestEnabled, initial: false) { oldValue, newValue in
+            if oldValue != newValue {
+                Task { await viewModel.handle(.setBackgroundFetchTestEnabled(newValue)) }
+            }
         }
         .hideKeyboardOnTap()
         .scrollIndicators(.hidden)
@@ -55,14 +60,13 @@ struct SettingsView: View {
             .buttonStyle(.borderedProminent)
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.vertical, 4)
-            Group {
-                if viewModel.state.showSaved {
-                    Text("Сохранено!")
-                        .font(.caption)
-                        .foregroundColor(.green)
-                }
+            
+            if viewModel.state.showSaved {
+                Text("Сохранено!")
+                    .font(.caption)
+                    .foregroundColor(.green)
+                    .transition(.opacity.combined(with: .scale(scale: 0.8)))
             }
-            .animation(.none, value: viewModel.state.showSaved)
         }
     }
     
@@ -108,14 +112,12 @@ struct SettingsView: View {
             .buttonStyle(.bordered)
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.vertical, 4)
-            Group {
-                if let status = viewModel.state.telegramStatus {
-                    Text(status)
-                        .font(.caption)
-                        .foregroundColor(status == "Успешно!" ? .green : .red)
-                }
+            if let status = viewModel.state.telegramStatus {
+                Text(status)
+                    .font(.caption)
+                    .foregroundColor(status == "Успешно!" ? .green : .red)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
-            .animation(.none, value: viewModel.state.telegramStatus)
         }
     }
     
@@ -153,7 +155,6 @@ struct SettingsView: View {
                             .foregroundColor(.secondary)
                     }
                 }
-                .animation(.none, value: viewModel.state.notificationMode)
             }
         }
     }

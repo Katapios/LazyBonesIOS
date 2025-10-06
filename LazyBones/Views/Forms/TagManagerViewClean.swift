@@ -64,6 +64,7 @@ struct TagManagerViewClean: View {
             }
         }
         .navigationTitle("Теги")
+        .hideKeyboardOnTap()
         .task { await viewModel.load() }
         .alert(item: alertItem) { item in
             Alert(title: Text("Ошибка"), message: Text(item.message), dismissButton: .default(Text("OK")))

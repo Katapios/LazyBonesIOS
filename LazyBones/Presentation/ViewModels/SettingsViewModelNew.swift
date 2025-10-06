@@ -76,20 +76,29 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
     // MARK: - Public setters for View bindings
 
     func setAutoSendEnabled(_ enabled: Bool) {
-        state.autoSendEnabled = enabled
-        autoSendService.autoSendEnabled = enabled
-        autoSendService.scheduleAutoSendIfNeeded()
-        state.lastAutoSendStatus = autoSendService.lastAutoSendStatus
+        // Обновляем только если значение изменилось
+        if state.autoSendEnabled != enabled {
+            state.autoSendEnabled = enabled
+            autoSendService.autoSendEnabled = enabled
+            autoSendService.scheduleAutoSendIfNeeded()
+            state.lastAutoSendStatus = autoSendService.lastAutoSendStatus
+        }
     }
 
     func setNotificationsEnabled(_ enabled: Bool) {
-        state.notificationsEnabled = enabled
-        notificationManager.notificationsEnabled = enabled
+        // Обновляем только если значение изменилось
+        if state.notificationsEnabled != enabled {
+            state.notificationsEnabled = enabled
+            notificationManager.notificationsEnabled = enabled
+        }
     }
 
     func setNotificationMode(_ mode: NotificationMode) {
-        state.notificationMode = mode
-        notificationManager.notificationMode = mode
+        // Обновляем только если значение изменилось
+        if state.notificationMode != mode {
+            state.notificationMode = mode
+            notificationManager.notificationMode = mode
+        }
     }
 
     // MARK: - Actions
@@ -121,9 +130,22 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
         let ud = AppConfig.sharedUserDefaults
         ud.set(name, forKey: "deviceName")
         ud.synchronize()
-        WidgetCenter.shared.reloadAllTimelines()
-        state.deviceName = ud.string(forKey: "deviceName") ?? name
+        
+        // Обновляем состояние только если значение изменилось
+        let savedName = ud.string(forKey: "deviceName") ?? name
+        if state.deviceName != savedName {
+            state.deviceName = savedName
+        }
+        
+        // Показываем статус сохранения
         state.showSaved = true
+        
+        // Перезагружаем виджеты только если имя действительно изменилось
+        if state.deviceName != name {
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+        
+        // Скрываем статус через 2 секунды
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 2_000_000_000)
             state.showSaved = false

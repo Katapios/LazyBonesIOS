@@ -4,7 +4,7 @@
 <dict>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>com.katapios.LazyBones2.sendReport</string>
+		<string>com.katapios.LazyBones.sendReport</string>
 	</array>
 	<key>UIAppFonts</key>
 	<array>

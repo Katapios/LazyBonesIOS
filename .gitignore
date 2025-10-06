@@ -138,6 +138,15 @@ iOSInjectionProject/
 .env.local
 .env.*.local
 
+# Sensitive configuration files
+Config.plist
+secrets.plist
+api_keys.plist
+
+# User-specific settings that might contain tokens
+UserDefaults.plist
+*.plist.user
+
 # Backup files
 *.bak
 *.backup 

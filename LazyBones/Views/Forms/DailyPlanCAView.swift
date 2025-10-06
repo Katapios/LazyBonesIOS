@@ -155,6 +155,7 @@ struct DailyPlanCAView: View {
             }
         }
         .padding()
+        .hideKeyboardOnTap()
         .onAppear { viewModel.onAppear() }
         .alert("Сохранить план как отчет?", isPresented: $viewModel.showSaveAlert) {
             Button("Сохранить", role: .none) { viewModel.savePlanAsReport() }
