@@ -203,16 +203,16 @@ struct ReportCardView: View {
 }
 
 #Preview {
-    let post = Post(
+    let domainPost = DomainPost(
         id: UUID(),
         date: Date(),
         goodItems: ["Пункт 1", "Пункт 2"],
         badItems: ["Пункт 3"],
         published: true,
-        voiceNotes: [VoiceNote(id: UUID(), path: "/path/to/voice.m4a")],
+        voiceNotes: [DomainVoiceNote(id: UUID(), url: URL(string: "/path/to/voice.m4a")!, duration: 30.0)],
         type: .regular
     )
-    ReportCardView(post: post)
+    ReportCardViewClean(post: domainPost)
         .padding()
         .background(.ultraThinMaterial)
 }

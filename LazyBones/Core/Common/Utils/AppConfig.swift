@@ -15,7 +15,7 @@ struct AppConfig {
     // MARK: - App Groups
     
     /// App Group для общих данных между приложением и виджетом
-    static let appGroup = "group.com.H2GFBK2X44.loopkit.LoopGroup"
+    static let appGroup = "group.KP"
     
     // MARK: - Background Task Identifiers
     

@@ -22,6 +22,7 @@ struct SettingsState {
 
     // MARK: - AutoSend
     var autoSendEnabled: Bool = false
+    var autoSendTime: Date = Calendar.current.date(bySettingHour: 21, minute: 0, second: 0, of: Date()) ?? Date()
     var lastAutoSendStatus: String? = nil
 
     // MARK: - Notifications UI State

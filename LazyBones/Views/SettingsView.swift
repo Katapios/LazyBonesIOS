@@ -165,12 +165,22 @@ struct SettingsView: View {
                 get: { viewModel.state.autoSendEnabled },
                 set: { viewModel.setAutoSendEnabled($0) }
             ))
+            
+            if viewModel.state.autoSendEnabled {
+                DatePicker("Время автоотправки", selection: Binding(
+                    get: { viewModel.state.autoSendTime },
+                    set: { viewModel.setAutoSendTime($0) }
+                ), displayedComponents: .hourAndMinute)
+                .datePickerStyle(.compact)
+            }
+            
             if let status = viewModel.state.lastAutoSendStatus {
                 Text(status)
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            Text("Отчеты будут автоматически отправляться один раз в сутки, в период с 22:01 до 23:59. Если пользователь уже отправил отчеты вручную, автоотправка не производится. Если система не смогла отправить отчеты за предыдущие дни, они будут отправлены вместе с текущими. Отправка происходит в фоне, когда система разрешит выполнение фоновой задачи.")
+            
+            Text("Отчеты будут автоматически отправляться один раз в сутки в указанное время (по умолчанию 21:00). Если пользователь уже отправил отчеты вручную, автоотправка не производится. Если система не смогла отправить отчеты за предыдущие дни, они будут отправлены вместе с текущими. Отправка происходит в фоне, когда система разрешит выполнение фоновой задачи.")
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

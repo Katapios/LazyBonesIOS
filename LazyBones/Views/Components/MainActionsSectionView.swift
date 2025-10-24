@@ -29,13 +29,19 @@ struct MainActionsSectionView: View {
 }
 
 #Preview {
-    MainActionsSectionView(
-        goodCount: 3,
-        badCount: 1,
-        buttonTitle: "Создать отчёт",
-        buttonIcon: "plus.circle.fill",
-        buttonColor: .black,
-        isEnabled: true,
-        onTap: {}
-    )
+    VStack(spacing: 20) {
+        PrimaryActionButtonSection(
+            title: "Создать отчёт",
+            icon: "plus.circle.fill",
+            color: .black,
+            isEnabled: true,
+            action: {}
+        )
+        
+        MoodProgressSection(
+            goodCount: 3,
+            badCount: 1
+        )
+    }
+    .padding()
 }

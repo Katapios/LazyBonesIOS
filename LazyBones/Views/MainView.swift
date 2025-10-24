@@ -28,7 +28,7 @@ struct SnakeRingTimerView: View {
                 .frame(width: ringSize, height: ringSize)
 
             // Тело змеи: единая толщина по всей длине прогресса (как раньше — полноразмерная)
-            let taper: Double = 0.12 // используем только для скрытия часиков на старте
+            let _: Double = 0.12 // используем только для скрытия часиков на старте
             Circle()
                 .trim(from: 0, to: max(0, min(1, progress)))
                 .stroke(
@@ -385,32 +385,24 @@ struct GradientRingTimerView: View {
 }
 
 #Preview {
-    let store: PostStore = {
-        let s = PostStore()
-        s.posts = [
-            Post(
-                id: UUID(),
-                date: Date(),
-                goodItems: ["Пункт 1"],
-                badItems: ["Пункт 2"],
-                published: true,
-                voiceNotes: [],
-                type: .regular
-            )
-        ]
-        return s
-    }()
-    MainView(store: store)
+    MainViewNew()
 }
 
-#Preview("SnakeRingTimerView States") {
+#Preview("Timer States") {
+    let container = DependencyContainer.shared
+    let getReportsUseCase = container.resolve(GetReportsUseCase.self)!
+    let updateStatusUseCase = container.resolve(UpdateStatusUseCase.self)!
+    let settingsRepository = container.resolve(SettingsRepositoryProtocol.self)!
+    let timerService = container.resolve(PostTimerServiceProtocol.self)!
+    let viewModel = MainViewModelNew(
+        getReportsUseCase: getReportsUseCase,
+        updateStatusUseCase: updateStatusUseCase,
+        settingsRepository: settingsRepository,
+        timerService: timerService
+    )
+    
     VStack(spacing: 16) {
-        let size: CGFloat = 150
-        MainView.SnakeRingTimerView(progress: 0.0, timeText: "09:00", label: "до конца", ringSize: size, ringLineWidth: 14)
-        MainView.SnakeRingTimerView(progress: 0.25, timeText: "06:00", label: "до конца", ringSize: size, ringLineWidth: 14)
-        MainView.SnakeRingTimerView(progress: 0.5, timeText: "04:00", label: "до конца", ringSize: size, ringLineWidth: 14)
-        MainView.SnakeRingTimerView(progress: 0.75, timeText: "02:00", label: "до конца", ringSize: size, ringLineWidth: 14)
-        MainView.SnakeRingTimerView(progress: 0.99, timeText: "00:01", label: "до конца", ringSize: size, ringLineWidth: 14)
+        StatusTimerSection(viewModel: viewModel)
     }
     .padding()
 }

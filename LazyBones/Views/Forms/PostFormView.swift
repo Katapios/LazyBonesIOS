@@ -496,11 +496,9 @@ struct PostFormView: View {
 }
 
 #Preview {
-    PostFormView(store: PostStore(), title: "Создать отчёт")
+    DailyPlanCAView()
 }
 
-#Preview("PostFormView - Status Done") {
-    let store = PostStore()
-    store.reportStatus = .sent
-    return PostFormView(store: store)
+#Preview("DailyReportCAView - Status Done") {
+    DailyReportCAView()
 }

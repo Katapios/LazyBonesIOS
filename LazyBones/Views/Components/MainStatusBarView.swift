@@ -74,7 +74,21 @@ struct MainStatusBarView: View {
 }
 
 #Preview {
-    let store = PostStore()
-    let viewModel = MainViewModel(store: store)
-    MainStatusBarView().environmentObject(viewModel)
+    let container = DependencyContainer.shared
+    let getReportsUseCase = container.resolve(GetReportsUseCase.self)!
+    let updateStatusUseCase = container.resolve(UpdateStatusUseCase.self)!
+    let settingsRepository = container.resolve(SettingsRepositoryProtocol.self)!
+    let timerService = container.resolve(PostTimerServiceProtocol.self)!
+    let viewModel = MainViewModelNew(
+        getReportsUseCase: getReportsUseCase,
+        updateStatusUseCase: updateStatusUseCase,
+        settingsRepository: settingsRepository,
+        timerService: timerService
+    )
+    
+    VStack(spacing: 16) {
+        GreetingHeaderView()
+        StatusTimerSection(viewModel: viewModel)
+    }
+    .padding()
 } 

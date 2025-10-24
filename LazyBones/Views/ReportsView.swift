@@ -341,15 +341,5 @@ struct CustomReportEvaluationView: View {
 }
 
 #Preview {
-    let store: PostStore = {
-        let s = PostStore()
-        s.posts = [
-            Post(id: UUID(), date: Date(), goodItems: ["Пункт 1", "Пункт 2"], badItems: ["Пункт 3"], published: true, voiceNotes: [VoiceNote(id: UUID(), path: "/path/to/voice.m4a")], type: .regular),
-            Post(id: UUID(), date: Date().addingTimeInterval(-86400), goodItems: ["Пункт 4"], badItems: [], published: false, voiceNotes: [], type: .regular),
-            Post(id: UUID(), date: Date().addingTimeInterval(-3600), goodItems: ["Пункт 5"], badItems: [], published: true, voiceNotes: [], type: .custom),
-            Post(id: UUID(), date: Date().addingTimeInterval(-7200), goodItems: ["Пункт 7"], badItems: ["Пункт 8"], published: false, voiceNotes: [], type: .custom)
-        ]
-        return s
-    }()
-    ReportsView(store: store)
+    ReportsViewClean()
 } 

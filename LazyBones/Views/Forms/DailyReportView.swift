@@ -785,6 +785,5 @@ struct DailyReportView: View {
 }
 
 #Preview {
-    DailyReportView()
-        .environmentObject(PostStore())
+    DailyReportCAView()
 } 

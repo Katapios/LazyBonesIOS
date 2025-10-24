@@ -8,7 +8,7 @@ struct WidgetConfig {
     
     /// App Group для общих данных между приложением и виджетом
     /// Использует то же значение, что и в основном приложении
-    static let appGroup = "group.com.H2GFBK2X44.loopkit.LoopGroup"
+    static let appGroup = "group.KP"
     
     // MARK: - Widget Identifiers
     

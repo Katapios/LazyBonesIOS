@@ -4,6 +4,18 @@ import UIKit
 // Импорты для сервисов
 import Combine
 
+// MARK: - Initialization Protocols
+
+/// Протокол для типов, которые можно инициализировать без параметров
+protocol Initializable {
+    init()
+}
+
+/// Протокол для типов с инициализатором по умолчанию
+protocol DefaultInitializable {
+    init()
+}
+
 /// Контейнер зависимостей для Dependency Injection
 class DependencyContainer {
     
@@ -90,8 +102,17 @@ class DependencyContainer {
     // MARK: - Private Methods
     
     private func createInstance<T>(_ type: T.Type) -> T? {
-        // Здесь можно добавить логику создания экземпляров через reflection
-        // Пока возвращаем nil
+        // Попытка создать экземпляр через инициализатор по умолчанию
+        if let initializableType = type as? any Initializable.Type {
+            return initializableType.init() as? T
+        }
+        
+        // Для типов, которые можно создать без параметров
+        if let defaultInitializableType = type as? any DefaultInitializable.Type {
+            return defaultInitializableType.init() as? T
+        }
+        
+        Logger.warning("Cannot create instance of \(type) - no suitable initializer found", log: Logger.general)
         return nil
     }
 }

@@ -248,7 +248,7 @@ public struct SnakeRingTimerView: View {
             )
             // Точки начала дуги затылка
             let arcStartRight = CGPoint(x: backCenter.x + r, y: backCenter.y)
-            let arcStartLeft = CGPoint(x: backCenter.x - r, y: backCenter.y)
+            let _ = CGPoint(x: backCenter.x - r, y: backCenter.y)
             // Контрольные точки для выпуклого наружу скругления морды (выше кончика носа)
             let noseCtrlRight = CGPoint(
                 x: midX + tipWidth * 0.22,

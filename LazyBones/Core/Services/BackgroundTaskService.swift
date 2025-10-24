@@ -1,5 +1,5 @@
 import Foundation
-import BackgroundTasks
+@preconcurrency import BackgroundTasks
 import UIKit
 
 /// Протокол сервиса фоновых задач
@@ -28,7 +28,7 @@ enum BackgroundTaskServiceError: Error, LocalizedError {
 }
 
 /// Реализация сервиса фоновых задач
-class BackgroundTaskService: BackgroundTaskServiceProtocol {
+class BackgroundTaskService: BackgroundTaskServiceProtocol, @unchecked Sendable {
     // MARK: - Singleton
     static let shared = BackgroundTaskService()
     
@@ -72,6 +72,7 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
     func registerBackgroundTasks() throws {
         #if targetEnvironment(simulator)
         Logger.info("Skipping BGTask registration on Simulator", log: Logger.background)
+        isRegistered = true // Помечаем как зарегистрированный для симулятора
         return
         #else
         var registrationError: Error?
@@ -136,8 +137,18 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
         // Verify Background App Refresh is available
         let refreshStatus = UIApplication.shared.backgroundRefreshStatus
         Logger.info("Background refresh status: \(refreshStatus.rawValue)", log: Logger.background)
-        guard refreshStatus == .available else {
-            Logger.warning("Background App Refresh is disabled; skipping BGTask scheduling", log: Logger.background)
+        
+        switch refreshStatus {
+        case .available:
+            Logger.info("Background App Refresh is available", log: Logger.background)
+        case .denied:
+            Logger.warning("Background App Refresh is denied by user; skipping BGTask scheduling", log: Logger.background)
+            return
+        case .restricted:
+            Logger.warning("Background App Refresh is restricted by system; skipping BGTask scheduling", log: Logger.background)
+            return
+        @unknown default:
+            Logger.warning("Unknown Background App Refresh status: \(refreshStatus.rawValue); skipping BGTask scheduling", log: Logger.background)
             return
         }
         
@@ -197,31 +208,42 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
     func handleSendReportTask(_ task: BGAppRefreshTask) async {
         Logger.info("Handling send report background task", log: Logger.background)
         
+        // Создаем операционную очередь для управления задачами
+        let operationQueue = OperationQueue()
+        operationQueue.maxConcurrentOperationCount = 1
+        
         // Устанавливаем обработчик завершения задачи
         task.expirationHandler = {
-            Logger.warning("Background task expired", log: Logger.background)
+            Logger.warning("Background task expired, cancelling operations", log: Logger.background)
+            operationQueue.cancelAllOperations()
             task.setTaskCompleted(success: false)
         }
         
+        // Планируем следующую задачу СРАЗУ (до выполнения текущей)
         do {
-            // Проверяем настройки автоотправки через AutoSendService
-            if self.autoSendService.autoSendEnabled {
-                Logger.info("Auto-send enabled, processing reports", log: Logger.background)
-                await self.processAutoSendReports()
-            } else {
-                Logger.info("Auto-send disabled, skipping", log: Logger.background)
-            }
-            
-            // Планируем следующую задачу
             try self.scheduleSendReportTask()
-            
-            // Завершаем задачу успешно
-            task.setTaskCompleted(success: true)
-            Logger.info("Background task completed successfully", log: Logger.background)
-            
+            Logger.info("Next background task scheduled", log: Logger.background)
         } catch {
-            Logger.error("Background task failed: \(error)", log: Logger.background)
-            task.setTaskCompleted(success: false)
+            Logger.error("Failed to schedule next background task: \(error)", log: Logger.background)
+        }
+        
+        // Выполняем работу в операционной очереди
+        operationQueue.addOperation { [weak self] in
+            guard let self = self else { return }
+            Task { [weak self] in
+                guard let self = self else { return }
+                // Проверяем настройки автоотправки через AutoSendService
+                if self.autoSendService.autoSendEnabled {
+                    Logger.info("Auto-send enabled, processing reports", log: Logger.background)
+                    await self.processAutoSendReports()
+                } else {
+                    Logger.info("Auto-send disabled, skipping", log: Logger.background)
+                }
+                
+                // Завершаем задачу успешно
+                task.setTaskCompleted(success: true)
+                Logger.info("Background task completed successfully", log: Logger.background)
+            }
         }
     }
     
@@ -229,8 +251,8 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
     
     private func safeEarliestBeginDate() -> Date {
         let computed = calculateEarliestBeginDate()
-        // iOS не гарантирует запуск раньше 15 минут; дадим минимум +20 минут, чтобы исключить ошибки планирования
-        let minDate = Date().addingTimeInterval(20 * 60)
+        // iOS требует минимум 15 минут, но лучше дать больше времени
+        let minDate = Date().addingTimeInterval(15 * 60)
         return max(computed, minDate)
     }
     
@@ -238,24 +260,31 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
         let calendar = Calendar.current
         let now = Date()
         
-        // Планируем на 22:01 сегодня или завтра
-        let today2201 = calendar.date(bySettingHour: 22, minute: 1, second: 0, of: now)!
-        let today2359 = calendar.date(bySettingHour: 23, minute: 59, second: 0, of: now)!
+        // Получаем время автоотправки из AutoSendService
+        let autoSendTime = autoSendService.autoSendTime
+        let targetHour = calendar.component(.hour, from: autoSendTime)
+        let targetMinute = calendar.component(.minute, from: autoSendTime)
+        
+        // Планируем на целевое время сегодня или завтра
+        let todayTarget = calendar.date(bySettingHour: targetHour, minute: targetMinute, second: 0, of: now)!
+        let todayEnd = calendar.date(bySettingHour: 23, minute: 59, second: 0, of: now)!
         
         var earliest: Date
         
-        if now < today2201 {
-            // Если сейчас раньше 22:01, планируем на 22:01 сегодня
-            earliest = today2201
-        } else if now >= today2201 && now <= today2359 {
-            // Если сейчас в промежутке 22:01-23:59, планируем на сейчас
-            earliest = now
+        if now < todayTarget {
+            // Если сейчас раньше целевого времени, планируем на целевое время сегодня
+            earliest = todayTarget
+        } else if now >= todayTarget && now <= todayEnd {
+            // Если сейчас в промежутке целевого времени - конец дня, планируем на завтра
+            let tomorrowTarget = calendar.date(byAdding: .day, value: 1, to: todayTarget)!
+            earliest = tomorrowTarget
         } else {
-            // Если сейчас после 23:59, планируем на 22:01 завтра
-            let tomorrow2201 = calendar.date(byAdding: .day, value: 1, to: today2201)!
-            earliest = tomorrow2201
+            // Если сейчас после конца дня, планируем на целевое время завтра
+            let tomorrowTarget = calendar.date(byAdding: .day, value: 1, to: todayTarget)!
+            earliest = tomorrowTarget
         }
         
+        Logger.info("Calculated earliest begin date: \(earliest) (target time: \(targetHour):\(String(format: "%02d", targetMinute)))", log: Logger.background)
         return earliest
     }
     
@@ -302,4 +331,29 @@ class BackgroundTaskService: BackgroundTaskServiceProtocol {
         Logger.info("Cancelling all background tasks", log: Logger.background)
         BGTaskScheduler.shared.cancelAllTaskRequests()
     }
-} 
+    
+    /// Получить информацию о pending задачах (для отладки)
+    func getPendingTasksInfo() async -> String {
+        return await withCheckedContinuation { continuation in
+            BGTaskScheduler.shared.getPendingTaskRequests { requests in
+                let info = requests.map { request in
+                    "ID: \(request.identifier), earliestBeginDate: \(request.earliestBeginDate?.description ?? "nil")"
+                }.joined(separator: "; ")
+                continuation.resume(returning: "Pending tasks (\(requests.count)): \(info)")
+            }
+        }
+    }
+    
+    #if DEBUG
+    /// Тестирование background task (только для отладки)
+    func testBackgroundTask() {
+        Logger.info("Testing background task execution", log: Logger.background)
+        
+        // В DEBUG режиме просто вызываем логику автоотправки напрямую
+        Task {
+            await processAutoSendReports()
+        }
+    }
+    #endif
+}
+

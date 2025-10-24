@@ -100,6 +100,15 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
             notificationManager.notificationMode = mode
         }
     }
+    
+    func setAutoSendTime(_ time: Date) {
+        // Обновляем только если значение изменилось
+        if state.autoSendTime != time {
+            state.autoSendTime = time
+            autoSendService.autoSendTime = time
+            autoSendService.scheduleAutoSendIfNeeded()
+        }
+    }
 
     // MARK: - Actions
 
@@ -120,6 +129,7 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
         state.isICloudAvailable = await iCloudService.isICloudAvailable()
         // AutoSend
         state.autoSendEnabled = autoSendService.autoSendEnabled
+        state.autoSendTime = autoSendService.autoSendTime
         state.lastAutoSendStatus = autoSendService.lastAutoSendStatus
         // Notifications UI
         state.notificationsEnabled = notificationManager.notificationsEnabled

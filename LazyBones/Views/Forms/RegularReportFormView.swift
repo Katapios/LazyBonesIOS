@@ -747,13 +747,11 @@ struct RegularReportFormView: View {
 }
 
 #Preview {
-    RegularReportFormView(title: "Создать отчёт")
-        .environmentObject(PostStore())
+    DailyPlanCAView()
 }
 
-#Preview("RegularReportFormView - Status Done") {
-    RegularReportFormView()
-        .environmentObject(createStoreWithDoneStatus())
+#Preview("DailyReportCAView - Status Done") {
+    DailyReportCAView()
 }
 
 private func createStoreWithDoneStatus() -> PostStore {
