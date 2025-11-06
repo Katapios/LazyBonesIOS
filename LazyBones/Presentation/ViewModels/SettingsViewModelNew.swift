@@ -81,7 +81,11 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
             state.autoSendEnabled = enabled
             autoSendService.autoSendEnabled = enabled
             autoSendService.scheduleAutoSendIfNeeded()
-            state.lastAutoSendStatus = autoSendService.lastAutoSendStatus
+            // Обновляем статус только если он действительно изменился
+            let newStatus = autoSendService.lastAutoSendStatus
+            if state.lastAutoSendStatus != newStatus {
+                state.lastAutoSendStatus = newStatus
+            }
         }
     }
 
@@ -90,6 +94,8 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
         if state.notificationsEnabled != enabled {
             state.notificationsEnabled = enabled
             notificationManager.notificationsEnabled = enabled
+            // Обновляем расписание после изменения настроек
+            updateNotificationSchedule()
         }
     }
 
@@ -98,6 +104,14 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
         if state.notificationMode != mode {
             state.notificationMode = mode
             notificationManager.notificationMode = mode
+            // Обновляем расписание после изменения режима
+            updateNotificationSchedule()
+        }
+    }
+    
+    private func updateNotificationSchedule() {
+        if let notificationService = notificationManager as? NotificationManagerService {
+            state.notificationSchedule = notificationService.notificationScheduleForToday()
         }
     }
     
@@ -127,13 +141,17 @@ final class SettingsViewModelNew: BaseViewModel<SettingsState, SettingsEvent>, L
         state.isBackgroundFetchTestEnabled = AppConfig.sharedUserDefaults.bool(forKey: "backgroundFetchTestEnabled")
         // iCloud availability
         state.isICloudAvailable = await iCloudService.isICloudAvailable()
-        // AutoSend
+        // AutoSend - читаем значения один раз, без подписки
         state.autoSendEnabled = autoSendService.autoSendEnabled
         state.autoSendTime = autoSendService.autoSendTime
         state.lastAutoSendStatus = autoSendService.lastAutoSendStatus
-        // Notifications UI
+        // Notifications UI - читаем значения один раз, без подписки
         state.notificationsEnabled = notificationManager.notificationsEnabled
         state.notificationMode = notificationManager.notificationMode
+        // Загружаем расписание уведомлений один раз
+        if let notificationService = notificationManager as? NotificationManagerService {
+            state.notificationSchedule = notificationService.notificationScheduleForToday()
+        }
     }
 
     private func saveDeviceName(_ name: String) async {

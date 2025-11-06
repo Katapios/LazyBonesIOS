@@ -28,4 +28,5 @@ struct SettingsState {
     // MARK: - Notifications UI State
     var notificationsEnabled: Bool = false
     var notificationMode: NotificationMode = .hourly
+    var notificationSchedule: String? = nil
 }

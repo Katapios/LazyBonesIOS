@@ -10,32 +10,50 @@ struct ReportsViewClean: View {
         self._viewModel = StateObject(wrappedValue: container.resolve(ReportsViewModelNew.self)!)
     }
 
-    // ВАЖНО: Оборачивайте ReportsViewClean в NavigationStack на уровне ContentView или App!
+    // ВАЖНО: ReportsViewClean должен быть обёрнут в NavigationStack на уровне ContentView
     var body: some View {
-        NavigationStack {
-            ScrollView(.vertical, showsIndicators: true) {
-                VStack(spacing: 16) {
-                    regularReportsSection
-                    customReportsSection
-                    externalReportsSection
-                    iCloudReportsSection
+        ScrollView(.vertical, showsIndicators: true) {
+            VStack(spacing: 16) {
+                regularReportsSection
+                customReportsSection
+                externalReportsSection
+                iCloudReportsSection
+            }
+            .padding(.top, 16)
+            .padding([.leading, .trailing, .bottom])
+        }
+        .navigationTitle("Отчёты")
+        .safeAreaInset(edge: .top) { Spacer().frame(height: 8) }
+        .safeAreaInset(edge: .bottom) {
+            if viewModel.state.canDeleteReports {
+                VStack(spacing: 0) {
+                    Divider()
+                    Button(role: .destructive, action: {
+                        Task {
+                            await viewModel.handle(.deleteSelectedReports)
+                        }
+                    }) {
+                        Label("Удалить (\(viewModel.state.selectedReportsCount))", systemImage: "trash")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .padding(.horizontal)
+                    .padding(.bottom, 8)
                 }
-                .padding(.top, 16)
-                .padding([.leading, .trailing, .bottom])
+                .background(Color(.systemBackground))
             }
-            .navigationTitle("Отчёты")
-            .safeAreaInset(edge: .top) { Spacer().frame(height: 8) }
-            .scrollIndicators(.hidden)
-            .toolbar { toolbarContent }
-            .sheet(isPresented: $viewModel.state.showEvaluationSheet) { evaluationSheetContent }
-            .onAppear {
-                Task {
-                    await viewModel.handle(.loadReports)
-                }
+        }
+        .scrollIndicators(.hidden)
+        .toolbar { toolbarContent }
+        .sheet(isPresented: $viewModel.state.showEvaluationSheet) { evaluationSheetContent }
+        .onAppear {
+            Task {
+                await viewModel.handle(.loadReports)
             }
-            .refreshable {
-                await viewModel.handle(.refreshReports)
-            }
+        }
+        .refreshable {
+            await viewModel.handle(.refreshReports)
         }
     }
 
@@ -174,29 +192,14 @@ struct ReportsViewClean: View {
         )
     }
 
+    @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        Group {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                if !viewModel.state.regularReports.isEmpty || !viewModel.state.customReports.isEmpty {
-                    Button(viewModel.state.isSelectionMode ? "Отмена" : "Выбрать") {
-                        withAnimation {
-                            viewModel.toggleSelectionMode()
-                        }
+        ToolbarItem(placement: .navigationBarTrailing) {
+            if !viewModel.state.regularReports.isEmpty || !viewModel.state.customReports.isEmpty {
+                Button(viewModel.state.isSelectionMode ? "Отмена" : "Выбрать") {
+                    withAnimation {
+                        viewModel.toggleSelectionMode()
                     }
-                } else {
-                    EmptyView()
-                }
-            }
-            if viewModel.state.canDeleteReports {
-                ToolbarItem(placement: .bottomBar) {
-                    Button(role: .destructive, action: {
-                        Task {
-                            await viewModel.handle(.deleteSelectedReports)
-                        }
-                    }) {
-                        Label("Удалить (\(viewModel.state.selectedReportsCount))", systemImage: "trash")
-                    }
-                    .frame(maxWidth: .infinity)
                 }
             }
         }

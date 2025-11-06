@@ -52,7 +52,11 @@ struct SettingsView: View {
         Section(header: Text("Имя телефона для виджета")) {
             TextField("Введите имя телефона", text: Binding(
                 get: { viewModel.state.deviceName },
-                set: { viewModel.state.deviceName = $0 }
+                set: { newValue in
+                    if viewModel.state.deviceName != newValue {
+                        viewModel.state.deviceName = newValue
+                    }
+                }
             ))
             Button("Сохранить имя") {
                 Task { await viewModel.handle(.saveDeviceName(viewModel.state.deviceName)) }
@@ -74,21 +78,33 @@ struct SettingsView: View {
         Section(header: Text("Интеграция с группой в телеграмм")) {
             TextField("Токен Telegram-бота", text: Binding(
                 get: { viewModel.state.telegramToken },
-                set: { viewModel.state.telegramToken = $0 }
+                set: { newValue in
+                    if viewModel.state.telegramToken != newValue {
+                        viewModel.state.telegramToken = newValue
+                    }
+                }
             ))
                 .textContentType(.none)
                 .autocapitalization(.none)
                 .disableAutocorrection(true)
             TextField("chat_id группы", text: Binding(
                 get: { viewModel.state.telegramChatId },
-                set: { viewModel.state.telegramChatId = $0 }
+                set: { newValue in
+                    if viewModel.state.telegramChatId != newValue {
+                        viewModel.state.telegramChatId = newValue
+                    }
+                }
             ))
                 .textContentType(.none)
                 .autocapitalization(.none)
                 .disableAutocorrection(true)
             TextField("ID бота (опционально)", text: Binding(
                 get: { viewModel.state.telegramBotId },
-                set: { viewModel.state.telegramBotId = $0 }
+                set: { newValue in
+                    if viewModel.state.telegramBotId != newValue {
+                        viewModel.state.telegramBotId = newValue
+                    }
+                }
             ))
                 .textContentType(.none)
                 .autocapitalization(.none)
@@ -147,7 +163,7 @@ struct SettingsView: View {
                             .font(.caption)
                             .foregroundColor(.gray)
                     }
-                    if let schedule = (viewModel.notificationManager as? NotificationManagerService)?.notificationScheduleForToday() {
+                    if let schedule = viewModel.state.notificationSchedule {
                         Text("Сегодня уведомления:")
                             .font(.caption)
                         Text(schedule)
