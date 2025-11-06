@@ -176,6 +176,13 @@ struct DailyReportView: View {
                     
                     // Иконки микрофона и тега рядом
                     HStack(spacing: 8) {
+                        // Голосовой ввод (распознавание речи)
+                        VoiceInputButton(
+                            text: $newPlanItem,
+                            isGood: selectedTab == .good
+                        )
+                        
+                        // Запись аудио (старая кнопка)
                         Button(action: { 
                             withAnimation(.easeInOut(duration: 0.3)) { 
                                 showVoiceRecorder.toggle()
@@ -184,7 +191,7 @@ struct DailyReportView: View {
                                 }
                             } 
                         }) {
-                            Image(systemName: "mic.circle.fill")
+                            Image(systemName: "waveform.circle.fill")
                                 .font(.system(size: 32))
                                 .foregroundColor(showVoiceRecorder ? .red : .accentColor)
                         }

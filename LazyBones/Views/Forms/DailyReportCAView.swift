@@ -120,13 +120,27 @@ struct DailyReportCAView: View {
                             }
 
                             HStack(spacing: 8) {
+                                // Голосовой ввод (распознавание речи)
+                                if viewModel.selectedTab == 0 {
+                                    VoiceInputButton(
+                                        text: $viewModel.newGoodText,
+                                        isGood: true
+                                    )
+                                } else {
+                                    VoiceInputButton(
+                                        text: $viewModel.newBadText,
+                                        isGood: false
+                                    )
+                                }
+                                
+                                // Запись аудио (старая кнопка)
                                 Button(action: {
                                     withAnimation(.easeInOut(duration: 0.3)) {
                                         showVoiceRecorder.toggle()
                                         if showVoiceRecorder { viewModel.showTagPicker = false }
                                     }
                                 }) {
-                                    Image(systemName: "mic.circle.fill")
+                                    Image(systemName: "waveform.circle.fill")
                                         .font(.system(size: 32))
                                         .foregroundColor(showVoiceRecorder ? .red : .accentColor)
                                 }

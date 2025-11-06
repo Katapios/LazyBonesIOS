@@ -6,7 +6,7 @@ struct AddReportItemView: View {
     
     let isGood: Bool
     @State private var text: String = ""
-    @State private var isRecording: Bool = false
+    @StateObject private var dictationService = WatchDictationService.shared
     
     var body: some View {
         ScrollView {
@@ -15,16 +15,31 @@ struct AddReportItemView: View {
                     .font(.headline)
                     .padding(.top)
                 
-                // Голосовой ввод
+                // Голосовой ввод через системную диктовку watchOS
                 Button(action: {
-                    startVoiceInput()
+                    requestVoiceInput()
                 }) {
-                    Label("Голосовой ввод", systemImage: "mic.fill")
-                        .frame(maxWidth: .infinity)
+                    HStack {
+                        Image(systemName: dictationService.isDictating ? "mic.fill" : "mic")
+                        Text(dictationService.isDictating ? "Диктовка..." : "Голосовой ввод")
+                    }
+                    .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(isGood ? .green : .red)
-                .disabled(isRecording)
+                .tint(dictationService.isDictating ? .red : (isGood ? .green : .red))
+                .disabled(dictationService.isDictating)
+                
+                // Индикатор диктовки
+                if dictationService.isDictating {
+                    HStack {
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 8, height: 8)
+                        Text("Говорите...")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                }
                 
                 // Текстовый ввод
                 TextField("Введите текст", text: $text, axis: .vertical)
@@ -48,14 +63,27 @@ struct AddReportItemView: View {
         }
         .navigationTitle(isGood ? "Хорошее" : "Плохое")
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: dictationService.recognizedText) { newValue in
+            if !newValue.isEmpty {
+                text = newValue
+            }
+        }
     }
     
-    private func startVoiceInput() {
-        isRecording = true
-        // Здесь можно использовать Speech framework для распознавания речи
-        // Для упрощения используем текстовое поле
-        text = "Голосовой ввод (в разработке)"
-        isRecording = false
+    private func requestVoiceInput() {
+        // Используем системную диктовку watchOS
+        dictationService.startDictation { recognizedText in
+            Task { @MainActor in
+                if let text = recognizedText, !text.isEmpty {
+                    self.text = text
+                } else {
+                    // Если распознавание не удалось, показываем сообщение
+                    if let error = dictationService.errorMessage {
+                        print("[WatchApp] Ошибка диктовки: \(error)")
+                    }
+                }
+            }
+        }
     }
     
     private func saveItem() {

@@ -17,5 +17,9 @@
 	</array>
 	<key>UIFileSharingEnabled</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Приложению нужен доступ к микрофону для голосового ввода текста</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Приложению нужен доступ к распознаванию речи для преобразования голоса в текст</string>
 </dict>
 </plist>
