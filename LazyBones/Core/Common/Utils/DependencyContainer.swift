@@ -359,6 +359,17 @@ extension DependencyContainer {
             ) { timeLeft, progress in
                 // Callback для обновления времени
                 Logger.debug("Timer updated: \(timeLeft), progress: \(progress)", log: Logger.timer)
+                
+                // Сохраняем в UserDefaults для виджетов и Watch
+                let defaults = AppConfig.sharedUserDefaults
+                defaults.set(timeLeft, forKey: "timerTimeLeft")
+                defaults.set(progress, forKey: "timerProgress")
+                defaults.synchronize()
+                
+                // Обновляем Watch
+                Task { @MainActor in
+                    WatchSyncService.shared.updateTimerData(timeLeft: timeLeft, progress: progress)
+                }
             }
         })
         

@@ -234,5 +234,9 @@ class ReportStatusManager: ReportStatusManagerProtocol {
         notificationService.scheduleNotificationsIfNeeded()
         // Уведомляем подписчиков (главный экран и др.), что статус изменился
         NotificationCenter.default.post(name: .reportStatusDidChange, object: self, userInfo: ["status": status.rawValue])
+        // Обновляем данные для Watch
+        Task { @MainActor in
+            WatchSyncService.shared.updateWatchData()
+        }
     }
 } 

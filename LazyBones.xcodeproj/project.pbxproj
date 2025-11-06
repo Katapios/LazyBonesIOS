@@ -57,6 +57,7 @@
 		7CFB922B2E4E2AEE004162B5 /* PostMapperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91DB2E4E2AEE004162B5 /* PostMapperTests.swift */; };
 		7CFB922C2E4E2AEE004162B5 /* ICloudReportsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91E92E4E2AEE004162B5 /* ICloudReportsViewModelTests.swift */; };
 		7CFB922D2E4E2AEE004162B5 /* ReportPeriodLogicTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CFB91FE2E4E2AEE004162B5 /* ReportPeriodLogicTest.swift */; };
+		B577C3632EBCC23100BC7505 /* LazyBonesWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = B577C3592EBCC23000BC7505 /* LazyBonesWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -81,6 +82,13 @@
 			remoteGlobalIDString = 7C8266222E1F92B900365472;
 			remoteInfo = LazyBonesWidgetExtension;
 		};
+		B577C3612EBCC23100BC7505 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7C8266012E1F903200365472 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B577C3582EBCC23000BC7505;
+			remoteInfo = "LazyBonesWatch Watch App";
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -93,6 +101,17 @@
 				7C8266392E1F92BC00365472 /* LazyBonesWidgetExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B577C3672EBCC23100BC7505 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				B577C3632EBCC23100BC7505 /* LazyBonesWatch Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -152,6 +171,7 @@
 		7CFB92012E4E2AEE004162B5 /* ReportStatusRulesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportStatusRulesTests.swift; sourceTree = "<group>"; };
 		7CFB92022E4E2AEE004162B5 /* TelegramIntegrationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelegramIntegrationServiceTests.swift; sourceTree = "<group>"; };
 		7CFB92032E4E2AEE004162B5 /* VoiceRecorderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceRecorderTests.swift; sourceTree = "<group>"; };
+		B577C3592EBCC23000BC7505 /* LazyBonesWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "LazyBonesWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -193,6 +213,11 @@
 			path = LazyBonesWidget;
 			sourceTree = "<group>";
 		};
+		B577C35A2EBCC23000BC7505 /* LazyBonesWatch Watch App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "LazyBonesWatch Watch App";
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -226,6 +251,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B577C3562EBCC23000BC7505 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -236,6 +268,7 @@
 				7C82660B2E1F903200365472 /* LazyBones */,
 				7C8266292E1F92BA00365472 /* LazyBonesWidget */,
 				7C10ECC32E4E488000D1C36B /* LazyBonesPublishTests */,
+				B577C35A2EBCC23000BC7505 /* LazyBonesWatch Watch App */,
 				7C8266242E1F92B900365472 /* Frameworks */,
 				7C82660A2E1F903200365472 /* Products */,
 				7CFB92042E4E2AEE004162B5 /* Tests */,
@@ -256,6 +289,7 @@
 				7C8266232E1F92B900365472 /* LazyBonesWidgetExtension.appex */,
 				7C4B25752E20F66900602163 /* LazyBonesTests.xctest */,
 				7C10ECC22E4E488000D1C36B /* LazyBonesPublishTests.xctest */,
+				B577C3592EBCC23000BC7505 /* LazyBonesWatch Watch App.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -482,11 +516,13 @@
 				7C8266062E1F903200365472 /* Frameworks */,
 				7C8266072E1F903200365472 /* Resources */,
 				7C82663E2E1F92BC00365472 /* Embed Foundation Extensions */,
+				B577C3672EBCC23100BC7505 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				7C8266382E1F92BC00365472 /* PBXTargetDependency */,
+				B577C3622EBCC23100BC7505 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				7C82660B2E1F903200365472 /* LazyBones */,
@@ -520,6 +556,28 @@
 			productReference = 7C8266232E1F92B900365472 /* LazyBonesWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		B577C3582EBCC23000BC7505 /* LazyBonesWatch Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B577C3642EBCC23100BC7505 /* Build configuration list for PBXNativeTarget "LazyBonesWatch Watch App" */;
+			buildPhases = (
+				B577C3552EBCC23000BC7505 /* Sources */,
+				B577C3562EBCC23000BC7505 /* Frameworks */,
+				B577C3572EBCC23000BC7505 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				B577C35A2EBCC23000BC7505 /* LazyBonesWatch Watch App */,
+			);
+			name = "LazyBonesWatch Watch App";
+			packageProductDependencies = (
+			);
+			productName = "LazyBonesWatch Watch App";
+			productReference = B577C3592EBCC23000BC7505 /* LazyBonesWatch Watch App.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -527,7 +585,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1640;
+				LastSwiftUpdateCheck = 2610;
 				LastUpgradeCheck = 2610;
 				TargetAttributes = {
 					7C10ECC12E4E488000D1C36B = {
@@ -543,6 +601,9 @@
 					};
 					7C8266222E1F92B900365472 = {
 						CreatedOnToolsVersion = 16.4;
+					};
+					B577C3582EBCC23000BC7505 = {
+						CreatedOnToolsVersion = 26.1;
 					};
 				};
 			};
@@ -564,6 +625,7 @@
 				7C8266222E1F92B900365472 /* LazyBonesWidgetExtension */,
 				7C4B25742E20F66900602163 /* LazyBonesTests */,
 				7C10ECC12E4E488000D1C36B /* LazyBonesPublishTests */,
+				B577C3582EBCC23000BC7505 /* LazyBonesWatch Watch App */,
 			);
 		};
 /* End PBXProject section */
@@ -598,6 +660,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		7C8266212E1F92B900365472 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B577C3572EBCC23000BC7505 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -675,6 +744,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B577C3552EBCC23000BC7505 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -692,6 +768,11 @@
 			isa = PBXTargetDependency;
 			target = 7C8266222E1F92B900365472 /* LazyBonesWidgetExtension */;
 			targetProxy = 7C8266372E1F92BC00365472 /* PBXContainerItemProxy */;
+		};
+		B577C3622EBCC23100BC7505 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B577C3582EBCC23000BC7505 /* LazyBonesWatch Watch App */;
+			targetProxy = B577C3612EBCC23100BC7505 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1039,6 +1120,76 @@
 			};
 			name = Release;
 		};
+		B577C3652EBCC23100BC7505 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "LazyBonesWatch Watch App/LazyBonesWatch Watch App.entitlements";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = H2GFBK2X44;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = LazyBonesWatch;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.katapios.LazyBones;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.katapios.LazyBones.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		B577C3662EBCC23100BC7505 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "LazyBonesWatch Watch App/LazyBonesWatch Watch App.entitlements";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = H2GFBK2X44;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = LazyBonesWatch;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.katapios.LazyBones;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.katapios.LazyBones.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1083,6 +1234,15 @@
 			buildConfigurations = (
 				7C82663C2E1F92BC00365472 /* Debug */,
 				7C82663D2E1F92BC00365472 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B577C3642EBCC23100BC7505 /* Build configuration list for PBXNativeTarget "LazyBonesWatch Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B577C3652EBCC23100BC7505 /* Debug */,
+				B577C3662EBCC23100BC7505 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

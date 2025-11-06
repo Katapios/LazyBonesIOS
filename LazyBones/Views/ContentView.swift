@@ -80,6 +80,10 @@ struct ContentView: View {
                 let provider = DependencyContainer.shared.resolve(TagProviderProtocol.self)
                 await provider?.refresh()
             }
+            // Обновляем данные для Watch после загрузки всех данных
+            Task { @MainActor in
+                WatchSyncService.shared.updateWatchData()
+            }
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
@@ -94,6 +98,10 @@ struct ContentView: View {
                     Logger.debug("[UI][Tests] Skip WidgetCenter.reloadAllTimelines() on active", log: Logger.ui)
                 }
                 appCoordinator.updateWidgets()
+                // Обновляем данные для Watch при возврате из фона
+                Task { @MainActor in
+                    WatchSyncService.shared.updateWatchData()
+                }
             }
         }
         .onChange(of: appCoordinator.currentTab) { _, newTab in

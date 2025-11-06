@@ -48,6 +48,10 @@ class LocalReportService {
         guard let data = try? JSONEncoder().encode(posts) else { print("[DEBUG][LocalReportService] savePosts: encode error"); return }
         userDefaults?.set(data, forKey: key)
         WidgetCenter.shared.reloadAllTimelines()
+        // Обновляем данные для Watch
+        Task { @MainActor in
+            WatchSyncService.shared.updateWatchData()
+        }
     }
     
     func clearPosts() {

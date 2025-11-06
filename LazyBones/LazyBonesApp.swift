@@ -57,6 +57,21 @@ struct LazyBonesApp: App {
         // Регистрация фоновых задач
         setupBackgroundTasks()
         
+        // Проверяем App Group и инициализируем WatchSyncService
+        let defaults = AppConfig.sharedUserDefaults
+        if defaults == UserDefaults.standard {
+            print("[LazyBonesApp] ERROR: AppConfig.sharedUserDefaults returned UserDefaults.standard!")
+        } else {
+            print("[LazyBonesApp] App Group UserDefaults created successfully: \(AppConfig.appGroup)")
+            // Тестовая запись для проверки
+            defaults.set("test_from_app_init_\(Date().timeIntervalSince1970)", forKey: "watchTestFromAppInit")
+            defaults.synchronize()
+            print("[LazyBonesApp] Test write to App Group: watchTestFromAppInit")
+        }
+        
+        // Инициализируем WatchSyncService (это вызовет updateWatchData через 0.5 сек)
+        _ = WatchSyncService.shared
+        
         Logger.info("App initialization completed", log: Logger.general)
     }
 }

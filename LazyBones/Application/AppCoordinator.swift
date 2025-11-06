@@ -118,6 +118,11 @@ class AppCoordinator: BaseCoordinator, ObservableObject, ErrorHandlingCoordinato
         let notificationService = dependencyContainer.resolve(NotificationManagerServiceType.self)
         notificationService?.requestNotificationPermissionAndSchedule()
         
+        // Инициализируем Watch синхронизацию
+        Task { @MainActor in
+            WatchSyncService.shared.updateWatchData()
+        }
+        
         hideLoading()
     }
     
