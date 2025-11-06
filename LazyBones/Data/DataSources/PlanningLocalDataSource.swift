@@ -3,8 +3,9 @@ import Foundation
 final class PlanningLocalDataSource {
     private let userDefaults: UserDefaults
     
-    init(userDefaults: UserDefaults = .standard) {
-        self.userDefaults = userDefaults
+    init(userDefaults: UserDefaults? = nil) {
+        // По умолчанию используем app group UserDefaults для совместимости с виджетом
+        self.userDefaults = userDefaults ?? AppConfig.sharedUserDefaults
     }
     
     private func key(for date: Date) -> String {

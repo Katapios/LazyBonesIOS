@@ -10,25 +10,44 @@ import SwiftUI
 
 struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), reportStatus: Self.currentReportStatus(), deviceName: Self.deviceName(), timerString: Self.currentTimerString())
+        let now = Date()
+        return SimpleEntry(
+            date: now,
+            reportStatus: Self.currentReportStatus(),
+            deviceName: Self.deviceName(),
+            timerString: Self.currentTimerString(),
+            motivationalSlogan: Self.generateMotivationalSlogan(for: now)
+        )
     }
 
     func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> ()) {
-        let entry = SimpleEntry(date: Date(), reportStatus: Self.currentReportStatus(), deviceName: Self.deviceName(), timerString: Self.currentTimerString())
+        let now = Date()
+        let entry = SimpleEntry(
+            date: now,
+            reportStatus: Self.currentReportStatus(),
+            deviceName: Self.deviceName(),
+            timerString: Self.currentTimerString(),
+            motivationalSlogan: Self.generateMotivationalSlogan(for: now)
+        )
         completion(entry)
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> ()) {
         var entries: [SimpleEntry] = []
         let now = Date()
-        // Обновлять каждую минуту на ближайший час
-        for minuteOffset in 0..<60 {
-            let entryDate = Calendar.current.date(byAdding: .minute, value: minuteOffset, to: now)!
+        let calendar = Calendar.current
+        
+        // Генерируем лозунги каждые 15 минут на ближайшие 4 часа (16 записей)
+        for quarterHourOffset in 0..<16 {
+            let entryDate = calendar.date(byAdding: .minute, value: quarterHourOffset * 15, to: now)!
+            // Генерируем новый лозунг для каждого 15-минутного интервала
+            let slogan = Self.generateMotivationalSlogan(for: entryDate)
             let entry = SimpleEntry(
                 date: entryDate,
                 reportStatus: Self.currentReportStatus(),
                 deviceName: Self.deviceName(),
-                timerString: Self.currentTimerString(for: entryDate)
+                timerString: Self.currentTimerString(for: entryDate),
+                motivationalSlogan: slogan
             )
             entries.append(entry)
         }
@@ -96,6 +115,128 @@ struct Provider: TimelineProvider {
         let status = userDefaults.string(forKey: "reportStatus") ?? "notStarted"
         return status
     }
+    
+    static func getTodayPlanItems(for date: Date = Date()) -> [String] {
+        let userDefaults = WidgetConfig.sharedUserDefaults
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: date)
+        var planItems: [String] = []
+        
+        // 1. Ищем в сохраненных custom отчетах за сегодня
+        if let data = userDefaults.data(forKey: "posts"),
+           let posts = try? JSONDecoder().decode([Post].self, from: data) {
+            if let customReport = posts.first(where: { post in
+                post.type == .custom &&
+                calendar.isDate(post.date, inSameDayAs: today) &&
+                !post.goodItems.isEmpty
+            }) {
+                planItems.append(contentsOf: customReport.goodItems)
+            }
+        }
+        
+        // 2. Ищем в черновиках планов
+        // PlanningLocalDataSource теперь использует app group UserDefaults (AppConfig.sharedUserDefaults)
+        // Пробуем разные варианты формата даты для совместимости с разными локалями
+        let dateFormatters: [DateFormatter] = [
+            {
+                let formatter = DateFormatter()
+                formatter.locale = Locale.current
+                formatter.dateStyle = .short
+                formatter.timeStyle = .none
+                return formatter
+            }(),
+            {
+                let formatter = DateFormatter()
+                formatter.locale = Locale(identifier: "ru_RU")
+                formatter.dateStyle = .short
+                formatter.timeStyle = .none
+                return formatter
+            }(),
+            {
+                let formatter = DateFormatter()
+                formatter.locale = Locale(identifier: "en_US")
+                formatter.dateStyle = .short
+                formatter.timeStyle = .none
+                return formatter
+            }()
+        ]
+        
+        let standardDefaults = UserDefaults.standard
+        
+        // Пробуем все варианты форматов даты в обоих UserDefaults
+        for formatter in dateFormatters {
+            let dateKey = formatter.string(from: today)
+            let planKey = "plan_" + dateKey
+            
+            // Сначала пробуем в app group UserDefaults (основное место хранения)
+            if let planData = userDefaults.data(forKey: planKey),
+               let planItemsFromDraft = try? JSONDecoder().decode([String].self, from: planData) {
+                planItems.append(contentsOf: planItemsFromDraft)
+                break // Нашли план, не нужно пробовать другие форматы
+            }
+            
+            // Также пробуем в стандартном UserDefaults для обратной совместимости
+            if let planData = standardDefaults.data(forKey: planKey),
+               let planItemsFromDraft = try? JSONDecoder().decode([String].self, from: planData) {
+                planItems.append(contentsOf: planItemsFromDraft)
+                break // Нашли план, не нужно пробовать другие форматы
+            }
+        }
+        
+        // Также пробуем старый формат ключа из DailyReportView (для обратной совместимости)
+        for formatter in dateFormatters {
+            let dateKey = formatter.string(from: today)
+            let oldPlanKey = "third_screen_plan_" + dateKey
+            
+            if let planData = standardDefaults.data(forKey: oldPlanKey),
+               let planDataStruct = try? JSONDecoder().decode(ThirdScreenPlanData.self, from: planData) {
+                planItems.append(contentsOf: planDataStruct.goodItems)
+                break
+            }
+        }
+        
+        // Фильтруем пустые пункты и удаляем дубликаты
+        let nonEmptyItems = planItems.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        var seen = Set<String>()
+        let uniqueItems = nonEmptyItems.filter { item in
+            guard !seen.contains(item) else { return false }
+            seen.insert(item)
+            return true
+        }
+        return uniqueItems
+    }
+    
+    static func generateMotivationalSlogan(for date: Date = Date()) -> String {
+        let planItems = getTodayPlanItems(for: date)
+        
+        // Если есть пункты плана - генерируем мотивационную фразу
+        if !planItems.isEmpty {
+            // Используем дату как seed для псевдослучайного выбора, чтобы лозунг менялся каждые 15 минут
+            let quarterHourInterval = max(0, Int(date.timeIntervalSince1970) / (15 * 60)) // Интервал 15 минут
+            let itemIndex = quarterHourInterval % planItems.count
+            let selectedItem = planItems[itemIndex]
+            
+            let motivationalPhrases = [
+                "А не пора ли сделать",
+                "Пора бы уже",
+                "Время для",
+                "Не забудь про",
+                "Сегодня нужно",
+                "Пора заняться"
+            ]
+            // Используем комбинацию интервала и количества пунктов для выбора фразы
+            let phraseIndex = (quarterHourInterval + planItems.count) % motivationalPhrases.count
+            let selectedPhrase = motivationalPhrases[phraseIndex]
+            
+            return "\(selectedPhrase) \(selectedItem)"
+        }
+        
+        // Если пунктов нет - возвращаем дату
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.dateStyle = .full
+        return formatter.string(from: date)
+    }
 }
 
 struct SimpleEntry: TimelineEntry {
@@ -103,6 +244,7 @@ struct SimpleEntry: TimelineEntry {
     let reportStatus: String
     let deviceName: String
     let timerString: String
+    let motivationalSlogan: String
 }
 
 struct LazyBonesWidgetEntryView : View {
@@ -172,9 +314,12 @@ struct LazyBonesWidgetEntryView : View {
                     Text(entry.deviceName)
                         .font(.headline)
                         .lineLimit(1)
-                    Text(formattedDate(entry.date))
+                    Text(entry.motivationalSlogan)
                         .font(.caption)
                         .foregroundColor(.secondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.leading)
                     Text(statusText)
                         .font(.body)
                         .foregroundColor(statusColor)
@@ -208,10 +353,13 @@ struct LazyBonesWidgetEntryView : View {
                         .font(.title.bold())
                         .foregroundColor(statusColor)
                         .multilineTextAlignment(.center)
-                    Text(formattedDate(entry.date))
+                    Text(entry.motivationalSlogan)
                         .font(.title3)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal)
                     if entry.reportStatus != "done" {
                         VStack(spacing: 2) {
                             Text(timerPrefix)
@@ -327,12 +475,12 @@ extension ConfigurationAppIntent {
 #Preview(as: .systemMedium) {
     LazyBonesWidget()
 } timeline: {
-    SimpleEntry(date: .now, reportStatus: "notStarted", deviceName: "iPhone Дениса", timerString: "До старта: 00:00:00")
-    SimpleEntry(date: .now, reportStatus: "inProgress", deviceName: "iPhone Дениса", timerString: "До конца: 00:00:00")
-    SimpleEntry(date: .now, reportStatus: "done", deviceName: "iPhone Дениса", timerString: "")
-    SimpleEntry(date: .now, reportStatus: "sent", deviceName: "iPhone Дениса", timerString: "")
-    SimpleEntry(date: .now, reportStatus: "notSent", deviceName: "iPhone Дениса", timerString: "До конца: 00:00:00")
-    SimpleEntry(date: .now, reportStatus: "notCreated", deviceName: "iPhone Дениса", timerString: "До старта: 00:00:00")
+    SimpleEntry(date: Date(), reportStatus: "notStarted", deviceName: "iPhone Дениса", timerString: "До старта: 00:00:00", motivationalSlogan: "А не пора ли сделать зарядку")
+    SimpleEntry(date: Date(), reportStatus: "inProgress", deviceName: "iPhone Дениса", timerString: "До конца: 00:00:00", motivationalSlogan: "Пора бы уже прочитать книгу")
+    SimpleEntry(date: Date(), reportStatus: "done", deviceName: "iPhone Дениса", timerString: "", motivationalSlogan: "понедельник, 1 января 2024 г.")
+    SimpleEntry(date: Date(), reportStatus: "sent", deviceName: "iPhone Дениса", timerString: "", motivationalSlogan: "Сегодня нужно позвонить маме")
+    SimpleEntry(date: Date(), reportStatus: "notSent", deviceName: "iPhone Дениса", timerString: "До конца: 00:00:00", motivationalSlogan: "понедельник, 1 января 2024 г.")
+    SimpleEntry(date: Date(), reportStatus: "notCreated", deviceName: "iPhone Дениса", timerString: "До старта: 00:00:00", motivationalSlogan: "понедельник, 1 января 2024 г.")
 }
 
 struct Post: Codable, Identifiable {
@@ -341,4 +489,19 @@ struct Post: Codable, Identifiable {
     let goodItems: [String]
     let badItems: [String]
     let published: Bool
+    var type: PostType = .regular
+}
+
+enum PostType: String, Codable, CaseIterable {
+    case regular // обычный отчет
+    case custom // кастомный отчет (план/теги)
+    case external // внешний отчет из Telegram
+    case iCloud // отчет из iCloud
+}
+
+// Вспомогательная структура для старого формата планов
+private struct ThirdScreenPlanData: Codable {
+    let goodItems: [String]
+    let badItems: [String]
+    let voiceNotes: [String]?
 }
