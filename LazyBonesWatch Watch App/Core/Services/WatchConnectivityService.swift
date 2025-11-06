@@ -6,7 +6,10 @@ import WatchConnectivity
 final class WatchConnectivityService: NSObject {
     static let shared = WatchConnectivityService()
     
-    private var session: WCSession?
+    var session: WCSession? {
+        return _session
+    }
+    private var _session: WCSession?
     var onDataReceived: ((WatchReportData) -> Void)?
     
     private override init() {
@@ -25,13 +28,13 @@ final class WatchConnectivityService: NSObject {
             return
         }
         
-        session = WCSession.default
-        session?.delegate = self
-        session?.activate()
+        _session = WCSession.default
+        _session?.delegate = self
+        _session?.activate()
     }
     
     func requestUpdate() {
-        guard let session = session, session.isReachable else {
+        guard let session = _session, session.isReachable else {
             #if DEBUG
             print("[WatchConnectivity] iPhone not reachable, cannot request update")
             #endif

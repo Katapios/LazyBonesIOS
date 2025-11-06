@@ -427,10 +427,49 @@ extension WatchSyncService: WCSessionDelegate {
     
     @MainActor
     private func handleReportItemFromWatch(item: String, isGood: Bool) {
-        // Здесь можно добавить логику для обработки пунктов отчета с Watch
-        // Например, добавить в текущий отчет через Use Case
         print("[WatchSync] Received report item from Watch: \(item), isGood: \(isGood)")
-        // TODO: Интегрировать с CreateReportUseCase или PostRepository
+        
+        // Загружаем черновик regular отчета за сегодня
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let draftKey = RegularReportDraftStorageKey.forDay(today)
+        let defaults = AppConfig.sharedUserDefaults
+        
+        var draft: RegularReportDraft
+        if let draftData = defaults.data(forKey: draftKey),
+           let existingDraft = try? JSONDecoder().decode(RegularReportDraft.self, from: draftData) {
+            draft = existingDraft
+        } else {
+            // Создаем новый черновик, если его нет
+            draft = RegularReportDraft(date: today)
+        }
+        
+        // Добавляем элемент в соответствующий список
+        let trimmedItem = item.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedItem.isEmpty else { return }
+        
+        if isGood {
+            if !draft.good.contains(trimmedItem) {
+                draft.good.append(trimmedItem)
+            }
+        } else {
+            if !draft.bad.contains(trimmedItem) {
+                draft.bad.append(trimmedItem)
+            }
+        }
+        
+        // Сохраняем обновленный черновик
+        do {
+            let data = try JSONEncoder().encode(draft)
+            defaults.set(data, forKey: draftKey)
+            defaults.synchronize()
+            print("[WatchSync] Added item to draft: \(trimmedItem), isGood: \(isGood)")
+            
+            // Обновляем данные на Watch, чтобы счетчики обновились
+            updateWatchData()
+        } catch {
+            print("[WatchSync] Error saving draft with new item: \(error)")
+        }
     }
 }
 

@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import WatchConnectivity
 
 final class WatchMainViewModel: ObservableObject {
     @Published var status: String = "notStarted"
@@ -124,22 +125,58 @@ final class WatchMainViewModel: ObservableObject {
     
     
     func sendReportItem(_ item: String, isGood: Bool) {
-        // Сохраняем локально в UserDefaults для синхронизации с iPhone
-        let key = isGood ? "watchLocalGoodItems" : "watchLocalBadItems"
-        var items = userDefaults.stringArray(forKey: key) ?? []
-        items.append(item)
-        userDefaults.set(items, forKey: key)
-        userDefaults.synchronize()
-        
-        // Обновляем счетчики локально
-        if isGood {
-            goodItemsCount += 1
-        } else {
-            badItemsCount += 1
+        // Отправляем элемент на iPhone через WatchConnectivity
+        guard let session = connectivityService.session, session.isReachable else {
+            // Если iPhone недоступен, сохраняем локально для последующей отправки
+            let key = isGood ? "watchLocalGoodItems" : "watchLocalBadItems"
+            var items = userDefaults.stringArray(forKey: key) ?? []
+            items.append(item)
+            userDefaults.set(items, forKey: key)
+            userDefaults.synchronize()
+            
+            // Обновляем счетчики локально
+            if isGood {
+                goodItemsCount += 1
+            } else {
+                badItemsCount += 1
+            }
+            return
         }
         
-        // Основное приложение будет читать эти данные при следующем запуске
-        // и интегрировать их в отчеты
+        // Отправляем через WatchConnectivity
+        let message: [String: Any] = [
+            "type": "addReportItem",
+            "item": item,
+            "isGood": isGood
+        ]
+        
+        session.sendMessage(message, replyHandler: { [weak self] response in
+            Task { @MainActor [weak self] in
+                if let status = response["status"] as? String, status == "received" {
+                    #if DEBUG
+                    print("[WatchApp] Item sent successfully: \(item), isGood: \(isGood)")
+                    #endif
+                    // Обновляем счетчики после успешной отправки
+                    if isGood {
+                        self?.goodItemsCount += 1
+                    } else {
+                        self?.badItemsCount += 1
+                    }
+                }
+            }
+        }) { error in
+            #if DEBUG
+            print("[WatchApp] Error sending item: \(error.localizedDescription)")
+            #endif
+            // При ошибке сохраняем локально
+            Task { @MainActor [weak self] in
+                let key = isGood ? "watchLocalGoodItems" : "watchLocalBadItems"
+                var items = self?.userDefaults.stringArray(forKey: key) ?? []
+                items.append(item)
+                self?.userDefaults.set(items, forKey: key)
+                self?.userDefaults.synchronize()
+            }
+        }
     }
     
     private func startUpdateTimer() {
