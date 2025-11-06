@@ -278,6 +278,16 @@ final class WatchSyncService: NSObject {
             }
         }
         
+        // Если regular отчет еще не сохранен, загружаем из черновика
+        if goodItemsCount == 0 && badItemsCount == 0 {
+            let draftKey = RegularReportDraftStorageKey.forDay(today)
+            if let draftData = defaults.data(forKey: draftKey),
+               let draft = try? JSONDecoder().decode(RegularReportDraft.self, from: draftData) {
+                goodItemsCount = draft.good.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count
+                badItemsCount = draft.bad.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count
+            }
+        }
+        
         // Загружаем план из черновиков
         if planItems.isEmpty {
             let dateKey = DateFormatter.localizedString(from: today, dateStyle: .short, timeStyle: .none)

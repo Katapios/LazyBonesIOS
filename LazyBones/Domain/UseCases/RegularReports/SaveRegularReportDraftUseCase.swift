@@ -17,6 +17,11 @@ final class SaveRegularReportDraftUseCase: SaveRegularReportDraftUseCaseProtocol
         do {
             let data = try JSONEncoder().encode(draft)
             userDefaultsManager.set(data, forKey: key)
+            
+            // Обновляем данные на Watch сразу после сохранения черновика
+            Task { @MainActor in
+                WatchSyncService.shared.updateWatchData()
+            }
         } catch {
             // Логируем молча, чтобы не менять существующее поведение UI
             print("[SaveRegularReportDraftUseCase] Failed to encode draft: \(error)")
